@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 COMPONENTS Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Widgets OpenGLWidgets REQUIRED)
 find_package(OpenCASCADE REQUIRED)
 
 add_executable(${PROJECT_NAME}
@@ -20,5 +20,5 @@ add_executable(${PROJECT_NAME}
     OcctQtTools.h
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets ${OpenCASCADE_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::OpenGLWidgets ${OpenCASCADE_LIBRARIES})
 
