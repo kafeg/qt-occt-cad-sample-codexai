@@ -19,6 +19,8 @@
 
 #include <AIS_Shape.hxx>
 #include <AIS_ViewCube.hxx>
+#include <AIS_Line.hxx>
+#include <AIS_Trihedron.hxx>
 #include <Aspect_DisplayConnection.hxx>
 #include <Aspect_NeutralWindow.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
@@ -28,6 +30,14 @@
 #include <Standard_Version.hxx>
 #include <V3d_RectangularGrid.hxx>
 #include <OpenGl_FrameBuffer.hxx>
+#include <Geom_Line.hxx>
+#include <Geom_Axis2Placement.hxx>
+#include <gp_Ax2.hxx>
+#include <Prs3d_Drawer.hxx>
+#include <Prs3d_LineAspect.hxx>
+#include <Prs3d_DatumAspect.hxx>
+#include <gp_Pnt.hxx>
+#include <cmath>
 
 //! OpenGL FBO subclass for wrapping FBO created by Qt using GL_RGBA8
 //! texture format instead of GL_SRGB8_ALPHA8.
@@ -79,21 +89,16 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
 
   // create viewer
   myViewer = new V3d_Viewer(aDriver);
-  // use soft dark-grey gradient similar to Fusion 360 rather than plain black
-  const Quantity_Color aBgTop(0.25, 0.25, 0.25, Quantity_TOC_sRGB);
-  const Quantity_Color aBgBottom(0.40, 0.40, 0.40, Quantity_TOC_sRGB);
+  // Fusion-like soft dark grey background gradient
+  const Quantity_Color aBgTop(0.24, 0.24, 0.24, Quantity_TOC_sRGB);     // ~#3D3D3D
+  const Quantity_Color aBgBottom(0.36, 0.36, 0.36, Quantity_TOC_sRGB);  // ~#5C5C5C
   myViewer->SetDefaultBackgroundColor(aBgTop);
   myViewer->SetDefaultBgGradientColors(aBgTop, aBgBottom, Aspect_GradientFillMethod_Elliptical);
   myViewer->SetDefaultLights();
   myViewer->SetLightOn();
-  // lighten the reference grid to resemble Fusion 360 appearance
-  // origin at (0,0) with finer 10x10 spacing and no rotation
-  myViewer->SetRectangularGridValues(0.0, 0.0, 10.0, 10.0, 0.0);
-// #if (OCC_VERSION_HEX >= 0x070800)
-//   myViewer->RectangularGrid()->SetColors(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
-// #else
-//   myViewer->SetRectangularGridColor(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
-// #endif
+  // Grid: start with 10 mm, dynamic step will adjust on zoom
+  myGridStep = 10.0;
+  myViewer->SetRectangularGridValues(0.0, 0.0, myGridStep, myGridStep, 0.0);
   myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 
   // create AIS context
@@ -255,12 +260,45 @@ void OcctQOpenGLWidgetViewer::initializeGL()
   }
 
   {
-    // dummy shape for testing
-    TopoDS_Shape      aBox   = BRepPrimAPI_MakeBox(100.0, 50.0, 90.0).Shape();
-    Handle(AIS_Shape) aShape = new AIS_Shape(aBox);
-    myContext->Display(aShape, AIS_Shaded, 0, false);
+    // dummy body for testing via helper method (also tracked for toggling)
+    TopoDS_Shape aBox = BRepPrimAPI_MakeBox(100.0, 50.0, 90.0).Shape();
+    addBody(aBox, AIS_Shaded, 0, false);
     // center the view on the displayed shape
     myView->FitAll(0.01, false);
+    // adjust grid spacing to initial zoom level
+    updateGridStepForView(myView);
+
+    // Add Fusion-like guides and origin icon at world origin (after FitAll to avoid skewing zoom)
+    // Use finite segments so they don't explode FitAll; length can be tuned as needed
+    const Standard_Real L = 1000.0;
+    Handle(Geom_Line) aGeomX = new Geom_Line(gp_Pnt(-L, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0));
+    Handle(Geom_Line) aGeomY = new Geom_Line(gp_Pnt(0.0, -L, 0.0), gp_Dir(0.0, 1.0, 0.0));
+    myAxisX = new AIS_Line(aGeomX);
+    myAxisY = new AIS_Line(aGeomY);
+    myAxisX->SetColor(Quantity_NOC_RED);
+    myAxisY->SetColor(Quantity_NOC_GREEN);
+    // slightly thicker lines for visibility
+    Handle(Prs3d_Drawer) xDr = myAxisX->Attributes();
+    if (xDr.IsNull()) xDr = new Prs3d_Drawer();
+    xDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_RED, Aspect_TOL_SOLID, 2.0f));
+    myAxisX->SetAttributes(xDr);
+    Handle(Prs3d_Drawer) yDr = myAxisY->Attributes();
+    if (yDr.IsNull()) yDr = new Prs3d_Drawer();
+    yDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_GREEN, Aspect_TOL_SOLID, 2.0f));
+    myAxisY->SetAttributes(yDr);
+    myContext->Display(myAxisX, 0, 1, false);
+    myContext->Display(myAxisY, 0, 1, false);
+
+    // Origin trihedron (center icon) at world origin
+    myOriginPlacement = new Geom_Axis2Placement(gp_Ax2(gp::Origin(), gp::DZ(), gp::DX()));
+    myOriginTrihedron = new AIS_Trihedron(myOriginPlacement);
+    // use default colors (X=red, Y=green, Z=blue); make it compact
+    Handle(Prs3d_Drawer) trDr = myOriginTrihedron->Attributes();
+    if (trDr.IsNull()) trDr = new Prs3d_Drawer();
+    trDr->SetDatumAspect(new Prs3d_DatumAspect());
+    trDr->DatumAspect()->SetAxisLength(20.0, 20.0, 20.0);
+    myOriginTrihedron->SetAttributes(trDr);
+    myContext->Display(myOriginTrihedron, 0, 2, false);
   }
 }
 
@@ -288,7 +326,14 @@ void OcctQOpenGLWidgetViewer::keyPressEvent(QKeyEvent* theEvent)
       return;
     }
     case Aspect_VKey_F: {
+      // Temporarily hide guides from FitAll to avoid skewing zoom
+      const bool hadX = !myAxisX.IsNull() && myContext->IsDisplayed(myAxisX);
+      const bool hadY = !myAxisY.IsNull() && myContext->IsDisplayed(myAxisY);
+      if (hadX) myContext->Erase(myAxisX, false);
+      if (hadY) myContext->Erase(myAxisY, false);
       myView->FitAll(0.01, false);
+      if (hadX) myContext->Display(myAxisX, 0, 1, false);
+      if (hadY) myContext->Display(myAxisY, 0, 1, false);
       update();
       return;
     }
@@ -378,7 +423,11 @@ void OcctQOpenGLWidgetViewer::wheelEvent(QWheelEvent* theEvent)
   }
 
   if (UpdateZoom(Aspect_ScrollDelta(aPos, double(theEvent->angleDelta().y()) / 8.0)))
+  {
+    // Keep grid spacing consistent in screen space while zooming
+    updateGridStepForView(!myFocusView.IsNull() ? myFocusView : myView);
     updateView();
+  }
 }
 
 // =======================================================================
@@ -468,8 +517,158 @@ void OcctQOpenGLWidgetViewer::handleViewRedraw(const Handle(AIS_InteractiveConte
                                                const Handle(V3d_View)&               theView)
 {
   AIS_ViewController::handleViewRedraw(theCtx, theView);
+  // Adjust grid dynamically in response to any view change (pan/rotate/zoom)
+  updateGridStepForView(theView);
   if (myToAskNextFrame)
     updateView(); // ask more frames for animation
+}
+
+// ================================================================
+// Function : addBody
+// ================================================================
+Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addBody(const TopoDS_Shape& theShape,
+                                                   AIS_DisplayMode    theDispMode,
+                                                   Standard_Integer   theDispPriority,
+                                                   bool               theToUpdate)
+{
+  Handle(AIS_Shape) aShape = new AIS_Shape(theShape);
+  myBodies.Append(aShape);
+  myContext->Display(aShape, theDispMode, theDispPriority, theToUpdate);
+  return aShape;
+}
+
+// ================================================================
+// Function : setBodiesVisible
+// ================================================================
+void OcctQOpenGLWidgetViewer::setBodiesVisible(bool theVisible)
+{
+  if (myBodiesVisible == theVisible)
+    return;
+  myBodiesVisible = theVisible;
+  for (NCollection_Sequence<Handle(AIS_Shape)>::Iterator it(myBodies); it.More(); it.Next())
+  {
+    const Handle(AIS_Shape)& aBody = it.Value();
+    if (aBody.IsNull())
+      continue;
+    if (theVisible)
+    {
+      if (!myContext->IsDisplayed(aBody))
+        myContext->Display(aBody, 0, 0, false);
+      // Ensure shaded mode when showing back
+      myContext->SetDisplayMode(aBody, AIS_Shaded, false);
+    }
+    else
+    {
+      if (myContext->IsDisplayed(aBody))
+        myContext->Erase(aBody, false);
+    }
+  }
+  // keep guides visible regardless of toggle
+  if (!myAxisX.IsNull()) myContext->Display(myAxisX, 0, 1, false);
+  if (!myAxisY.IsNull()) myContext->Display(myAxisY, 0, 1, false);
+  if (!myOriginTrihedron.IsNull()) myContext->Display(myOriginTrihedron, 0, 2, false);
+  if (!myViewCube.IsNull()) myContext->Display(myViewCube, 0, 0, false);
+  // Force viewer update so changes are visible immediately
+  if (!myView.IsNull())
+  {
+    myContext->UpdateCurrentViewer();
+    myView->Invalidate();
+  }
+  update();
+}
+
+// ================================================================
+// Function : toggleBodiesVisible
+// ================================================================
+bool OcctQOpenGLWidgetViewer::toggleBodiesVisible()
+{
+  setBodiesVisible(!myBodiesVisible);
+  return myBodiesVisible;
+}
+
+// ================================================================
+// Function : rayHitZ0
+// ================================================================
+bool OcctQOpenGLWidgetViewer::rayHitZ0(const Handle(V3d_View)& theView,
+                                       int                     thePx,
+                                       int                     thePy,
+                                       gp_Pnt&                 theHit) const
+{
+  if (theView.IsNull())
+    return false;
+
+  Standard_Real X = 0.0, Y = 0.0, Z = 0.0;
+  Standard_Real Vx = 0.0, Vy = 0.0, Vz = 0.0;
+  theView->ConvertWithProj(thePx, thePy, X, Y, Z, Vx, Vy, Vz);
+  if (Abs(Vz) < 1.0e-12)
+    return false; // parallel to Z=0
+
+  const Standard_Real t = -Z / Vz;
+  theHit.SetCoord(X + t * Vx, Y + t * Vy, 0.0);
+  return Standard_True;
+}
+
+// ================================================================
+// Function : updateGridStepForView
+// ================================================================
+void OcctQOpenGLWidgetViewer::updateGridStepForView(const Handle(V3d_View)& theView)
+{
+  if (theView.IsNull() || myViewer.IsNull())
+    return;
+
+  // Determine viewport size in pixels
+  Handle(Aspect_NeutralWindow) aWnd = Handle(Aspect_NeutralWindow)::DownCast(theView->Window());
+  if (aWnd.IsNull())
+    return;
+
+  Standard_Integer vpW = 0, vpH = 0;
+  aWnd->Size(vpW, vpH);
+  if (vpW <= 0 || vpH <= 0)
+    return;
+
+  // Compute world distance corresponding to ~20 pixels at view center on Z=0 plane
+  const int cx = vpW / 2;
+  const int cy = vpH / 2;
+  gp_Pnt p0, p1;
+  if (!rayHitZ0(theView, cx, cy, p0) || !rayHitZ0(theView, cx + 20, cy, p1))
+    return;
+
+  const double pixelsTarget = 22.0; // desired spacing in pixels
+  const double worldPer20px = p0.Distance(p1);
+  if (worldPer20px <= 0.0)
+    return;
+
+  const double worldPerPixel = worldPer20px / 20.0;
+  double       desiredStep   = worldPerPixel * pixelsTarget;
+
+  // Snap to nice 1-2-5 sequence (… 0.1, 0.2, 0.5, 1, 2, 5, …)
+  const double minStep = 1.0e-4; // 0.0001 in model units (~0.1 mm if unit=mm)
+  if (desiredStep < minStep)
+    desiredStep = minStep;
+  const double maxStep = 1.0e+3; // clamp to keep grid visible when zoomed out
+  if (desiredStep > maxStep)
+    desiredStep = maxStep;
+
+  const double pow10   = pow(10.0, floor(log10(desiredStep)));
+  const double norm    = desiredStep / pow10;
+  double       snapped = 1.0 * pow10;
+  if (norm <= 1.0)
+    snapped = 1.0 * pow10;
+  else if (norm <= 2.0)
+    snapped = 2.0 * pow10;
+  else if (norm <= 5.0)
+    snapped = 5.0 * pow10;
+  else
+    snapped = 10.0 * pow10;
+
+  // Avoid jittering updates for tiny differences
+  if (Abs(snapped - myGridStep) < (1.0e-6 * Max(1.0, myGridStep)))
+    return;
+
+  myGridStep = snapped;
+  myViewer->SetRectangularGridValues(0.0, 0.0, myGridStep, myGridStep, 0.0);
+  // Ensure grid is active
+  myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 }
 
 // ================================================================

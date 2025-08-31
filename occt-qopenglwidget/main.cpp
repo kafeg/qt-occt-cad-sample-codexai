@@ -11,9 +11,10 @@
 #include <QMainWindow>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QVBoxLayout>
-#include <QPushButton>
+#include <QToolBar>
 #include <QSlider>
+#include <QWidgetAction>
+#include <QHBoxLayout>
 #include <Standard_WarningsRestore.hxx>
 
 #include <Standard_Version.hxx>
@@ -35,8 +36,10 @@ public:
     // menu bar
     createMenuBar();
 
-    // some controls on top of 3D Viewer
-    createLayoutOverViewer();
+    // toolbar with actions
+    createToolBar();
+
+    // no overlay controls; toolbar hosts UI now
   }
 
 private:
@@ -60,67 +63,71 @@ private:
     setMenuBar(aMenuBar);
   }
 
-  //! Define controls over 3D viewer.
-  void createLayoutOverViewer()
+  //! Top toolbar for quick actions.
+  void createToolBar()
   {
-    QVBoxLayout* aLayout = new QVBoxLayout(myViewer);
-    aLayout->setDirection(QBoxLayout::BottomToTop);
-    aLayout->setAlignment(Qt::AlignBottom);
-    {
-      // button displaying message window with OpenGL info
-      QPushButton* aQuitBtn = new QPushButton("About");
-      aLayout->addWidget(aQuitBtn);
-      connect(aQuitBtn, &QPushButton::clicked, [this]() {
-        QMessageBox::information(0,
-                                 "About Sample",
-                                 QString() + "OCCT 3D Viewer sample embedded into Qt Widgets.\n\n"
-                                   + "Open CASCADE Technology v." OCC_VERSION_STRING_EXT "\n"
-                                   + "Qt v." QT_VERSION_STR "\n\n" + "OpenGL info:\n" + myViewer->getGlInfo());
-      });
-    }
-    {
-      // slider changing viewer background color
+    QToolBar* tb = new QToolBar("Main Toolbar", this);
+    tb->setMovable(true);
 
-      // the widgets on top of OCCT 3D Viewer (implemented as QOpenGLWidget) might have transparent background
-      QWidget* aSliderBox = new QWidget();
-      aSliderBox->setStyleSheet("QWidget { background-color: rgba(0, 0, 0, 0); }");
+    // Toggle bodies visibility (checkable)
+    QAction* actBodies = new QAction("Hide bodies", tb);
+    actBodies->setCheckable(true);
+    actBodies->setChecked(true);
+    connect(actBodies, &QAction::toggled, [this, actBodies](bool on) {
+      myViewer->setBodiesVisible(on);
+      actBodies->setText(on ? "Hide bodies" : "Show bodies");
+    });
+    tb->addAction(actBodies);
 
-      QHBoxLayout* aSliderLayout = new QHBoxLayout(aSliderBox);
+    // About
+    QAction* actAbout = new QAction("About", tb);
+    connect(actAbout, &QAction::triggered, [this]() {
+      QMessageBox::information(0,
+                               "About Sample",
+                               QString() + "OCCT 3D Viewer sample embedded into Qt Widgets.\n\n"
+                                 + "Open CASCADE Technology v." OCC_VERSION_STRING_EXT "\n"
+                                 + "Qt v." QT_VERSION_STR "\n\n" + "OpenGL info:\n" + myViewer->getGlInfo());
+    });
+    tb->addAction(actAbout);
+
+    // Background slider (as embedded widget)
+    QWidget* bgBox = new QWidget(tb);
+    QHBoxLayout* bgLay = new QHBoxLayout(bgBox);
+    bgLay->setContentsMargins(6, 0, 6, 0);
+    QLabel* lbl = new QLabel("Background", bgBox);
+    bgLay->addWidget(lbl);
+    QSlider* slider = new QSlider(Qt::Horizontal, bgBox);
+    slider->setRange(0, 255);
+    slider->setSingleStep(1);
+    slider->setPageStep(15);
+    slider->setTickInterval(15);
+    slider->setTickPosition(QSlider::NoTicks);
+    slider->setValue(64);
+    slider->setFixedWidth(200);
+    bgLay->addWidget(slider);
+    connect(slider, &QSlider::valueChanged, [this](int theValue) {
+      const float          aVal = theValue / 255.0f;
+      const Quantity_Color aColor(aVal, aVal, aVal, Quantity_TOC_sRGB);
+      const Quantity_Color aBottom(0.40f, 0.40f, 0.40f, Quantity_TOC_sRGB);
+
+      for (const Handle(V3d_View)& aSubviewIter : myViewer->View()->Subviews())
       {
-        QLabel* aSliderLabel = new QLabel("Background");
-        aSliderLabel->setStyleSheet("QLabel { background-color: rgba(0, 0, 0, 0); color: white; }");
-        aSliderLabel->setGeometry(50, 50, 50, 50);
-        aSliderLabel->adjustSize();
-        aSliderLayout->addWidget(aSliderLabel);
+        aSubviewIter->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
+        aSubviewIter->Invalidate();
       }
-      {
-        QSlider* aSlider = new QSlider(Qt::Horizontal);
-        aSlider->setRange(0, 255);
-        aSlider->setSingleStep(1);
-        aSlider->setPageStep(15);
-        aSlider->setTickInterval(15);
-        aSlider->setTickPosition(QSlider::TicksRight);
-        aSlider->setValue(64);
-        aSliderLayout->addWidget(aSlider);
-        connect(aSlider, &QSlider::valueChanged, [this](int theValue) {
-          const float          aVal = theValue / 255.0f;
-          const Quantity_Color aColor(aVal, aVal, aVal, Quantity_TOC_sRGB);
-          const Quantity_Color aBottom(0.40f, 0.40f, 0.40f, Quantity_TOC_sRGB);
+      myViewer->View()->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
+      myViewer->View()->Invalidate();
+      myViewer->update();
+    });
+    QWidgetAction* bgAction = new QWidgetAction(tb);
+    bgAction->setDefaultWidget(bgBox);
+    tb->addAction(bgAction);
 
-          for (const Handle(V3d_View)& aSubviewIter : myViewer->View()->Subviews())
-          {
-            aSubviewIter->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
-            aSubviewIter->Invalidate();
-          }
-          // myViewer->View()->SetBackgroundColor(aColor);
-          myViewer->View()->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
-          myViewer->View()->Invalidate();
-          myViewer->update();
-        });
-      }
-      aLayout->addWidget(aSliderBox);
-    }
+    addToolBar(Qt::TopToolBarArea, tb);
   }
+
+  //! Define controls over 3D viewer.
+  void createLayoutOverViewer() {}
 
   //! Advanced method splitting 3D Viewer into sub-views.
   void splitSubviews()

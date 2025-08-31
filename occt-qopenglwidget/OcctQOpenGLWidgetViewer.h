@@ -10,6 +10,13 @@
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_ViewController.hxx>
 #include <V3d_View.hxx>
+#include <NCollection_Sequence.hxx>
+#include <TopoDS_Shape.hxx>
+// Forward declares for guides/trihedron
+class AIS_Line;
+class AIS_Trihedron;
+class AIS_Shape;
+class Geom_Axis2Placement;
 
 class AIS_ViewCube;
 
@@ -50,6 +57,19 @@ public:
   virtual QSize sizeHint() const override { return QSize(720, 480); }
 
 public:
+  //! Add body (TopoDS_Shape) into the scene and track it as a "body".
+  //! Returns handle to AIS_Shape for optional external use.
+  Handle(AIS_Shape) addBody(const TopoDS_Shape& theShape,
+                            AIS_DisplayMode    theDispMode = AIS_Shaded,
+                            Standard_Integer   theDispPriority = 0,
+                            bool               theToUpdate = false);
+
+  //! Show/hide all tracked bodies (AIS_Shape), keeping guides visible.
+  void setBodiesVisible(bool theVisible);
+
+  //! Toggle bodies visibility, returns new state.
+  bool toggleBodiesVisible();
+
   //! Handle subview focus change.
   virtual void OnSubviewChanged(const Handle(AIS_InteractiveContext)&,
                                 const Handle(V3d_View)&,
@@ -79,15 +99,38 @@ private:
   virtual void handleViewRedraw(const Handle(AIS_InteractiveContext)& theCtx, const Handle(V3d_View)& theView) override;
 
 private:
+  //! Recompute grid step to keep ~constant on-screen spacing.
+  void updateGridStepForView(const Handle(V3d_View)& theView);
+
+  //! Compute intersection of screen ray with plane Z=0 at given pixel.
+  //! Returns false if ray is parallel to plane.
+  bool rayHitZ0(const Handle(V3d_View)& theView,
+                int                     thePx,
+                int                     thePy,
+                gp_Pnt&                 theHit) const;
+
   Handle(V3d_Viewer)             myViewer;
   Handle(V3d_View)               myView;
   Handle(AIS_InteractiveContext) myContext;
   Handle(AIS_ViewCube)           myViewCube;
 
+  // Guides and origin icon
+  Handle(AIS_Line)               myAxisX;
+  Handle(AIS_Line)               myAxisY;
+  Handle(AIS_Trihedron)          myOriginTrihedron;
+  Handle(Geom_Axis2Placement)    myOriginPlacement;
+
+  // Bodies tracking and visibility
+  NCollection_Sequence<Handle(AIS_Shape)> myBodies;
+  bool                                    myBodiesVisible = true;
+
   Handle(V3d_View) myFocusView;
 
   QString myGlInfo;
   bool    myIsCoreProfile = true;
+
+  // Cached current grid step in model units
+  double  myGridStep = 10.0;
 };
 
 #endif // _OcctQOpenGLWidgetViewer_HeaderFile
