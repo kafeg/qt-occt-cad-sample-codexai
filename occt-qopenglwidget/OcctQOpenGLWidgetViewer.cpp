@@ -85,8 +85,9 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   myViewer->SetDefaultLights();
   myViewer->SetLightOn();
   // lighten the reference grid to resemble Fusion 360 appearance
-  myViewer->SetRectangularGridValues(10.0, 10.0, 0.0);
-  myViewer->SetRectangularGridColor(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
+  // origin at (0,0) with finer 10x10 spacing and no rotation
+  myViewer->SetRectangularGridValues(0.0, 0.0, 10.0, 10.0, 0.0);
+  myViewer->SetRectangularGridColors(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
   myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 
   // create AIS context
@@ -98,8 +99,7 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   myViewCube->SetAutoStartAnimation(true);
   myViewCube->SetSize(60.0);
   myViewCube->SetBoxColor(Quantity_NOC_GRAY70);
-  myViewCube->SetEdgesColor(Quantity_NOC_GRAY50);
-  myViewCube->TransformPersistence()->SetCorner(Aspect_TOTP_RIGHT_UPPER);
+  myViewCube->TransformPersistence()->SetCorner2d(Aspect_TOTP_RIGHT_UPPER);
   myViewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(20, 20));
 
   // note - window will be created later within initializeGL() callback!
