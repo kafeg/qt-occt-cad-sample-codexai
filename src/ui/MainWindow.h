@@ -7,9 +7,12 @@
 #include <TColStd_IndexedDataMapOfTransientTransient.hxx>
 #include <AIS_Shape.hxx>
 #include <Feature.h>
+#include <memory>
 
 class Document;
 class OcctQOpenGLWidgetViewer;
+class QTabWidget;
+class TabPage;
 
 class MainWindow : public QMainWindow
 {
@@ -17,6 +20,7 @@ class MainWindow : public QMainWindow
 
 public:
   MainWindow();
+  ~MainWindow();
 
 private:
   void createMenuBar();
@@ -26,10 +30,10 @@ private:
   void syncViewerFromDoc(bool toUpdate = true);
   void clearAll();
   void addSample();
+  void addNewTab();
+
+  TabPage* currentPage() const;
 
 private:
-  OcctQOpenGLWidgetViewer* myViewer = nullptr;
-  Document*                myDoc    = nullptr;
-  TColStd_IndexedDataMapOfTransientTransient myFeatureToBody;
-  TColStd_IndexedDataMapOfTransientTransient myBodyToFeature;
+  QTabWidget* myTabs = nullptr;
 };

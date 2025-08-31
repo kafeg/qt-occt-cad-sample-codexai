@@ -304,6 +304,12 @@ void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)
   {
     updateView();
   }
+  // Track last detected shape so the Delete action can remove it without an extra click
+  if (!myContext.IsNull() && myContext->HasDetected())
+  {
+    Handle(AIS_Shape) det = Handle(AIS_Shape)::DownCast(myContext->DetectedInteractive());
+    if (!det.IsNull()) myLastDetectedShape = det;
+  }
 }
 
 void OcctQOpenGLWidgetViewer::wheelEvent(QWheelEvent* theEvent)
@@ -482,4 +488,13 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::selectedShape() const
     if (!result.IsNull()) break;
   }
   return result;
+}
+
+Handle(AIS_Shape) OcctQOpenGLWidgetViewer::detectedShape() const
+{
+  if (!myContext.IsNull() && myContext->HasDetected())
+  {
+    return Handle(AIS_Shape)::DownCast(myContext->DetectedInteractive());
+  }
+  return Handle(AIS_Shape)();
 }

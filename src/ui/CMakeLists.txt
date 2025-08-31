@@ -1,6 +1,8 @@
 add_library(ui STATIC
     MainWindow.cpp
     MainWindow.h
+    TabPage.cpp
+    TabPage.h
     AbstractCommand.h
     CreateBoxDialog.cpp
     CreateBoxDialog.h
