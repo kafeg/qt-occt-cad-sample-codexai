@@ -124,10 +124,6 @@ void MainWindow::createToolBar()
   connect(actAddBox, &QAction::triggered, [this]() { addBox(); });
   tb->addAction(actAddBox);
 
-  QAction* actDelete = new QAction("Delete Selected", tb);
-  actDelete->setShortcuts({ QKeySequence::Delete, QKeySequence(Qt::Key_Backspace) });
-  connect(actDelete, &QAction::triggered, [this]() { deleteSelected(); });
-  tb->addAction(actDelete);
 
   QAction* actAbout = new QAction("About", tb);
   connect(actAbout, &QAction::triggered, [this]() {
@@ -199,55 +195,7 @@ void MainWindow::addBox()
   syncViewerFromDoc(true);
 }
 
-void MainWindow::deleteSelected()
-{
-  TabPage* page = currentPage(); if (!page) return;
-  // Collect all selected bodies; if nothing is selected but something is detected, select detected and remove it
-  NCollection_Sequence<Handle(AIS_Shape)> selected;
-  for (Handle(AIS_Shape) s = page->viewer()->selectedShape(); !s.IsNull(); s.Nullify())
-  {
-    // selectedShape() returns first one; iterate full list manually
-    for (page->viewer()->Context()->InitSelected(); page->viewer()->Context()->MoreSelected(); page->viewer()->Context()->NextSelected())
-    {
-      Handle(AIS_Shape) one = Handle(AIS_Shape)::DownCast(page->viewer()->Context()->SelectedInteractive());
-      if (!one.IsNull()) selected.Append(one);
-    }
-    break;
-  }
-  if (selected.IsEmpty())
-  {
-    // Try to take detected and select it programmatically
-    Handle(AIS_Shape) det = page->viewer()->lastDetectedShape();
-    if (!det.IsNull())
-    {
-      page->viewer()->Context()->ClearSelected(false);
-      page->viewer()->Context()->AddOrRemoveSelected(det, false); // select detected
-      selected.Append(det);
-    }
-  }
-  if (selected.IsEmpty()) return; // nothing to remove
 
-  // Remove all corresponding features (no duplicates)
-  NCollection_Sequence<Handle(Feature)> toRemove;
-  for (NCollection_Sequence<Handle(AIS_Shape)>::Iterator it(selected); it.More(); it.Next())
-  {
-    const Handle(AIS_Shape)& s = it.Value(); if (s.IsNull()) continue;
-    if (page->bodyToFeature().Contains(s))
-    {
-      Handle(Feature) f = Handle(Feature)::DownCast(page->bodyToFeature().FindFromKey(s));
-      bool dup = false; for (NCollection_Sequence<Handle(Feature)>::Iterator jt(toRemove); jt.More(); jt.Next()) { if (jt.Value() == f) { dup = true; break; } }
-      if (!dup) toRemove.Append(f);
-    }
-  }
-  if (toRemove.IsEmpty()) return;
-  for (NCollection_Sequence<Handle(Feature)>::Iterator it(toRemove); it.More(); it.Next())
-  {
-    page->doc().removeFeature(it.Value());
-  }
-  page->doc().recompute();
-  page->viewer()->Context()->ClearSelected(false);
-  syncViewerFromDoc(true);
-}
 
 void MainWindow::syncViewerFromDoc(bool toUpdate)
 {
@@ -263,7 +211,13 @@ void MainWindow::syncViewerFromDoc(bool toUpdate)
     page->featureToBody().Add(f, body);
     page->bodyToFeature().Add(body, f);
   }
-  if (toUpdate) myViewer->update();
+  if (toUpdate)
+  {
+    // Ensure OCCT view invalidates and redraws after content changes
+    myViewer->Context()->UpdateCurrentViewer();
+    myViewer->View()->Invalidate();
+    myViewer->update();
+  }
 }
 
 void MainWindow::clearAll()
@@ -303,6 +257,9 @@ void MainWindow::addSample()
     Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(b3));
     if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(2.0 * (dx + gap), 0.0, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
   }
+  // Force viewer to refresh immediately after redisplay
+  page->viewer()->Context()->UpdateCurrentViewer();
+  page->viewer()->View()->Invalidate();
   page->viewer()->update();
 }
 

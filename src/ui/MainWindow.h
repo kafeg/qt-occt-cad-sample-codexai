@@ -26,7 +26,6 @@ private:
   void createMenuBar();
   void createToolBar();
   void addBox();
-  void deleteSelected();
   void syncViewerFromDoc(bool toUpdate = true);
   void clearAll();
   void addSample();

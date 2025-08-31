@@ -279,15 +279,21 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
-  // Selection logic on mouse release: select if detected; otherwise clear selection
-  if (myContext->HasDetected())
+  // Selection: ensure exactly one is selected on click, no toggling/accumulation
+  if (!myContext.IsNull() && myContext->HasDetected())
   {
-    myContext->SelectDetected();
+    Handle(AIS_Shape) det = Handle(AIS_Shape)::DownCast(myContext->DetectedInteractive());
+    myContext->ClearSelected(false);
+    if (!det.IsNull())
+    {
+      myContext->AddOrRemoveSelected(det, false);
+    }
   }
   else
   {
     myContext->ClearSelected(false);
   }
+  if (!myView.IsNull()) { myContext->UpdateCurrentViewer(); myView->Invalidate(); }
   update();
 }
 
@@ -304,12 +310,7 @@ void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)
   {
     updateView();
   }
-  // Track last detected shape so the Delete action can remove it without an extra click
-  if (!myContext.IsNull() && myContext->HasDetected())
-  {
-    Handle(AIS_Shape) det = Handle(AIS_Shape)::DownCast(myContext->DetectedInteractive());
-    if (!det.IsNull()) myLastDetectedShape = det;
-  }
+  // no-op: we don't cache last detected anymore
 }
 
 void OcctQOpenGLWidgetViewer::wheelEvent(QWheelEvent* theEvent)

@@ -64,7 +64,6 @@ public: // bodies management
   { return addBody(theShape, theDispMode, theDispPriority, theToUpdate); }
   Handle(AIS_Shape) selectedShape() const;
   Handle(AIS_Shape) detectedShape() const;
-  Handle(AIS_Shape) lastDetectedShape() const { return myLastDetectedShape; }
   // visibility toggling removed; viewer keeps all displayed bodies
 
 private:
@@ -92,7 +91,7 @@ private:
   Handle(Geom_Axis2Placement)    myOriginPlacement;
   NCollection_Sequence<Handle(AIS_Shape)> myBodies;
 
-  Handle(AIS_Shape)              myLastDetectedShape;
+  // no deletion-specific state
 };
 
 #endif
