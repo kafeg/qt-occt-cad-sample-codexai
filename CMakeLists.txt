@@ -1,7 +1,5 @@
-cmake_minimum_required (VERSION 3.13)
+cmake_minimum_required(VERSION 3.20)
 
-# common solution for multiple independent projects
-project (occt-qt)
+project(occt-qopenglwidget-sample LANGUAGES CXX)
 
-add_subdirectory (occt-qwidget)
-add_subdirectory (occt-qopenglwidget)
+add_subdirectory(occt-qopenglwidget)
