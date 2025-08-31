@@ -15,18 +15,50 @@
         "VCPKG_TARGET_TRIPLET": "arm64-osx",
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "linux",
+      "inherits": "default",
+      "binaryDir": "${sourceDir}/build/linux",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    },
+    {
+      "name": "windows",
+      "inherits": "default",
+      "binaryDir": "${sourceDir}/build/windows",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "default",
       "configurePreset": "default"
+    },
+    {
+      "name": "linux",
+      "configurePreset": "linux"
+    },
+    {
+      "name": "windows",
+      "configurePreset": "windows"
     }
   ],
   "testPresets": [
     {
       "name": "default",
       "configurePreset": "default"
+    },
+    {
+      "name": "linux",
+      "configurePreset": "linux"
+    },
+    {
+      "name": "windows",
+      "configurePreset": "windows"
     }
   ]
 }
