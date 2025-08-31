@@ -89,11 +89,11 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   // lighten the reference grid to resemble Fusion 360 appearance
   // origin at (0,0) with finer 10x10 spacing and no rotation
   myViewer->SetRectangularGridValues(0.0, 0.0, 10.0, 10.0, 0.0);
-#if (OCC_VERSION_HEX >= 0x070800)
-  myViewer->RectangularGrid()->SetColors(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
-#else
-  myViewer->SetRectangularGridColor(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
-#endif
+// #if (OCC_VERSION_HEX >= 0x070800)
+//   myViewer->RectangularGrid()->SetColors(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
+// #else
+//   myViewer->SetRectangularGridColor(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
+// #endif
   myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 
   // create AIS context
@@ -106,7 +106,8 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   myViewCube->SetSize(60.0);
   myViewCube->SetBoxColor(Quantity_NOC_GRAY70);
   myViewCube->TransformPersistence()->SetCorner2d(Aspect_TOTP_RIGHT_UPPER);
-  myViewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(20, 20));
+  // move view cube a little further from the screen edges to keep it fully visible
+  myViewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(80, 80));
 
   // note - window will be created later within initializeGL() callback!
   myView = myViewer->CreateView();
@@ -116,6 +117,8 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   myView->ChangeRenderingParams().NbMsaaSamples = 4; // warning - affects performance
 #endif
   myView->ChangeRenderingParams().ToShowStats = true;
+  // enlarge the overlay text for better readability
+  myView->ChangeRenderingParams().StatsTextHeight = 24;
   myView->ChangeRenderingParams().CollectedStats =
     (Graphic3d_RenderingParams::PerfCounters)(Graphic3d_RenderingParams::PerfCounters_FrameRate
                                               | Graphic3d_RenderingParams::PerfCounters_Triangles);
@@ -256,6 +259,8 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     TopoDS_Shape      aBox   = BRepPrimAPI_MakeBox(100.0, 50.0, 90.0).Shape();
     Handle(AIS_Shape) aShape = new AIS_Shape(aBox);
     myContext->Display(aShape, AIS_Shaded, 0, false);
+    // center the view on the displayed shape
+    myView->FitAll(0.01, false);
   }
 }
 
