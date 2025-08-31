@@ -25,6 +25,7 @@
 #include <Quantity_Color.hxx>
 #include <Message.hxx>
 #include <OpenGl_GraphicDriver.hxx>
+#include <Standard_Version.hxx>
 #include <V3d_RectangularGrid.hxx>
 #include <OpenGl_FrameBuffer.hxx>
 
@@ -88,7 +89,11 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   // lighten the reference grid to resemble Fusion 360 appearance
   // origin at (0,0) with finer 10x10 spacing and no rotation
   myViewer->SetRectangularGridValues(0.0, 0.0, 10.0, 10.0, 0.0);
+#if (OCC_VERSION_HEX >= 0x070800)
   myViewer->RectangularGrid()->SetColors(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
+#else
+  myViewer->SetRectangularGridColor(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
+#endif
   myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 
   // create AIS context
