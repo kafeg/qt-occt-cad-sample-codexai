@@ -107,7 +107,7 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   myViewCube->SetBoxColor(Quantity_NOC_GRAY70);
   myViewCube->TransformPersistence()->SetCorner2d(Aspect_TOTP_RIGHT_UPPER);
   // move view cube a little further from the screen edges to keep it fully visible
-  myViewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(40, 40));
+  myViewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(80, 80));
 
   // note - window will be created later within initializeGL() callback!
   myView = myViewer->CreateView();
