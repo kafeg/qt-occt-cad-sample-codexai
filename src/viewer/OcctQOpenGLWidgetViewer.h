@@ -55,8 +55,15 @@ public: // bodies management
                             AIS_DisplayMode    theDispMode = AIS_Shaded,
                             Standard_Integer   theDispPriority = 0,
                             bool               theToUpdate = false);
-  void setBodiesVisible(bool theVisible);
-  bool toggleBodiesVisible();
+  void clearBodies(bool theToUpdate = true);
+  // Alias for clarity: add a shape into AIS context
+  Handle(AIS_Shape) addShape(const TopoDS_Shape& theShape,
+                             AIS_DisplayMode    theDispMode = AIS_Shaded,
+                             Standard_Integer   theDispPriority = 0,
+                             bool               theToUpdate = false)
+  { return addBody(theShape, theDispMode, theDispPriority, theToUpdate); }
+  Handle(AIS_Shape) selectedShape() const;
+  // visibility toggling removed; viewer keeps all displayed bodies
 
 private:
   void dumpGlInfo(bool theIsBasic, bool theToPrint);
@@ -82,8 +89,6 @@ private:
   Handle(AIS_Trihedron)          myOriginTrihedron;
   Handle(Geom_Axis2Placement)    myOriginPlacement;
   NCollection_Sequence<Handle(AIS_Shape)> myBodies;
-  bool                           myBodiesVisible = true;
 };
 
 #endif
-

@@ -19,13 +19,13 @@
 #include <AIS_Trihedron.hxx>
 #include <Aspect_DisplayConnection.hxx>
 #include <Aspect_NeutralWindow.hxx>
-#include <BRepPrimAPI_MakeBox.hxx>
 #include <Geom_Axis2Placement.hxx>
 #include <Geom_Line.hxx>
 #include <gp_Ax2.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_DatumAspect.hxx>
 #include <Prs3d_LineAspect.hxx>
+#include <Prs3d_TypeOfHighlight.hxx>
 #include <Quantity_Color.hxx>
 #include <Standard_Version.hxx>
 #include <V3d_RectangularGrid.hxx>
@@ -73,6 +73,24 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 
   myContext = new AIS_InteractiveContext(myViewer);
+
+  // Tweak highlight styles for better feedback
+  {
+    Handle(Prs3d_Drawer) aSel = myContext->SelectionStyle();
+    if (!aSel.IsNull())
+    {
+      aSel->SetColor(Quantity_NOC_ORANGE);
+      aSel->SetDisplayMode(AIS_Shaded);
+      aSel->SetTransparency(0.2f);
+    }
+    Handle(Prs3d_Drawer) aDyn = myContext->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic);
+    if (!aDyn.IsNull())
+    {
+      aDyn->SetColor(Quantity_NOC_CYAN1);
+      aDyn->SetDisplayMode(AIS_Shaded);
+      aDyn->SetTransparency(0.7f);
+    }
+  }
 
   myViewCube = new AIS_ViewCube();
   myViewCube->SetViewAnimation(myViewAnimation);
@@ -185,12 +203,6 @@ void OcctQOpenGLWidgetViewer::initializeGL()
   }
 
   {
-    // demo body via helper method (tracked for toggling)
-    TopoDS_Shape aBox = BRepPrimAPI_MakeBox(100.0, 50.0, 90.0).Shape();
-    addBody(aBox, AIS_Shaded, 0, false);
-    myView->FitAll(0.01, false);
-    updateGridStepForView(myView);
-
     // guides and origin
     const Standard_Real L = 1000.0;
     Handle(Geom_Line) aGeomX = new Geom_Line(gp_Pnt(-L, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0));
@@ -215,6 +227,7 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     trDr->DatumAspect()->SetAxisLength(20.0, 20.0, 20.0);
     myOriginTrihedron->SetAttributes(trDr);
     myContext->Display(myOriginTrihedron, 0, 2, false);
+    updateGridStepForView(myView);
   }
 }
 
@@ -266,6 +279,16 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
+  // Selection logic on mouse release: select if detected; otherwise clear selection
+  if (myContext->HasDetected())
+  {
+    myContext->SelectDetected();
+  }
+  else
+  {
+    myContext->ClearSelected(false);
+  }
+  update();
 }
 
 void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)
@@ -431,34 +454,32 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addBody(const TopoDS_Shape& theShape,
   return aShape;
 }
 
-void OcctQOpenGLWidgetViewer::setBodiesVisible(bool theVisible)
+void OcctQOpenGLWidgetViewer::clearBodies(bool theToUpdate)
 {
-  if (myBodiesVisible == theVisible) return;
-  myBodiesVisible = theVisible;
   for (NCollection_Sequence<Handle(AIS_Shape)>::Iterator it(myBodies); it.More(); it.Next())
   {
-    const Handle(AIS_Shape)& aBody = it.Value(); if (aBody.IsNull()) continue;
-    if (theVisible)
+    const Handle(AIS_Shape)& aBody = it.Value();
+    if (!aBody.IsNull() && myContext->IsDisplayed(aBody))
     {
-      if (!myContext->IsDisplayed(aBody)) myContext->Display(aBody, 0, 0, false);
-      myContext->SetDisplayMode(aBody, AIS_Shaded, false);
-    }
-    else
-    {
-      if (myContext->IsDisplayed(aBody)) myContext->Erase(aBody, false);
+      myContext->Erase(aBody, false);
     }
   }
-  if (!myAxisX.IsNull()) myContext->Display(myAxisX, 0, 1, false);
-  if (!myAxisY.IsNull()) myContext->Display(myAxisY, 0, 1, false);
-  if (!myOriginTrihedron.IsNull()) myContext->Display(myOriginTrihedron, 0, 2, false);
-  if (!myViewCube.IsNull()) myContext->Display(myViewCube, 0, 0, false);
-  if (!myView.IsNull()) { myContext->UpdateCurrentViewer(); myView->Invalidate(); }
-  update();
+  myBodies.Clear();
+  if (theToUpdate)
+  {
+    if (!myView.IsNull()) { myContext->UpdateCurrentViewer(); myView->Invalidate(); }
+    update();
+  }
 }
 
-bool OcctQOpenGLWidgetViewer::toggleBodiesVisible()
+// setBodiesVisible / toggleBodiesVisible removed per UI simplification
+Handle(AIS_Shape) OcctQOpenGLWidgetViewer::selectedShape() const
 {
-  setBodiesVisible(!myBodiesVisible);
-  return myBodiesVisible;
+  Handle(AIS_Shape) result;
+  for (myContext->InitSelected(); myContext->MoreSelected(); myContext->NextSelected())
+  {
+    result = Handle(AIS_Shape)::DownCast(myContext->SelectedInteractive());
+    if (!result.IsNull()) break;
+  }
+  return result;
 }
-

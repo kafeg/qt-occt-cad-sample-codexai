@@ -9,12 +9,14 @@ add_executable(occt-qopenglwidget-tests
   qt_test.cpp
   occt_test.cpp
   box_feature_test.cpp
+  command_integration_test.cpp
 )
 
 target_link_libraries(occt-qopenglwidget-tests PRIVATE
   GTest::gtest
   GTest::gtest_main
   Qt6::Core
+  ui
   model
   ${OpenCASCADE_LIBRARIES}
 )
