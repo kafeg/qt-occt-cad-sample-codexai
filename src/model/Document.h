@@ -7,10 +7,10 @@ class Document
 {
 public:
   void clear();
-  void addFeature(const Feature& f);
-  const NCollection_Sequence<Feature>& features() const { return myFeatures; }
+  void addFeature(const Handle(Feature)& f);
+  const NCollection_Sequence<Handle(Feature)>& features() const { return myFeatures; }
+  void recompute();
 
 private:
-  NCollection_Sequence<Feature> myFeatures;
+  NCollection_Sequence<Handle(Feature)> myFeatures;
 };
-
