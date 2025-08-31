@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.20)
 
 project(occt-qopenglwidget-sample LANGUAGES CXX)
 
-add_subdirectory(occt-qopenglwidget)
+find_package(Qt6 COMPONENTS Widgets OpenGLWidgets REQUIRED)
+find_package(OpenCASCADE REQUIRED)
+
+add_subdirectory(src)
 
 # Testing setup
 include(CTest)
