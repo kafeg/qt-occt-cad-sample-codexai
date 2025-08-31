@@ -22,6 +22,7 @@
 #include <Aspect_DisplayConnection.hxx>
 #include <Aspect_NeutralWindow.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
+#include <Quantity_Color.hxx>
 #include <Message.hxx>
 #include <OpenGl_GraphicDriver.hxx>
 #include <OpenGl_FrameBuffer.hxx>
@@ -76,9 +77,16 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
 
   // create viewer
   myViewer = new V3d_Viewer(aDriver);
-  myViewer->SetDefaultBackgroundColor(Quantity_NOC_BLACK);
+  // use soft dark-grey gradient similar to Fusion 360 rather than plain black
+  const Quantity_Color aBgTop(0.25, 0.25, 0.25, Quantity_TOC_sRGB);
+  const Quantity_Color aBgBottom(0.40, 0.40, 0.40, Quantity_TOC_sRGB);
+  myViewer->SetDefaultBackgroundColor(aBgTop);
+  myViewer->SetDefaultBgGradientColors(aBgTop, aBgBottom, Aspect_GradientFillMethod_Elliptical);
   myViewer->SetDefaultLights();
   myViewer->SetLightOn();
+  // lighten the reference grid to resemble Fusion 360 appearance
+  myViewer->SetRectangularGridValues(10.0, 10.0, 0.0);
+  myViewer->SetRectangularGridColor(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
   myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 
   // create AIS context
@@ -88,10 +96,15 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   myViewCube->SetViewAnimation(myViewAnimation);
   myViewCube->SetFixedAnimationLoop(false);
   myViewCube->SetAutoStartAnimation(true);
-  myViewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(100, 150));
+  myViewCube->SetSize(60.0);
+  myViewCube->SetBoxColor(Quantity_NOC_GRAY70);
+  myViewCube->SetEdgesColor(Quantity_NOC_GRAY50);
+  myViewCube->TransformPersistence()->SetCorner(Aspect_TOTP_RIGHT_UPPER);
+  myViewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(20, 20));
 
   // note - window will be created later within initializeGL() callback!
   myView = myViewer->CreateView();
+  myView->SetBgGradientColors(aBgTop, aBgBottom, Aspect_GradientFillMethod_Elliptical);
   myView->SetImmediateUpdate(false);
 #ifndef __APPLE__
   myView->ChangeRenderingParams().NbMsaaSamples = 4; // warning - affects performance
