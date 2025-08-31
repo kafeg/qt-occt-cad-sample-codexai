@@ -7,5 +7,5 @@ add_subdirectory(occt-qopenglwidget)
 # Testing setup
 include(CTest)
 if(BUILD_TESTING)
-  add_subdirectory(occt-qopenglwidget/tests)
+  add_subdirectory(tests)
 endif()
