@@ -17,6 +17,7 @@
 #include <Standard_WarningsRestore.hxx>
 
 #include <Standard_Version.hxx>
+#include <Quantity_Color.hxx>
 
 //! Main application window.
 class MyMainWindow : public QMainWindow
@@ -99,19 +100,20 @@ private:
         aSlider->setPageStep(15);
         aSlider->setTickInterval(15);
         aSlider->setTickPosition(QSlider::TicksRight);
-        aSlider->setValue(0);
+        aSlider->setValue(64);
         aSliderLayout->addWidget(aSlider);
         connect(aSlider, &QSlider::valueChanged, [this](int theValue) {
           const float          aVal = theValue / 255.0f;
           const Quantity_Color aColor(aVal, aVal, aVal, Quantity_TOC_sRGB);
+          const Quantity_Color aBottom(0.40f, 0.40f, 0.40f, Quantity_TOC_sRGB);
 
           for (const Handle(V3d_View)& aSubviewIter : myViewer->View()->Subviews())
           {
-            aSubviewIter->SetBgGradientColors(aColor, Quantity_NOC_BLACK, Aspect_GradientFillMethod_Elliptical);
+            aSubviewIter->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
             aSubviewIter->Invalidate();
           }
           // myViewer->View()->SetBackgroundColor(aColor);
-          myViewer->View()->SetBgGradientColors(aColor, Quantity_NOC_BLACK, Aspect_GradientFillMethod_Elliptical);
+          myViewer->View()->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
           myViewer->View()->Invalidate();
           myViewer->update();
         });
