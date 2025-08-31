@@ -190,8 +190,10 @@ void OcctQOpenGLWidgetViewer::dumpGlInfo(bool theIsBasic, bool theToPrint)
 // ================================================================
 void OcctQOpenGLWidgetViewer::initializeGL()
 {
-  const QRect           aRect = rect();
-  const Graphic3d_Vec2i aViewSize(aRect.right() - aRect.left(), aRect.bottom() - aRect.top());
+  const QRect aRect = rect();
+  const qreal aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i aViewSize((aRect.right() - aRect.left()) * aPixelRatio,
+                                  (aRect.bottom() - aRect.top()) * aPixelRatio);
 
   Aspect_Drawable aNativeWin = (Aspect_Drawable)winId();
 #ifdef _WIN32
@@ -278,7 +280,9 @@ void OcctQOpenGLWidgetViewer::mousePressEvent(QMouseEvent* theEvent)
   if (myView.IsNull())
     return;
 
-  const Graphic3d_Vec2i  aPnt(theEvent->pos().x(), theEvent->pos().y());
+  const qreal aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio,
+                             theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
@@ -293,7 +297,9 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
   if (myView.IsNull())
     return;
 
-  const Graphic3d_Vec2i  aPnt(theEvent->pos().x(), theEvent->pos().y());
+  const qreal aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio,
+                             theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
@@ -308,7 +314,9 @@ void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)
   if (myView.IsNull())
     return;
 
-  const Graphic3d_Vec2i aNewPos(theEvent->pos().x(), theEvent->pos().y());
+  const qreal aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i aNewPos(theEvent->pos().x() * aPixelRatio,
+                                theEvent->pos().y() * aPixelRatio);
   if (UpdateMousePosition(aNewPos,
                           OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()),
                           OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers()),
@@ -328,9 +336,13 @@ void OcctQOpenGLWidgetViewer::wheelEvent(QWheelEvent* theEvent)
     return;
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-  const Graphic3d_Vec2i aPos(Graphic3d_Vec2d(theEvent->position().x(), theEvent->position().y()));
+  const qreal aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i aPos(Graphic3d_Vec2d(theEvent->position().x() * aPixelRatio,
+                                              theEvent->position().y() * aPixelRatio));
 #else
-  const Graphic3d_Vec2i aPos(theEvent->pos().x(), theEvent->pos().y());
+  const qreal aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i aPos(theEvent->pos().x() * aPixelRatio,
+                             theEvent->pos().y() * aPixelRatio);
 #endif
   if (!myView->Subviews().IsEmpty())
   {
