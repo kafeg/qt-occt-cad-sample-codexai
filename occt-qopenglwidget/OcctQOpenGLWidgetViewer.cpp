@@ -25,6 +25,7 @@
 #include <Quantity_Color.hxx>
 #include <Message.hxx>
 #include <OpenGl_GraphicDriver.hxx>
+#include <V3d_RectangularGrid.hxx>
 #include <OpenGl_FrameBuffer.hxx>
 
 //! OpenGL FBO subclass for wrapping FBO created by Qt using GL_RGBA8
@@ -87,7 +88,7 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   // lighten the reference grid to resemble Fusion 360 appearance
   // origin at (0,0) with finer 10x10 spacing and no rotation
   myViewer->SetRectangularGridValues(0.0, 0.0, 10.0, 10.0, 0.0);
-  myViewer->SetRectangularGridColors(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
+  myViewer->RectangularGrid()->SetColors(Quantity_NOC_GRAY75, Quantity_NOC_GRAY60);
   myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 
   // create AIS context
@@ -109,9 +110,10 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
 #ifndef __APPLE__
   myView->ChangeRenderingParams().NbMsaaSamples = 4; // warning - affects performance
 #endif
-  myView->ChangeRenderingParams().ToShowStats    = true;
-  myView->ChangeRenderingParams().CollectedStats = (Graphic3d_RenderingParams::PerfCounters)(
-    Graphic3d_RenderingParams::PerfCounters_FrameRate | Graphic3d_RenderingParams::PerfCounters_Triangles);
+  myView->ChangeRenderingParams().ToShowStats = true;
+  myView->ChangeRenderingParams().CollectedStats =
+    (Graphic3d_RenderingParams::PerfCounters)(Graphic3d_RenderingParams::PerfCounters_FrameRate
+                                              | Graphic3d_RenderingParams::PerfCounters_Triangles);
 
   // Qt widget setup
   setMouseTracking(true);
@@ -203,8 +205,8 @@ void OcctQOpenGLWidgetViewer::dumpGlInfo(bool theIsBasic, bool theToPrint)
 // ================================================================
 void OcctQOpenGLWidgetViewer::initializeGL()
 {
-  const QRect aRect = rect();
-  const qreal aPixelRatio = devicePixelRatioF();
+  const QRect           aRect       = rect();
+  const qreal           aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aViewSize((aRect.right() - aRect.left()) * aPixelRatio,
                                   (aRect.bottom() - aRect.top()) * aPixelRatio);
 
@@ -293,9 +295,8 @@ void OcctQOpenGLWidgetViewer::mousePressEvent(QMouseEvent* theEvent)
   if (myView.IsNull())
     return;
 
-  const qreal aPixelRatio = devicePixelRatioF();
-  const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio,
-                             theEvent->pos().y() * aPixelRatio);
+  const qreal            aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i  aPnt(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
@@ -310,9 +311,8 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
   if (myView.IsNull())
     return;
 
-  const qreal aPixelRatio = devicePixelRatioF();
-  const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio,
-                             theEvent->pos().y() * aPixelRatio);
+  const qreal            aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i  aPnt(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
@@ -327,9 +327,8 @@ void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)
   if (myView.IsNull())
     return;
 
-  const qreal aPixelRatio = devicePixelRatioF();
-  const Graphic3d_Vec2i aNewPos(theEvent->pos().x() * aPixelRatio,
-                                theEvent->pos().y() * aPixelRatio);
+  const qreal           aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i aNewPos(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   if (UpdateMousePosition(aNewPos,
                           OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()),
                           OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers()),
@@ -349,13 +348,12 @@ void OcctQOpenGLWidgetViewer::wheelEvent(QWheelEvent* theEvent)
     return;
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-  const qreal aPixelRatio = devicePixelRatioF();
-  const Graphic3d_Vec2i aPos(Graphic3d_Vec2d(theEvent->position().x() * aPixelRatio,
-                                              theEvent->position().y() * aPixelRatio));
+  const qreal           aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i aPos(
+    Graphic3d_Vec2d(theEvent->position().x() * aPixelRatio, theEvent->position().y() * aPixelRatio));
 #else
-  const qreal aPixelRatio = devicePixelRatioF();
-  const Graphic3d_Vec2i aPos(theEvent->pos().x() * aPixelRatio,
-                             theEvent->pos().y() * aPixelRatio);
+  const qreal           aPixelRatio = devicePixelRatioF();
+  const Graphic3d_Vec2i aPos(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
 #endif
   if (!myView->Subviews().IsEmpty())
   {
