@@ -62,9 +62,9 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   aDriver->ChangeOptions().useSystemBuffer = false;
 
   m_viewer = new V3d_Viewer(aDriver);
-  // Background: force full brightness (100%)
-  const Quantity_Color aBgTop(1.0, 1.0, 1.0, Quantity_TOC_sRGB);
-  const Quantity_Color aBgBottom(1.0, 1.0, 1.0, Quantity_TOC_sRGB);
+  // Background: subtle elliptical gradient (white center to light gray edges)
+  const Quantity_Color aBgTop(1.0, 1.0, 1.0, Quantity_TOC_sRGB);      // center
+  const Quantity_Color aBgBottom(0.92, 0.92, 0.92, Quantity_TOC_sRGB); // edges (stronger)
   m_viewer->SetDefaultBackgroundColor(aBgTop);
   m_viewer->SetDefaultBgGradientColors(aBgTop, aBgBottom, Aspect_GradientFillMethod_Elliptical);
   m_viewer->SetDefaultLights();
