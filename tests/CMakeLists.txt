@@ -5,13 +5,13 @@ find_package(Qt6 COMPONENTS Core Widgets REQUIRED)
 find_package(OpenCASCADE REQUIRED)
 
 add_executable(occt-qopenglwidget-tests
-  sanity_test.cpp
-  qt_test.cpp
-  occt_test.cpp
-  box_feature_test.cpp
-  cylinder_feature_test.cpp
-  command_integration_test.cpp
-  tabs_test.cpp
+  common/sanity_test.cpp
+  common/occt_test.cpp
+  common/qt_test.cpp
+  features/box_feature_test.cpp
+  features/cylinder_feature_test.cpp
+  ui/command_integration_test.cpp
+  ui/document_test.cpp
 )
 
 target_link_libraries(occt-qopenglwidget-tests PRIVATE

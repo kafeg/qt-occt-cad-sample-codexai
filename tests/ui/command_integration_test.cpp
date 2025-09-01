@@ -38,3 +38,4 @@ TEST(UICommands, CreateCylinderAddsFeature) {
   auto f = doc.features().First();
   EXPECT_FALSE(f.IsNull());
 }
+
