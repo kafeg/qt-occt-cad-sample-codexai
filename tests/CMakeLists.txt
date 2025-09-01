@@ -10,6 +10,9 @@ add_executable(occt-qopenglwidget-tests
   common/qt_test.cpp
   features/box_feature_test.cpp
   features/cylinder_feature_test.cpp
+  sketch/sketch_storage_test.cpp
+  sketch/sketch_constraints_test.cpp
+  sketch/sketch_order_export_test.cpp
   ui/command_integration_test.cpp
   ui/document_test.cpp
 )
@@ -22,6 +25,7 @@ target_link_libraries(occt-qopenglwidget-tests PRIVATE
   GTest::gtest_main
   Qt6::Core
   Qt6::Widgets
+  sketch
   ui
   model
   ${OpenCASCADE_LIBRARIES}
