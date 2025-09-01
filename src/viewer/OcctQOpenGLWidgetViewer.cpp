@@ -334,14 +334,21 @@ void OcctQOpenGLWidgetViewer::mousePressEvent(QMouseEvent* theEvent)
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
-  // If manipulator is under cursor (active on detection), start transform and block camera drag
-  if (!m_manip.IsNull() && m_manip->HasActiveMode())
+  // Only start manipulator transform on explicit left-button press while gizmo is detected under cursor
+  // Activate the mode by selecting the detected gizmo part, then start transforming
+  if (!m_manip.IsNull() && theEvent->button() == Qt::LeftButton
+      && !m_context.IsNull() && m_context->HasDetected()
+      && m_context->DetectedInteractive() == m_manip)
   {
-    m_isManipDragging = true;
-    m_lastManipDelta = gp_Trsf();
-    m_manip->StartTransform(aPnt.x(), aPnt.y(), m_view);
-    update();
-    return;
+    m_context->SelectDetected(AIS_SelectionScheme_Replace);
+    if (m_manip->HasActiveMode())
+    {
+      m_isManipDragging = true;
+      m_lastManipDelta = gp_Trsf();
+      m_manip->StartTransform(aPnt.x(), aPnt.y(), m_view);
+      update();
+      return;
+    }
   }
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
@@ -359,6 +366,8 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
     // (new incremental delta applied before previously accumulated transform)
     m_manipAccumTrsf.PreMultiply(m_lastManipDelta);
     m_isManipDragging = false;
+    // Deactivate current manipulator mode so further moves don't stick to last handle
+    m_manip->DeactivateCurrentMode();
     // keep manipulator visible for further drags
     if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
     update();
@@ -611,8 +620,8 @@ void OcctQOpenGLWidgetViewer::showManipulator(const Handle(AIS_Shape)& onShape)
   m_manip->SetPart(AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
   m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Translation);
   m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Rotation);
-  // Activate mode on hover; we only start Transform() on mouse press
-  m_manip->SetModeActivationOnDetection(Standard_True);
+  // Do NOT auto-activate on hover; start only on explicit press
+  m_manip->SetModeActivationOnDetection(Standard_False);
   m_context->Display(m_manip, Standard_False);
   m_context->SetZLayer(m_manip, Graphic3d_ZLayerId_Top);
   m_lastManipDelta = gp_Trsf();
