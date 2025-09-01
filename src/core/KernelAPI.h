@@ -7,8 +7,9 @@ namespace KernelAPI
 {
   // Create a box primitive
   TopoDS_Shape makeBox(double dx, double dy, double dz);
+  // Create a cylinder primitive (Z-axis), radius and height
+  TopoDS_Shape makeCylinder(double radius, double height);
 
   // Boolean fuse (union)
   TopoDS_Shape fuse(const TopoDS_Shape& a, const TopoDS_Shape& b);
 }
-

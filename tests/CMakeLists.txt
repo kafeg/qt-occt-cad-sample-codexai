@@ -9,6 +9,7 @@ add_executable(occt-qopenglwidget-tests
   qt_test.cpp
   occt_test.cpp
   box_feature_test.cpp
+  cylinder_feature_test.cpp
   command_integration_test.cpp
   tabs_test.cpp
 )

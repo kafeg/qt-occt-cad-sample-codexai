@@ -13,23 +13,27 @@ class BoxFeature : public Feature
 
 public:
   BoxFeature() = default;
-  BoxFeature(double dx, double dy, double dz)
-    : myDx(dx), myDy(dy), myDz(dz) {}
 
-  void setSize(double dx, double dy, double dz) { myDx = dx; myDy = dy; myDz = dz; }
-  void setDx(double dx) { myDx = dx; }
-  void setDy(double dy) { myDy = dy; }
-  void setDz(double dz) { myDz = dz; }
+  BoxFeature(double dx, double dy, double dz) { setSize(dx, dy, dz); }
 
-  double dx() const { return myDx; }
-  double dy() const { return myDy; }
-  double dz() const { return myDz; }
+  // Parameter accessors (backed by Feature::params())
+  void setSize(double dx, double dy, double dz)
+  {
+    setDx(dx);
+    setDy(dy);
+    setDz(dz);
+  }
+
+  void setDx(double dx) { params()[Feature::ParamKey::Dx] = dx; }
+
+  void setDy(double dy) { params()[Feature::ParamKey::Dy] = dy; }
+
+  void setDz(double dz) { params()[Feature::ParamKey::Dz] = dz; }
+
+  double dx() const;
+  double dy() const;
+  double dz() const;
 
   // Feature API
   void execute() override;
-
-private:
-  double myDx{0.0};
-  double myDy{0.0};
-  double myDz{0.0};
 };

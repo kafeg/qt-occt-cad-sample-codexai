@@ -14,14 +14,16 @@ TEST(TabsModel, IndependentDocuments)
   EXPECT_EQ(docA.features().Size(), 0);
   EXPECT_EQ(docB.features().Size(), 0);
 
-  Handle(BoxFeature) a = new BoxFeature(1.0, 2.0, 3.0);
+  Handle(BoxFeature) a = new BoxFeature();
+  a->setSize(1.0, 2.0, 3.0);
   docA.addFeature(a);
   docA.recompute();
 
   EXPECT_EQ(docA.features().Size(), 1);
   EXPECT_EQ(docB.features().Size(), 0);
 
-  Handle(BoxFeature) b = new BoxFeature(2.0, 3.0, 4.0);
+  Handle(BoxFeature) b = new BoxFeature();
+  b->setSize(2.0, 3.0, 4.0);
   docB.addFeature(b);
   docB.recompute();
 

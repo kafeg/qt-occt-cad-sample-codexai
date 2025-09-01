@@ -6,7 +6,8 @@
 #include <TopAbs_ShapeEnum.hxx>
 
 TEST(Model, BoxFeatureProducesSixFaces) {
-  Handle(BoxFeature) bf = new BoxFeature(10.0, 20.0, 30.0);
+  Handle(BoxFeature) bf = new BoxFeature();
+  bf->setSize(10.0, 20.0, 30.0);
   bf->execute();
 
   const auto& shp = bf->shape();

@@ -18,8 +18,23 @@ class Feature : public Standard_Transient
   DEFINE_STANDARD_RTTIEXT(Feature, Standard_Transient)
 
 public:
+  // Common parameter keys across all features
+  enum class ParamKey
+  {
+    Dx,
+    Dy,
+    Dz,
+    Radius,
+    Height,
+  };
+
+  struct ParamKeyHash
+  {
+    std::size_t operator()(ParamKey k) const noexcept { return static_cast<std::size_t>(k); }
+  };
+
   using ParamValue = std::variant<int, double, TCollection_AsciiString>;
-  using ParamMap   = std::unordered_map<std::string, ParamValue>;
+  using ParamMap   = std::unordered_map<ParamKey, ParamValue, ParamKeyHash>;
 
   virtual ~Feature() = default;
 
@@ -31,14 +46,15 @@ public:
 
   // Optional: basic name and parameter accessors
   const TCollection_AsciiString& name() const { return myName; }
+
   void setName(const TCollection_AsciiString& theName) { myName = theName; }
 
   const ParamMap& params() const { return myParams; }
+
   ParamMap& params() { return myParams; }
 
 protected:
   TCollection_AsciiString myName;
   ParamMap                myParams;
-  TopoDS_Shape           myShape; // resulting shape
+  TopoDS_Shape            myShape; // resulting shape
 };
-

@@ -2,3 +2,4 @@ custom.pri
 *.pro.user
 CMakeLists.txt.user
 build/
+.vscode/

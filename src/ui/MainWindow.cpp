@@ -20,12 +20,15 @@
 #include <Document.h>
 #include <CreateBoxCommand.h>
 #include <CreateBoxDialog.h>
+#include <CreateCylinderCommand.h>
+#include <CreateCylinderDialog.h>
 // model/viewer headers for sync helpers
 #include <Feature.h>
 #include <BoxFeature.h>
 #include <gp_Trsf.hxx>
 #include <gp_Vec.hxx>
 #include <AIS_Shape.hxx>
+#include <CylinderFeature.h>
 #include "TabPage.h"
 
 MainWindow::MainWindow()
@@ -107,6 +110,12 @@ void MainWindow::createMenuBar()
     connect(actAddBox, &QAction::triggered, [this]() { addBox(); });
   }
   {
+    QAction* actAddCyl = new QAction(file);
+    actAddCyl->setText("Add Cylinder");
+    file->addAction(actAddCyl);
+    connect(actAddCyl, &QAction::triggered, [this]() { addCylinder(); });
+  }
+  {
     QAction* quit = new QAction(file);
     quit->setText("Quit");
     file->addAction(quit);
@@ -123,6 +132,10 @@ void MainWindow::createToolBar()
   QAction* actAddBox = new QAction("Add Box", tb);
   connect(actAddBox, &QAction::triggered, [this]() { addBox(); });
   tb->addAction(actAddBox);
+
+  QAction* actAddCyl = new QAction("Add Cylinder", tb);
+  connect(actAddCyl, &QAction::triggered, [this]() { addCylinder(); });
+  tb->addAction(actAddCyl);
 
 
   QAction* actAbout = new QAction("About", tb);
@@ -195,6 +208,17 @@ void MainWindow::addBox()
   syncViewerFromDoc(true);
 }
 
+void MainWindow::addCylinder()
+{
+  TabPage* page = currentPage(); if (!page) return;
+  CreateCylinderDialog dlg(this);
+  if (dlg.exec() != QDialog::Accepted) return;
+
+  CreateCylinderCommand cmd(dlg.radius(), dlg.height());
+  cmd.execute(page->doc());
+  syncViewerFromDoc(true);
+}
+
 
 
 void MainWindow::syncViewerFromDoc(bool toUpdate)
@@ -232,12 +256,22 @@ void MainWindow::addSample()
   TabPage* page = currentPage(); if (!page) return;
   const double dx = 20.0, dy = 20.0, dz = 20.0;
   const double gap = 5.0;
+  // Boxes
   Handle(BoxFeature) b1 = new BoxFeature(dx, dy, dz);
   Handle(BoxFeature) b2 = new BoxFeature(dx, dy, dz);
   Handle(BoxFeature) b3 = new BoxFeature(dx, dy, dz);
   page->doc().addFeature(b1);
   page->doc().addFeature(b2);
   page->doc().addFeature(b3);
+  // Cylinders placed nearby along +Y
+  const double cr = 10.0;
+  const double ch = dz;
+  Handle(CylinderFeature) c1 = new CylinderFeature(cr, ch);
+  Handle(CylinderFeature) c2 = new CylinderFeature(cr, ch);
+  Handle(CylinderFeature) c3 = new CylinderFeature(cr, ch);
+  page->doc().addFeature(c1);
+  page->doc().addFeature(c2);
+  page->doc().addFeature(c3);
   page->doc().recompute();
   // Sync without update to apply local transforms first
   syncViewerFromDoc(false);
@@ -256,6 +290,22 @@ void MainWindow::addSample()
   {
     Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(b3));
     if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(2.0 * (dx + gap), 0.0, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
+  }
+  const double yoff = dy + gap;
+  if (page->featureToBody().Contains(c1))
+  {
+    Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(c1));
+    if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(0.0, yoff, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
+  }
+  if (page->featureToBody().Contains(c2))
+  {
+    Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(c2));
+    if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(dx + gap, yoff, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
+  }
+  if (page->featureToBody().Contains(c3))
+  {
+    Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(c3));
+    if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(2.0 * (dx + gap), yoff, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
   }
   // Force viewer to refresh immediately after redisplay
   page->viewer()->Context()->UpdateCurrentViewer();

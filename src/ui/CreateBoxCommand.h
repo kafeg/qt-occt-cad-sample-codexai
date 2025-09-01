@@ -6,7 +6,11 @@ class CreateBoxCommand : public AbstractCommand
 {
 public:
   CreateBoxCommand(double dx, double dy, double dz)
-    : myDx(dx), myDy(dy), myDz(dz) {}
+      : myDx(dx),
+        myDy(dy),
+        myDz(dz)
+  {
+  }
 
   void execute(Document& doc) override;
 
@@ -15,4 +19,3 @@ private:
   double myDy{10.0};
   double myDz{10.0};
 };
-

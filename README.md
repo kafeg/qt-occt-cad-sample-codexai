@@ -6,34 +6,32 @@ An extensible, layered skeleton for a parametric CAD application built on Open C
 
 ## Architecture
 
-- Visualization Layer: Qt `QOpenGLWidget` viewer based on OCCT. Rendering (Viewer) and input mapping (Controller) are separated so UI commands stay independent from the 3D kernel implementation.
-- Geometry Kernel: Thin wrappers over OCCT (e.g., BRepPrimAPI_, BRepAlgoAPI_) unified behind a Kernel API to isolate OCCT details and enable swapping the implementation later.
-- Document/Data Model: `Document` holds features (e.g., sketch, extrude, boolean operations) and the build history. Each operation is an object with parameters and references to prior elements; changing parameters triggers recompute and scene update.
-- Sketcher & Constraints: Dedicated module for 2D sketches using OCCT curves and an internal/external constraint solver. Sketch results feed volumetric operations.
-- Command System & UI: Commands are decoupled from UI (Command pattern). Each command operates on the `Document` and invokes kernel operations. UI provides toolbars, menus, and parameter dialogs, wired via signals/slots.
-- I/O & Project Format: Import/export STEP/IGES/other static formats and serialization of a native project format (e.g., JSON).
+- Viewer: Reusable OCCT `QOpenGLWidget` (`OcctQOpenGLWidgetViewer`) with input mapped via `AIS_ViewController`. Rendering and input are decoupled from commands.
+- Core (Kernel): Thin wrappers over OCCT (e.g., `BRepPrimAPI_*`, `BRepAlgoAPI_*`) in `KernelAPI` to isolate OCCT usage. Currently: box, cylinder, fuse.
+- Model: `Feature` base class with typed parameter map and resulting `TopoDS_Shape`; `Document` is an ordered list of features and recompute logic.
+- UI: Command pattern + dialogs. Example commands: Create Box, Create Cylinder. Menu/toolbar actions open parameter dialogs and push features into the document.
+- Sketch: Placeholder module for future sketch/constraints integration.
 
 ## Repository Structure
 
 - `src/`
-  - `core/`: Kernel API wrappers over OCCT primitives/booleans (no Qt dependencies).
-  - `viewer/`: Reusable OCCT `QOpenGLWidget` viewer for all view modes; input translation helpers.
-  - `ui/`: UI layer (toolbars/menus/commands). Placeholder for future modules.
-  - `model/`: `Document`, `Feature` and build-history basics.
-  - `sketch/`: Sketcher + constraints module (bootstrap placeholder).
-- `occt-qopenglwidget/`: Sample Qt app wiring the viewer and basic UI for demonstration.
-- `tests/`: GoogleTest unit tests and CMake test target.
+  - `core/`: Kernel API (`KernelAPI.h/.cpp`): `makeBox`, `makeCylinder`, `fuse`.
+  - `model/`: `Feature`, `Document`, primitives: `BoxFeature`, `CylinderFeature`.
+  - `viewer/`: `OcctQOpenGLWidgetViewer` (rendering, input, grid, axes/trihedron).
+  - `ui/`: Main window, tabs, commands and dialogs: Create Box/Cylinder.
+  - `sketch/`: Placeholder interface for future sketcher.
+- `tests/`: GoogleTest unit tests and the test runner target.
 - `vcpkg/`, `vcpkg.json`: Manifest-based dependencies (`qtbase`, `opencascade`, `gtest`).
 - `CMakeLists.txt`, `CMakePresets.json`: Top-level build and presets; tests via `CTest`.
 - `.clang-format`: Enforced C++ style (OCCT-leaning, Microsoft base).
 
 ## Current Status
 
-- Project skeleton initialized under `src/` with `core/`, `viewer/`, `model/`, `sketch/` (and placeholder for `ui/`).
-- Existing OCCT viewer migrated into `src/viewer/` and adapted for reuse across modes.
-- Minimal kernel wrappers (box, fuse) in `core/` with no Qt dependency.
-- Basic `Document`/`Feature` model in `model/`.
-- Demo app shows a toolbar (bodies toggle, background slider), red/green guides, and an origin trihedron.
+- App target: `src/cad-app` (Qt6 GUI).
+- Core wrappers: box, cylinder, fuse.
+- Features: `BoxFeature`, `CylinderFeature` (parameters stored in `Feature` map).
+- UI commands: Create Box, Create Cylinder; “Add Sample” creates 3 boxes and 3 cylinders arranged in a grid.
+- Viewer: background gradient control, view cube, axes, origin trihedron, auto grid step.
 
 ## Building
 
@@ -48,4 +46,11 @@ cmake --build --preset default
 - Run (Unix): `./build/src/cad-app`
 - Tests: `ctest --preset default` (or `ctest --test-dir build`)
 
-The `default` preset builds for the `arm64-osx` triplet and relies on `vcpkg.json` to provide `qtbase` and `opencascade`. Use `--preset linux` or `--preset windows` to select triplets and out-of-source dirs.
+The `default` preset builds for the `arm64-osx` triplet and relies on `vcpkg.json` to provide `qtbase`, `opencascade`, and `gtest`. Use `--preset linux` or `--preset windows` to select triplets and out-of-source dirs.
+
+## Usage
+
+- File → Add Box: opens a dialog for dx, dy, dz and adds a box feature.
+- File → Add Cylinder: opens a dialog for radius, height and adds a cylinder feature.
+- Toolbar: Add Box, Add Cylinder, background slider, and a Test toolbar with Clear All and Add Sample.
+- Add Sample: inserts 3 boxes in a row (X-axis) and 3 cylinders in a parallel row offset in +Y; transforms applied via AIS local transforms.

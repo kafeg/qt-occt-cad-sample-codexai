@@ -5,7 +5,8 @@ add_library(model STATIC
     Document.h
     BoxFeature.cpp
     BoxFeature.h
+    CylinderFeature.cpp
+    CylinderFeature.h
 )
 target_link_libraries(model PUBLIC core)
 target_include_directories(model PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-

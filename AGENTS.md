@@ -1,16 +1,20 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `occt-qopenglwidget/`: Qt6 + OCCT app sources (`.cpp/.h`) and entrypoint `main.cpp`.
-- `tests/`: GoogleTest unit tests and CMake test target.
-- `CMakeLists.txt`, `CMakePresets.json`: Top-level build and presets; enables tests via `CTest`.
-- `vcpkg/`, `vcpkg.json`: Manifest-based dependencies (`qtbase`, `opencascade`, `gtest`).
+- `src/core`: Kernel API wrappers over OCCT primitives/booleans (no Qt deps). Exposed functions: `makeBox`, `makeCylinder`, `fuse`.
+- `src/model`: `Feature` (parameter map), `Document` (ordered features, recompute), primitives: `BoxFeature`, `CylinderFeature`.
+- `src/viewer`: `OcctQOpenGLWidgetViewer` (rendering, input, grid auto-step, view cube, axes/trihedron).
+- `src/ui`: `MainWindow`, `TabPage`, commands (`CreateBoxCommand`, `CreateCylinderCommand`) and dialogs.
+- `src/main.cpp`: Qt app entry. Executable name: `cad-app`.
+- `tests/`: GoogleTest unit tests, including model and command integration.
+- `CMakeLists.txt`, `CMakePresets.json`: Top-level build and presets; tests via `CTest`.
+- `vcpkg/`, `vcpkg.json`: Manifest dependencies (`qtbase`, `opencascade`, `gtest`).
 - `.clang-format`: Enforced C++ style (OCCT-leaning, Microsoft base).
 
 ## Build, Test, and Development Commands
 - Configure: `cmake --preset default` (uses Ninja, `build/`, `arm64-osx` triplet by default).
 - Build: `cmake --build --preset default` (or `cmake --build build`).
-- Run (Unix): `./build/occt-qopenglwidget/occt-qopenglwidget`.
+- Run: `./build/src/cad-app`.
 - Tests: `ctest --preset default` (or `ctest --test-dir build`).
 - Presets: use `--preset linux` or `--preset windows` to select triplets and out-of-source dirs.
 
@@ -33,3 +37,12 @@
 ## Security & Configuration Tips
 - Dependencies resolve via vcpkg manifest; adjust `VCPKG_TARGET_TRIPLET` in presets as needed.
 - Cross-platform: prefer Qt/OCCT abstractions over platform APIs; avoid hardcoded paths; keep OpenGL usage within the provided `QOpenGLWidget` viewer.
+
+## Quick Feature Map
+- `BoxFeature`: params `Dx/Dy/Dz`; shape from `KernelAPI::makeBox`.
+- `CylinderFeature`: params `Radius/Height`; shape from `KernelAPI::makeCylinder`.
+- New features follow the same pattern: add params in `Feature::ParamKey` if common, implement execute via `KernelAPI`, add UI command+dialog if interactive.
+
+## UI Actions
+- File/Toolbar: `Add Box`, `Add Cylinder` open dialogs and push features, then `Document::recompute()` and viewer sync.
+- Test toolbar: `Clear All`, `Add Sample` (adds 3 boxes and 3 cylinders; cylinders row offset along +Y). Local transforms applied via AIS for layout only.

@@ -1,9 +1,9 @@
-#include "BoxFeature.h"
+#include "CylinderFeature.h"
 
 #include <KernelAPI.h>
 #include <variant>
 
-IMPLEMENT_STANDARD_RTTIEXT(BoxFeature, Feature)
+IMPLEMENT_STANDARD_RTTIEXT(CylinderFeature, Feature)
 
 namespace
 {
@@ -21,22 +21,18 @@ static double paramAsDouble(const Feature::ParamMap& pm, Feature::ParamKey key, 
 }
 } // namespace
 
-double BoxFeature::dx() const
+double CylinderFeature::radius() const
 {
-  return paramAsDouble(params(), Feature::ParamKey::Dx, 0.0);
+  return paramAsDouble(params(), Feature::ParamKey::Radius, 0.0);
 }
 
-double BoxFeature::dy() const
+double CylinderFeature::height() const
 {
-  return paramAsDouble(params(), Feature::ParamKey::Dy, 0.0);
+  return paramAsDouble(params(), Feature::ParamKey::Height, 0.0);
 }
 
-double BoxFeature::dz() const
+void CylinderFeature::execute()
 {
-  return paramAsDouble(params(), Feature::ParamKey::Dz, 0.0);
+  myShape = KernelAPI::makeCylinder(radius(), height());
 }
 
-void BoxFeature::execute()
-{
-  myShape = KernelAPI::makeBox(dx(), dy(), dz());
-}
