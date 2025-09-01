@@ -14,7 +14,7 @@ void Document::recompute()
 {
   for (NCollection_Sequence<Handle(Feature)>::Iterator it(m_features); it.More(); it.Next()) {
     const Handle(Feature)& f = it.Value();
-    if (!f.IsNull()) {
+    if (!f.IsNull() && !f->isSuppressed()) {
       f->execute();
     }
   }

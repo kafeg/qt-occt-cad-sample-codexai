@@ -300,6 +300,7 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
   }
   if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
   update();
+  emit selectionChanged();
 }
 
 void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)

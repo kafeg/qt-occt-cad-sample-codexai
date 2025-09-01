@@ -219,7 +219,8 @@ void MainWindow::addBox()
 
   CreateBoxCommand cmd(dlg.dx(), dlg.dy(), dlg.dz());
   cmd.execute(page->doc());
-  syncViewerFromDoc(true);
+  page->syncViewerFromDoc(true);
+  page->refreshFeatureList();
 }
 
 void MainWindow::addCylinder()
@@ -230,7 +231,8 @@ void MainWindow::addCylinder()
 
   CreateCylinderCommand cmd(dlg.radius(), dlg.height());
   cmd.execute(page->doc());
-  syncViewerFromDoc(true);
+  page->syncViewerFromDoc(true);
+  page->refreshFeatureList();
 }
 
 void MainWindow::addExtrude()
@@ -271,7 +273,8 @@ void MainWindow::addExtrude()
   auto sketch = page->sketches().at(static_cast<std::size_t>(idx));
   CreateExtrudeCommand cmd(sketch, dlg.distance());
   cmd.execute(page->doc());
-  syncViewerFromDoc(true);
+  page->syncViewerFromDoc(true);
+  page->refreshFeatureList();
 }
 
 
@@ -279,24 +282,7 @@ void MainWindow::addExtrude()
 void MainWindow::syncViewerFromDoc(bool toUpdate)
 {
   TabPage* page = currentPage(); if (!page) return;
-  auto* viewer = page->viewer();
-  page->featureToBody().Clear();
-  page->bodyToFeature().Clear();
-  viewer->clearBodies(false);
-  for (NCollection_Sequence<Handle(Feature)>::Iterator it(page->doc().features()); it.More(); it.Next())
-  {
-    const Handle(Feature)& f = it.Value(); if (f.IsNull()) continue;
-    Handle(AIS_Shape) body = viewer->addShape(f->shape(), AIS_Shaded, 0, false);
-    page->featureToBody().Add(f, body);
-    page->bodyToFeature().Add(body, f);
-  }
-  if (toUpdate)
-  {
-    // Ensure OCCT view invalidates and redraws after content changes
-    viewer->Context()->UpdateCurrentViewer();
-    viewer->View()->Invalidate();
-    viewer->update();
-  }
+  page->syncViewerFromDoc(toUpdate);
 }
 
 void MainWindow::clearAll()
@@ -304,6 +290,7 @@ void MainWindow::clearAll()
   TabPage* page = currentPage(); if (!page) return;
   page->doc().clear();
   page->viewer()->clearBodies(true);
+  page->refreshFeatureList();
 }
 
 void MainWindow::addSample()
@@ -330,7 +317,7 @@ void MainWindow::addSample()
   page->doc().addFeature(c3);
   page->doc().recompute();
   // Sync without update to apply local transforms first
-  syncViewerFromDoc(false);
+  page->syncViewerFromDoc(false);
   // Position shapes independently in viewer (test-only)
   if (page->featureToBody().Contains(b1))
   {
@@ -367,6 +354,7 @@ void MainWindow::addSample()
   page->viewer()->Context()->UpdateCurrentViewer();
   page->viewer()->View()->Invalidate();
   page->viewer()->update();
+  page->refreshFeatureList();
 }
 
 void MainWindow::addNewTab()
@@ -374,6 +362,8 @@ void MainWindow::addNewTab()
   auto* page = new TabPage(this);
   int idx = m_tabs->addTab(page, QString("Untitled %1").arg(m_tabs->count() + 1));
   m_tabs->setCurrentIndex(idx);
+  // Initialize empty history list
+  page->refreshFeatureList();
 }
 
 TabPage* MainWindow::currentPage() const

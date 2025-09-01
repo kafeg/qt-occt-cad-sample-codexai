@@ -69,6 +69,9 @@ public: // bodies management
   Handle(AIS_Shape) detectedShape() const;
   // visibility toggling removed; viewer keeps all displayed bodies
 
+signals:
+  void selectionChanged();
+
 private:
   void dumpGlInfo(bool theIsBasic, bool theToPrint); // collect GL info string
   void updateView();                                  // schedule repaint

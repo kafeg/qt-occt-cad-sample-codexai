@@ -6,12 +6,14 @@
 #include <Standard_WarningsRestore.hxx>
 
 #include <TColStd_IndexedDataMapOfTransientTransient.hxx>
+#include <Feature.h>
 #include <memory>
 #include <vector>
 
 class Document;
 class OcctQOpenGLWidgetViewer;
 class Sketch;
+class FeatureHistoryPanel;
 
 // Per-tab page: owns a Document and embeds a reusable 3D viewer
 class TabPage : public QWidget
@@ -30,10 +32,20 @@ public:
   // Simple sketch registry for the page (prototype): list of available sketches
   std::vector<std::shared_ptr<Sketch>>& sketches() { return m_sketches; }
 
+  // Sync viewer bodies from the Document (rebuild AIS shapes). Optionally update immediately.
+  void syncViewerFromDoc(bool toUpdate = true);
+
+  // Rebuild the feature history panel list from Document
+  void refreshFeatureList();
+
+  // Select a feature's AIS body in the viewer
+  void selectFeatureInViewer(const Handle(Feature)& f);
+
 private:
   OcctQOpenGLWidgetViewer*                 m_viewer = nullptr; // OCCT viewer widget
   std::unique_ptr<Document>                m_doc;              // model document
   TColStd_IndexedDataMapOfTransientTransient m_featureToBody;  // feature -> body
   TColStd_IndexedDataMapOfTransientTransient m_bodyToFeature;  // body -> feature
   std::vector<std::shared_ptr<Sketch>>     m_sketches;         // available sketches
+  FeatureHistoryPanel*                     m_history = nullptr;// feature history panel
 };

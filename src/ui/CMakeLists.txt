@@ -3,6 +3,8 @@ add_library(ui STATIC
     MainWindow.h
     TabPage.cpp
     TabPage.h
+    FeatureHistoryPanel.cpp
+    FeatureHistoryPanel.h
     command/AbstractCommand.h
     command/CreateBoxCommand.cpp
     command/CreateBoxCommand.h

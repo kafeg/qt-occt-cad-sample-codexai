@@ -54,8 +54,13 @@ public:
 
   ParamMap& params() { return m_params; }
 
+  // Suppression flag: suppressed features are skipped during recompute and not displayed
+  bool isSuppressed() const { return m_suppressed; }
+  void setSuppressed(bool on) { m_suppressed = on; }
+
 protected:
   TCollection_AsciiString m_name;
   ParamMap                m_params;
   TopoDS_Shape            m_shape; // resulting shape
+  bool                    m_suppressed = false; // execution/display suppressed
 };
