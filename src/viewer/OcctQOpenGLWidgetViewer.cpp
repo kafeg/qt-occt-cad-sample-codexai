@@ -288,6 +288,10 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
     if (!grid.IsNull()) { grid->updateFromView(m_view); m_context->Redisplay(grid, Standard_False); }
   }
+
+  // Position camera towards origin after grid and axes are displayed
+  // Use a small factor to start close to (0,0,0)
+  resetViewToOrigin(0.05);
 }
 
 void OcctQOpenGLWidgetViewer::closeEvent(QCloseEvent* theEvent)

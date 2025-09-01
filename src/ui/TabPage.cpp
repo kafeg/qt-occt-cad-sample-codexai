@@ -21,9 +21,6 @@ TabPage::TabPage(QWidget* parent)
   split->setChildrenCollapsible(false);
   m_history = new FeatureHistoryPanel(this, split);
   m_viewer = new OcctQOpenGLWidgetViewer(split);
-  // Position camera towards origin for a sensible default view
-  // Start closer to the origin (e.g., 20x closer than default)
-  m_viewer->resetViewToOrigin(0.05);
   split->addWidget(m_history);
   split->addWidget(m_viewer);
   split->setStretchFactor(0, 0);
