@@ -27,6 +27,7 @@
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_TypeOfHighlight.hxx>
 #include <Quantity_Color.hxx>
+#include <QPainter>
 #include <Standard_Version.hxx>
 #include "InfiniteGrid.h"
 #include <gp_Pnt.hxx>
@@ -440,6 +441,26 @@ void OcctQOpenGLWidgetViewer::paintGL()
   Handle(V3d_View) aView = !m_focusView.IsNull() ? m_focusView : m_view;
   aView->InvalidateImmediate();
   FlushViewEvents(m_context, aView, true);
+  // Ensure OCCT stats text remains legible on light backgrounds by drawing
+  // a subtle translucent backdrop in the top-left corner under it.
+  {
+    const Graphic3d_RenderingParams& rp = m_view->RenderingParams();
+    if (rp.ToShowStats)
+    {
+      const int textH   = std::max(12, (int)rp.StatsTextHeight);
+      const int nLines  = 2; // FrameRate and Triangles are enabled
+      const int pad     = 6;
+      const int boxW    = 320;
+      const int boxH    = nLines * textH + 2 * pad;
+
+      QPainter painter(this);
+      painter.setRenderHint(QPainter::Antialiasing, true);
+      QColor shadow(0, 0, 0, 60); // translucent dark panel
+      painter.setPen(Qt::NoPen);
+      painter.setBrush(shadow);
+      painter.drawRoundedRect(QRect(6, 6, boxW, boxH), 6, 6);
+    }
+  }
 }
 
 void OcctQOpenGLWidgetViewer::handleViewRedraw(const Handle(AIS_InteractiveContext)& theCtx,
