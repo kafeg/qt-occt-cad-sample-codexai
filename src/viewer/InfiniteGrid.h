@@ -38,7 +38,7 @@ private:
   void                    computeExtentsFromView(const Handle(V3d_View)& theView, Standard_Integer theVpW, Standard_Integer theVpH);
 
 private:
-  // Minor grid step (base). Keep constant 1.0; major lines are every 10th.
+  // Minor grid step (base). Adaptive via 1–2–5*10^n; major lines every 10th.
   Standard_Real m_Step = 1.0;
   Standard_Real m_XMin = -100.0, m_XMax = 100.0;
   Standard_Real m_YMin = -100.0, m_YMax = 100.0;
