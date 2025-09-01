@@ -7,6 +7,7 @@
 
 #include <NCollection_Sequence.hxx>
 #include <Feature.h>
+#include <DocumentItem.h>
 
 class QListWidget;
 class QPushButton;
@@ -22,14 +23,14 @@ public:
   void refreshFromDocument();
 
   // Return handles corresponding to current selection (may be empty)
-  NCollection_Sequence<Handle(Feature)> selectedFeatures() const;
+  NCollection_Sequence<Handle(DocumentItem)> selectedItems() const;
 
-  // Select a specific feature in the list
-  void selectFeature(const Handle(Feature)& f);
+  // Select a specific item in the list
+  void selectItem(const Handle(DocumentItem)& it);
 
 signals:
   void requestRemoveSelected();
-  void requestSelectFeature(const Handle(Feature)& f);
+  void requestSelectItem(const Handle(DocumentItem)& it);
 
 private slots:
   void onSelectionChanged();
@@ -42,12 +43,12 @@ protected:
   bool eventFilter(QObject* obj, QEvent* ev) override;
 
 private:
-  QString featureDisplayText(const Handle(Feature)& f) const;
+  QString itemDisplayText(const Handle(DocumentItem)& it) const;
 
 private:
   TabPage*     m_page = nullptr;
   QListWidget* m_list = nullptr;
   QPushButton* m_btnRemove = nullptr;
-  // Row -> Feature handle mapping for current list state
-  NCollection_Sequence<Handle(Feature)> m_rowHandles;
+  // Row -> Item handle mapping for current list state
+  NCollection_Sequence<Handle(DocumentItem)> m_rowHandles;
 };

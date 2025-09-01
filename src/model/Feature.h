@@ -15,9 +15,9 @@ class Feature;
 DEFINE_STANDARD_HANDLE(Feature, Standard_Transient)
 
 // Abstract feature with typed parameter map and resulting shape
-class Feature : public Standard_Transient, public DocumentItem
+class Feature : public DocumentItem
 {
-  DEFINE_STANDARD_RTTIEXT(Feature, Standard_Transient)
+  DEFINE_STANDARD_RTTIEXT(Feature, DocumentItem)
 
 public:
   // Common parameter keys across all features

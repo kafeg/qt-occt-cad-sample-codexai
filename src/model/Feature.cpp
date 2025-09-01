@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 
-IMPLEMENT_STANDARD_RTTIEXT(Feature, Standard_Transient)
+IMPLEMENT_STANDARD_RTTIEXT(Feature, DocumentItem)
 // Very simple key=value; encoding for base fields and params; not robust JSON.
 // Keys: name, suppressed, p_<keyIndex> for numeric params (int/double), s_<keyIndex> for string params
 static std::string escape(const std::string& s)
@@ -97,4 +97,3 @@ void Feature::deserialize(const std::string& data)
     }
   }
 }
-

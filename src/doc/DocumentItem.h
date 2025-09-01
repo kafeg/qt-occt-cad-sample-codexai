@@ -6,8 +6,11 @@
 #include <string>
 #include <unordered_map>
 
+#include <Standard_DefineHandle.hxx>
+#include <Standard_Transient.hxx>
+
 // Base class for any item that can live in a Document and be serialized.
-class DocumentItem
+class DocumentItem : public Standard_Transient
 {
 public:
   using Id = std::uint64_t;
@@ -45,3 +48,5 @@ private:
   Id m_id{0};
 };
 
+// Enable OCCT handle for DocumentItem
+DEFINE_STANDARD_HANDLE(DocumentItem, Standard_Transient)

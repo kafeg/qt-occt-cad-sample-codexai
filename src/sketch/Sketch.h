@@ -10,6 +10,8 @@
 #include <vector>
 
 #include <DocumentItem.h>
+#include <Standard_DefineHandle.hxx>
+#include <Standard_Transient.hxx>
 
 // Lightweight 2D sketch container with simple constraint handling
 // - Stores lines and circular arcs in 2D (gp_Pnt2d)
@@ -17,6 +19,7 @@
 // - Computes wires as connected sets of curves by shared endpoints
 class Sketch : public DocumentItem
 {
+  DEFINE_STANDARD_RTTIEXT(Sketch, DocumentItem)
 public:
   using CurveId = int;
 
@@ -84,6 +87,7 @@ public:
 
 public:
   Sketch() = default;
+  explicit Sketch(DocumentItem::Id existingId) : DocumentItem(existingId) {}
 
   // DocumentItem
   Kind kind() const override { return Kind::Sketch; }
@@ -131,3 +135,6 @@ private:
   // mutable because computeWires groups by endpoint clusters without mutating geometry
   mutable std::vector<std::size_t> uf_parent_{};
 };
+
+// Enable OCCT handle for Sketch
+DEFINE_STANDARD_HANDLE(Sketch, DocumentItem)

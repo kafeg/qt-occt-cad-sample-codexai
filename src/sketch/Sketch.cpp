@@ -2,6 +2,8 @@
 #include <DocumentItem.h>
 #include <sstream>
 
+IMPLEMENT_STANDARD_RTTIEXT(Sketch, DocumentItem)
+
 namespace {
 const bool kSketchReg = [](){
   DocumentItem::registerFactory(DocumentItem::Kind::Sketch, [](){ return std::shared_ptr<DocumentItem>(new Sketch()); });

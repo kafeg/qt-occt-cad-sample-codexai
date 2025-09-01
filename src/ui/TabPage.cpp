@@ -31,29 +31,30 @@ TabPage::TabPage(QWidget* parent)
 
   // Connect panel actions
   connect(m_history, &FeatureHistoryPanel::requestRemoveSelected, [this]() {
-    // Remove selected features from document, recompute, and resync viewer + panel
-    auto sel = m_history->selectedFeatures();
-    for (NCollection_Sequence<Handle(Feature)>::Iterator it(sel); it.More(); it.Next())
+    // Remove selected items; currently only Feature removal is supported
+    auto sel = m_history->selectedItems();
+    for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(sel); it.More(); it.Next())
     {
-      const Handle(Feature)& f = it.Value();
-      if (!f.IsNull())
+      const Handle(DocumentItem)& di = it.Value();
+      if (Handle(Feature) f = Handle(Feature)::DownCast(di); !f.IsNull())
         m_doc->removeFeature(f);
     }
     m_doc->recompute();
     syncViewerFromDoc(true);
     refreshFeatureList();
   });
-  connect(m_history, &FeatureHistoryPanel::requestSelectFeature, [this](const Handle(Feature)& f) {
-    selectFeatureInViewer(f);
+  connect(m_history, &FeatureHistoryPanel::requestSelectItem, [this](const Handle(DocumentItem)& it) {
+    if (Handle(Feature) f = Handle(Feature)::DownCast(it); !f.IsNull())
+      selectFeatureInViewer(f);
   });
   // Sync selection from viewer back to list
   connect(m_viewer, &OcctQOpenGLWidgetViewer::selectionChanged, [this]() {
     Handle(AIS_Shape) sel = m_viewer->selectedShape();
-    if (sel.IsNull()) { if (m_history) m_history->selectFeature(Handle(Feature)()); return; }
+    if (sel.IsNull()) { if (m_history) m_history->selectItem(Handle(DocumentItem)()); return; }
     if (m_bodyToFeature.Contains(sel))
     {
       Handle(Feature) f = Handle(Feature)::DownCast(m_bodyToFeature.FindFromKey(sel));
-      if (!f.IsNull() && m_history) m_history->selectFeature(f);
+      if (!f.IsNull() && m_history) m_history->selectItem(Handle(DocumentItem)(f));
     }
   });
 }

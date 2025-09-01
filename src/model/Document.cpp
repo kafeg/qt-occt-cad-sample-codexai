@@ -4,19 +4,53 @@
 
 void Document::clear()
 {
-  m_features.Clear();
-  m_items.clear();
+  m_items.Clear();
+  m_registry.clear();
+  m_featuresCache.Clear();
+  m_featuresCacheDirty = true;
 }
 
-void Document::addFeature(const Handle(Feature)& f)
+void Document::addItem(const Handle(DocumentItem)& item)
 {
-  m_features.Append(f);
+  if (!item.IsNull())
+  {
+    m_items.Append(item);
+    m_featuresCacheDirty = true;
+  }
+}
+
+void Document::insertItem(int index1, const Handle(DocumentItem)& item)
+{
+  if (item.IsNull()) return;
+  if (index1 < 1) index1 = 1;
+  if (index1 > m_items.Size() + 1) index1 = m_items.Size() + 1;
+  m_items.InsertBefore(index1, item);
+  m_featuresCacheDirty = true;
+}
+
+const NCollection_Sequence<Handle(Feature)>& Document::features() const
+{
+  if (m_featuresCacheDirty)
+  {
+    m_featuresCache.Clear();
+    for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_items); it.More(); it.Next())
+    {
+      const Handle(DocumentItem)& di = it.Value();
+      if (Handle(Feature) f = Handle(Feature)::DownCast(di); !f.IsNull()) {
+        m_featuresCache.Append(f);
+      }
+    }
+    m_featuresCacheDirty = false;
+  }
+  return m_featuresCache;
 }
 
 void Document::recompute()
 {
-  for (NCollection_Sequence<Handle(Feature)>::Iterator it(m_features); it.More(); it.Next()) {
-    const Handle(Feature)& f = it.Value();
+  for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_items); it.More(); it.Next()) {
+    const Handle(DocumentItem)& di = it.Value();
+    Handle(Feature) f = Handle(Feature)::DownCast(di);
+    if (f.IsNull()) continue;
     if (!f.IsNull() && !f->isSuppressed()) {
       // Resolve dependencies for known feature types
       if (Handle(ExtrudeFeature) ef = Handle(ExtrudeFeature)::DownCast(f); !ef.IsNull())
@@ -36,20 +70,23 @@ void Document::recompute()
 
 void Document::removeLast()
 {
-  if (!m_features.IsEmpty())
+  if (!m_items.IsEmpty())
   {
-    m_features.Remove(m_features.Size());
+    m_items.Remove(m_items.Size());
+    m_featuresCacheDirty = true;
   }
 }
 
 void Document::removeFeature(const Handle(Feature)& f)
 {
   if (f.IsNull()) return;
-  for (int i = 1; i <= m_features.Size(); ++i)
+  for (int i = 1; i <= m_items.Size(); ++i)
   {
-    if (m_features.Value(i) == f)
+    Handle(Feature) fi = Handle(Feature)::DownCast(m_items.Value(i));
+    if (!fi.IsNull() && fi == f)
     {
-      m_features.Remove(i);
+      m_items.Remove(i);
+      m_featuresCacheDirty = true;
       break;
     }
   }
@@ -58,7 +95,7 @@ void Document::removeFeature(const Handle(Feature)& f)
 void Document::addItem(const std::shared_ptr<DocumentItem>& item)
 {
   if (!item) return;
-  m_items[item->id()] = item;
+  m_registry[item->id()] = item;
 }
 
 void Document::addSketch(const std::shared_ptr<Sketch>& s)
@@ -68,16 +105,16 @@ void Document::addSketch(const std::shared_ptr<Sketch>& s)
 
 std::shared_ptr<Sketch> Document::findSketch(DocumentItem::Id id) const
 {
-  auto it = m_items.find(id);
-  if (it == m_items.end()) return {};
+  auto it = m_registry.find(id);
+  if (it == m_registry.end()) return {};
   return std::dynamic_pointer_cast<Sketch>(it->second);
 }
 
 std::vector<std::shared_ptr<Sketch>> Document::sketches() const
 {
   std::vector<std::shared_ptr<Sketch>> out;
-  out.reserve(m_items.size());
-  for (const auto& kv : m_items)
+  out.reserve(m_registry.size());
+  for (const auto& kv : m_registry)
   {
     if (auto sk = std::dynamic_pointer_cast<Sketch>(kv.second))
       out.push_back(std::move(sk));

@@ -47,20 +47,20 @@ void FeatureHistoryPanel::refreshFromDocument()
   m_list->clear();
   m_rowHandles.Clear();
   if (m_page == nullptr) return;
-  const auto& seq = m_page->doc().features();
+  const auto& seq = m_page->doc().items();
   int row = 0;
-  for (NCollection_Sequence<Handle(Feature)>::Iterator it(seq); it.More(); it.Next())
+  for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(seq); it.More(); it.Next())
   {
-    const Handle(Feature)& f = it.Value();
-    m_rowHandles.Append(f);
-    m_list->addItem(featureDisplayText(f));
+    const Handle(DocumentItem)& di = it.Value();
+    m_rowHandles.Append(di);
+    m_list->addItem(itemDisplayText(di));
     ++row;
   }
 }
 
-NCollection_Sequence<Handle(Feature)> FeatureHistoryPanel::selectedFeatures() const
+NCollection_Sequence<Handle(DocumentItem)> FeatureHistoryPanel::selectedItems() const
 {
-  NCollection_Sequence<Handle(Feature)> result;
+  NCollection_Sequence<Handle(DocumentItem)> result;
   if (!m_list) return result;
   auto items = m_list->selectedItems();
   if (items.isEmpty()) return result;
@@ -74,9 +74,9 @@ NCollection_Sequence<Handle(Feature)> FeatureHistoryPanel::selectedFeatures() co
 
 void FeatureHistoryPanel::onSelectionChanged()
 {
-  auto sel = selectedFeatures();
+  auto sel = selectedItems();
   if (sel.IsEmpty()) return;
-  emit requestSelectFeature(sel.First());
+  emit requestSelectItem(sel.First());
 }
 
 void FeatureHistoryPanel::onRemoveClicked()
@@ -98,37 +98,45 @@ bool FeatureHistoryPanel::eventFilter(QObject* obj, QEvent* ev)
   return QWidget::eventFilter(obj, ev);
 }
 
-QString FeatureHistoryPanel::featureDisplayText(const Handle(Feature)& f) const
+QString FeatureHistoryPanel::itemDisplayText(const Handle(DocumentItem)& it) const
 {
-  if (f.IsNull()) return QString("<null>");
+  if (it.IsNull()) return QString("<null>");
+  if (Handle(Feature) f = Handle(Feature)::DownCast(it); !f.IsNull())
+  {
   // Prefer explicit name if set
-  if (!f->name().IsEmpty())
-  {
-    return QString::fromLatin1(f->name().ToCString());
+    if (!f->name().IsEmpty())
+      return QString::fromLatin1(f->name().ToCString());
+    // Otherwise, basic type-specific summary
+    QString label;
+    if (Handle(BoxFeature) bf = Handle(BoxFeature)::DownCast(f); !bf.IsNull())
+      label = QString("Box [%1, %2, %3]").arg(bf->dx()).arg(bf->dy()).arg(bf->dz());
+    else if (Handle(CylinderFeature) cf = Handle(CylinderFeature)::DownCast(f); !cf.IsNull())
+      label = QString("Cylinder [R=%1, H=%2]").arg(cf->radius()).arg(cf->height());
+    // Fallback to RTTI name
+    if (label.isEmpty()) label = QString::fromLatin1(f->DynamicType()->Name());
+    if (f->isSuppressed()) label += QStringLiteral(" [Suppressed]");
+    return label;
   }
-  // Otherwise, basic type-specific summary
-  QString label;
-  if (Handle(BoxFeature) bf = Handle(BoxFeature)::DownCast(f); !bf.IsNull())
+  // Non-feature items
+  switch (it->kind())
   {
-    label = QString("Box [%1, %2, %3]").arg(bf->dx()).arg(bf->dy()).arg(bf->dz());
+    case DocumentItem::Kind::Sketch:
+      return QString("Sketch %1").arg(it->id());
+    default:
+      // Fallback to class name if available via RTTI; otherwise kind enum
+      if (!it->DynamicType().IsNull())
+        return QString::fromLatin1(it->DynamicType()->Name());
+      return QString("Item %1").arg(it->id());
   }
-  else if (Handle(CylinderFeature) cf = Handle(CylinderFeature)::DownCast(f); !cf.IsNull())
-  {
-    label = QString("Cylinder [R=%1, H=%2]").arg(cf->radius()).arg(cf->height());
-  }
-  // Fallback to RTTI name
-  if (label.isEmpty()) label = QString::fromLatin1(f->DynamicType()->Name());
-  if (f->isSuppressed()) label += QStringLiteral(" [Suppressed]");
-  return label;
 }
 
-void FeatureHistoryPanel::selectFeature(const Handle(Feature)& f)
+void FeatureHistoryPanel::selectItem(const Handle(DocumentItem)& it)
 {
-  if (f.IsNull()) { m_list->clearSelection(); return; }
+  if (it.IsNull()) { m_list->clearSelection(); return; }
   // Find row by handle equality
   for (int i = 1; i <= m_rowHandles.Size(); ++i)
   {
-    if (m_rowHandles.Value(i) == f)
+    if (m_rowHandles.Value(i) == it)
     {
       m_list->setCurrentRow(i - 1, QItemSelectionModel::ClearAndSelect);
       return;
@@ -148,8 +156,9 @@ void FeatureHistoryPanel::onContextMenuRequested(const QPoint& pos)
     int row = m_list->row(items.first());
     if (row >= 0 && row < m_rowHandles.Size())
     {
-      Handle(Feature) f = m_rowHandles.Value(row + 1);
-      actToggle = menu.addAction(f->isSuppressed() ? "Unsuppress" : "Suppress");
+      Handle(DocumentItem) di = m_rowHandles.Value(row + 1);
+      if (Handle(Feature) f = Handle(Feature)::DownCast(di); !f.IsNull())
+        actToggle = menu.addAction(f->isSuppressed() ? "Unsuppress" : "Suppress");
     }
   }
   QAction* actRemove = menu.addAction("Remove");
@@ -166,9 +175,11 @@ void FeatureHistoryPanel::doRenameSelected()
   if (items.isEmpty() || m_page == nullptr) return;
   int row = m_list->row(items.first());
   if (row < 0 || row >= m_rowHandles.Size()) return;
-  Handle(Feature) f = m_rowHandles.Value(row + 1);
+  Handle(DocumentItem) di = m_rowHandles.Value(row + 1);
+  Handle(Feature) f = Handle(Feature)::DownCast(di);
+  if (f.IsNull()) return;
   bool ok = false;
-  QString current = featureDisplayText(f);
+  QString current = itemDisplayText(f);
   // Use only name component if present
   if (!f->name().IsEmpty()) current = QString::fromLatin1(f->name().ToCString());
   QString text = QInputDialog::getText(this, "Rename Feature", "Name:", QLineEdit::Normal, current, &ok);
@@ -186,7 +197,9 @@ void FeatureHistoryPanel::doToggleSuppressSelected()
   if (items.isEmpty() || m_page == nullptr) return;
   int row = m_list->row(items.first());
   if (row < 0 || row >= m_rowHandles.Size()) return;
-  Handle(Feature) f = m_rowHandles.Value(row + 1);
+  Handle(DocumentItem) di = m_rowHandles.Value(row + 1);
+  Handle(Feature) f = Handle(Feature)::DownCast(di);
+  if (f.IsNull()) return;
   f->setSuppressed(!f->isSuppressed());
   // Recompute document and resync viewer + list
   m_page->doc().recompute();
