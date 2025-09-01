@@ -34,7 +34,7 @@ public: // AIS_InteractiveObject
 
 private:
   static Standard_Boolean rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit);
-  void                    computeStepFromWorldPer20px(Standard_Real theVpW, Standard_Real theVpH, Standard_Real theWorldPer20px);
+  void                    computeStepFromWorldPer20px(Standard_Integer theVpW, Standard_Integer theVpH, Standard_Real theWorldPer20px);
   void                    computeExtentsFromView(const Handle(V3d_View)& theView, Standard_Integer theVpW, Standard_Integer theVpH);
 
 private:
@@ -43,6 +43,10 @@ private:
   Standard_Real m_XMin = -100.0, m_XMax = 100.0;
   Standard_Real m_YMin = -100.0, m_YMax = 100.0;
   Standard_Boolean m_Initialized = Standard_False;
+
+  // Tuning to reduce flicker and density; try to mimic Fusion-like feel
+  Standard_Real m_TargetPixels = 48.0;   // desired pixels per minor cell (sparser)
+  Standard_Real m_Hysteresis   = 0.25;   // 25% hysteresis before switching step tier
 };
 
 DEFINE_STANDARD_HANDLE(InfiniteGrid, AIS_InteractiveObject)

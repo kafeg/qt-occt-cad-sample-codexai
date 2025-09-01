@@ -11,11 +11,9 @@
 IMPLEMENT_STANDARD_RTTIEXT(InfiniteGrid, AIS_InteractiveObject)
 
 namespace {
-static inline Quantity_Color kGridMinorColor() { return Quantity_Color(Quantity_NOC_GRAY40); }
-static inline Quantity_Color kGridMajorColor() { return Quantity_Color(Quantity_NOC_GRAY20); }
-static inline Quantity_Color kAxesXColor()     { return Quantity_Color(1.00, 0.15, 0.15, Quantity_TOC_sRGB); }
-static inline Quantity_Color kAxesYColor()     { return Quantity_Color(0.20, 0.75, 0.20, Quantity_TOC_sRGB); }
-static inline Quantity_Color kOriginColor()    { return Quantity_Color(0.10, 0.10, 0.10, Quantity_TOC_sRGB); }
+// Softer, less intrusive tones
+static inline Quantity_Color kGridMinorColor() { return Quantity_Color(Quantity_NOC_GRAY80); }
+static inline Quantity_Color kGridMajorColor() { return Quantity_Color(Quantity_NOC_GRAY60); }
 }
 
 void InfiniteGrid::updateFromView(const Handle(V3d_View)& theView)
@@ -33,9 +31,10 @@ void InfiniteGrid::updateFromView(const Handle(V3d_View)& theView)
     vpW = 800; vpH = 600;
   }
 
-  // Sample world distance corresponding to 20 horizontal pixels at viewport center
+  // Sample world distance corresponding to deltaX pixels (use 32px target for stability)
   const int cx = vpW / 2; const int cy = vpH / 2; gp_Pnt p0, p1;
-  if (!rayHitZ0(theView, cx, cy, p0) || !rayHitZ0(theView, cx + 20, cy, p1))
+  const int sampleDx = 32; // 32 px sample baseline
+  if (!rayHitZ0(theView, cx, cy, p0) || !rayHitZ0(theView, cx + sampleDx, cy, p1))
   {
     // If projection is parallel to XY, fallback to default step/extents
     if (m_Step <= 0.0) m_Step = 10.0;
@@ -46,8 +45,10 @@ void InfiniteGrid::updateFromView(const Handle(V3d_View)& theView)
     return;
   }
   {
-    const Standard_Real worldPer20px = p0.Distance(p1);
-    computeStepFromWorldPer20px(vpW, vpH, worldPer20px);
+    const Standard_Real worldPerPx = p0.Distance(p1) / (Standard_Real)sampleDx;
+    const Standard_Real worldPerTarget = worldPerPx * m_TargetPixels;
+    // Reuse function name but pass world distance corresponding to m_TargetPixels
+    computeStepFromWorldPer20px(vpW, vpH, worldPerTarget);
   }
   computeExtentsFromView(theView, vpW, vpH);
   SetToUpdate();
@@ -55,7 +56,9 @@ void InfiniteGrid::updateFromView(const Handle(V3d_View)& theView)
 
 void InfiniteGrid::updateFromViewportSample(Standard_Integer theVpW, Standard_Integer theVpH, Standard_Real theWorldPer20px)
 {
-  computeStepFromWorldPer20px(theVpW, theVpH, theWorldPer20px);
+  // Convert legacy 20px sample into target pixel sample
+  const Standard_Real worldPerPx = theWorldPer20px / 20.0;
+  computeStepFromWorldPer20px(theVpW, theVpH, worldPerPx * m_TargetPixels);
   // Extents depend on view framing; without a view, derive generous extents covering viewport
   // Assuming a typical perspective, span ~12 steps around origin as a safe default
   const Standard_Real marginSteps = 12.0;
@@ -66,17 +69,17 @@ void InfiniteGrid::updateFromViewportSample(Standard_Integer theVpW, Standard_In
   SetToUpdate();
 }
 
-void InfiniteGrid::computeStepFromWorldPer20px(Standard_Real, Standard_Real, Standard_Real theWorldPer20px)
+void InfiniteGrid::computeStepFromWorldPer20px(Standard_Integer, Standard_Integer, Standard_Real theWorldPerTargetPx)
 {
   // Derive minor grid step from a 20px sample using a 1–2–5*10^n series.
-  // Aim ~20px per cell: snap worldPer20px to nearest {1,2,5,10}*10^n.
-  if (!(theWorldPer20px > 0.0) || !std::isfinite((double)theWorldPer20px))
+  // Aim ~m_TargetPixels per cell: snap to nearest {1,2,5,10}*10^n with hysteresis.
+  if (!(theWorldPerTargetPx > 0.0) || !std::isfinite((double)theWorldPerTargetPx))
   {
     if (m_Step <= 0.0) m_Step = 1.0;
     return;
   }
 
-  const Standard_Real x = theWorldPer20px;
+  const Standard_Real x = theWorldPerTargetPx;
   const Standard_Real n = Floor(Log10(x));
   const Standard_Real base = Pow(10.0, n);
   const Standard_Real r = x / base; // in [1,10)
@@ -86,8 +89,27 @@ void InfiniteGrid::computeStepFromWorldPer20px(Standard_Real, Standard_Real, Sta
   else if (r < 3.0) mantissa = 2.0;
   else if (r < 7.0) mantissa = 5.0;
   else              mantissa = 10.0;
+  const Standard_Real candidate = mantissa * base;
 
-  m_Step = mantissa * base;
+  // Hysteresis to reduce flicker near thresholds
+  if (m_Initialized)
+  {
+    const Standard_Real lo = m_Step * (1.0 - m_Hysteresis);
+    const Standard_Real hi = m_Step * (1.0 + m_Hysteresis);
+    if (candidate > lo && candidate < hi)
+    {
+      // keep previous step
+    }
+    else
+    {
+      m_Step = candidate;
+    }
+  }
+  else
+  {
+    m_Step = candidate;
+  }
+
   if (!(m_Step > 0.0) || !std::isfinite((double)m_Step))
   {
     m_Step = 1.0;
@@ -114,8 +136,8 @@ void InfiniteGrid::computeExtentsFromView(const Handle(V3d_View)& theView, Stand
   Standard_Real ymin = p00.Y(), ymax = p00.Y();
   auto grow = [&](const gp_Pnt& p){ xmin = Min(xmin, p.X()); xmax = Max(xmax, p.X()); ymin = Min(ymin, p.Y()); ymax = Max(ymax, p.Y()); };
   grow(p10); grow(p11); grow(p01);
-  // Add a margin of 2 steps beyond viewport on all sides
-  const Standard_Real m = 2.0 * m_Step;
+  // Add a margin of 3 steps beyond viewport on all sides to avoid popping
+  const Standard_Real m = 3.0 * m_Step;
   m_XMin = floor((xmin - m) / m_Step) * m_Step;
   m_XMax = ceil ((xmax + m) / m_Step) * m_Step;
   m_YMin = floor((ymin - m) / m_Step) * m_Step;
@@ -141,6 +163,11 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
 {
   thePrs->Clear();
   if (!m_Initialized || m_Step <= 0.0) return;
+
+  // Apply subtle transparency to entire grid
+  Handle(Prs3d_Drawer) aDr = Attributes(); if (aDr.IsNull()) aDr = new Prs3d_Drawer();
+  aDr->SetTransparency(0.65f); // 0=opaque, 1=fully transparent
+  SetAttributes(aDr);
 
   // Build grid segments
   const Standard_Integer x0 = (Standard_Integer)Floor(m_XMin / m_Step);
@@ -181,46 +208,15 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
     if (segMinor->VertexNumber() > 0)
     {
       Handle(Graphic3d_Group) gMinor = thePrs->NewGroup();
-      gMinor->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kGridMinorColor(), Aspect_TOL_SOLID, 2.0f));
+      gMinor->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kGridMinorColor(), Aspect_TOL_DASH, 1.0f));
       gMinor->AddPrimitiveArray(segMinor);
     }
     if (segMajor->VertexNumber() > 0)
     {
       Handle(Graphic3d_Group) gMajor = thePrs->NewGroup();
-      gMajor->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kGridMajorColor(), Aspect_TOL_SOLID, 3.0f));
+      gMajor->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kGridMajorColor(), Aspect_TOL_SOLID, 1.5f));
       gMajor->AddPrimitiveArray(segMajor);
     }
   }
-
-  // Axes: separate groups and arrays for X and Y with distinct colors
-  {
-    // X axis
-    Handle(Graphic3d_ArrayOfSegments) aAxisX = new Graphic3d_ArrayOfSegments(2);
-    aAxisX->AddVertex((Standard_ShortReal)m_XMin, 0.0f, 0.0f);
-    aAxisX->AddVertex((Standard_ShortReal)m_XMax, 0.0f, 0.0f);
-    Handle(Graphic3d_Group) gX = thePrs->NewGroup();
-    gX->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kAxesXColor(), Aspect_TOL_SOLID, 2.0f));
-    gX->AddPrimitiveArray(aAxisX);
-
-    // Y axis
-    Handle(Graphic3d_ArrayOfSegments) aAxisY = new Graphic3d_ArrayOfSegments(2);
-    aAxisY->AddVertex(0.0f, (Standard_ShortReal)m_YMin, 0.0f);
-    aAxisY->AddVertex(0.0f, (Standard_ShortReal)m_YMax, 0.0f);
-    Handle(Graphic3d_Group) gY = thePrs->NewGroup();
-    gY->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kAxesYColor(), Aspect_TOL_SOLID, 2.0f));
-    gY->AddPrimitiveArray(aAxisY);
-  }
-
-  // Origin marker: small cross sized relative to step
-  {
-    const Standard_Real s = Max(0.25 * m_Step, 1.0e-3);
-    Handle(Graphic3d_ArrayOfSegments) aCross = new Graphic3d_ArrayOfSegments(4);
-    aCross->AddVertex((Standard_ShortReal)(-s), 0.0f, 0.0f);
-    aCross->AddVertex((Standard_ShortReal)(+s), 0.0f, 0.0f);
-    aCross->AddVertex(0.0f, (Standard_ShortReal)(-s), 0.0f);
-    aCross->AddVertex(0.0f, (Standard_ShortReal)(+s), 0.0f);
-    Handle(Graphic3d_Group) gO = thePrs->NewGroup();
-    gO->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kOriginColor(), Aspect_TOL_SOLID, 2.0f));
-    gO->AddPrimitiveArray(aCross);
-  }
+  // Axes/origin are drawn separately in viewer; grid renders only grid lines
 }
