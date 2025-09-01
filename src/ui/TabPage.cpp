@@ -66,7 +66,9 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
   if (!m_viewer) return;
   m_featureToBody.Clear();
   m_bodyToFeature.Clear();
+  m_sketchToHandle.clear();
   m_viewer->clearBodies(false);
+  m_viewer->clearSketches(false);
   for (NCollection_Sequence<Handle(Feature)>::Iterator it(m_doc->features()); it.More(); it.Next())
   {
     const Handle(Feature)& f = it.Value(); if (f.IsNull()) continue;
@@ -74,6 +76,12 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
     Handle(AIS_Shape) body = m_viewer->addShape(f->shape(), AIS_Shaded, 0, false);
     m_featureToBody.Add(f, body);
     m_bodyToFeature.Add(body, f);
+  }
+  // Display registered sketches after features
+  for (const auto& sk : m_doc->sketches())
+  {
+    Handle(AIS_Shape) h = m_viewer->addSketch(sk);
+    if (!h.IsNull()) m_sketchToHandle[sk->id()] = h;
   }
   if (toUpdate)
   {

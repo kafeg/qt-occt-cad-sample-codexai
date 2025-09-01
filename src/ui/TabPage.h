@@ -7,7 +7,10 @@
 
 #include <TColStd_IndexedDataMapOfTransientTransient.hxx>
 #include <Feature.h>
+#include <AIS_Shape.hxx>
 #include <memory>
+#include <unordered_map>
+#include <DocumentItem.h>
 
 class Document;
 class OcctQOpenGLWidgetViewer;
@@ -41,5 +44,6 @@ private:
   std::unique_ptr<Document>                m_doc;              // model document
   TColStd_IndexedDataMapOfTransientTransient m_featureToBody;  // feature -> body
   TColStd_IndexedDataMapOfTransientTransient m_bodyToFeature;  // body -> feature
+  std::unordered_map<DocumentItem::Id, Handle(AIS_Shape)> m_sketchToHandle; // sketch id -> AIS handle
   FeatureHistoryPanel*                     m_history = nullptr;// feature history panel
 };

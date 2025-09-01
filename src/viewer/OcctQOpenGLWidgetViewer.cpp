@@ -31,6 +31,12 @@
 #include <V3d_RectangularGrid.hxx>
 #include <gp_Pnt.hxx>
 
+#include <BRep_Builder.hxx>
+#include <TopoDS_Compound.hxx>
+#include <TopoDS_Wire.hxx>
+
+#include <Sketch.h>
+
 class OcctQtFrameBuffer : public OpenGl_FrameBuffer
 {
   DEFINE_STANDARD_RTTI_INLINE(OcctQtFrameBuffer, OpenGl_FrameBuffer)
@@ -506,4 +512,70 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::detectedShape() const
     return Handle(AIS_Shape)::DownCast(m_context->DetectedInteractive());
   }
   return Handle(AIS_Shape)();
+}
+
+Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketch>& sketch)
+{
+  if (!sketch) return Handle(AIS_Shape)();
+  // Convert sketch wires and build a compound for a single AIS handle
+  const std::vector<TopoDS_Wire> wires = sketch->toOcctWires(1.0e-7);
+  if (wires.empty()) return Handle(AIS_Shape)();
+
+  BRep_Builder builder;
+  TopoDS_Compound comp;
+  builder.MakeCompound(comp);
+  for (const auto& w : wires) builder.Add(comp, w);
+
+  Handle(AIS_Shape) ais = new AIS_Shape(comp);
+  // Assign a distinct, deterministic color per sketch id using simple hashing to hue
+  const unsigned long sid = static_cast<unsigned long>(sketch->id());
+  const double hue = (sid % 360ul) / 360.0; // [0,1)
+  const double sat = 0.85;
+  const double val = 0.95;
+  // Convert HSV->RGB manually for compatibility with OCCT 7.9 (no SetHsv)
+  const double h = hue * 6.0;
+  const int    i = int(floor(h)) % 6;
+  const double f = h - floor(h);
+  const double p = val * (1.0 - sat);
+  const double q = val * (1.0 - sat * f);
+  const double t = val * (1.0 - sat * (1.0 - f));
+  double r=val, g=val, b=val;
+  switch (i)
+  {
+    case 0: r = val; g = t;   b = p;   break;
+    case 1: r = q;   g = val; b = p;   break;
+    case 2: r = p;   g = val; b = t;   break;
+    case 3: r = p;   g = q;   b = val; break;
+    case 4: r = t;   g = p;   b = val; break;
+    case 5: r = val; g = p;   b = q;   break;
+  }
+  Quantity_Color col(r, g, b, Quantity_TOC_sRGB);
+  Handle(Prs3d_Drawer) drw = ais->Attributes(); if (drw.IsNull()) drw = new Prs3d_Drawer();
+  drw->SetColor(col);
+  drw->SetTransparency(0.0f);
+  drw->SetDisplayMode(AIS_WireFrame);
+  drw->SetLineAspect(new Prs3d_LineAspect(col, Aspect_TOL_SOLID, 2.0f));
+  ais->SetAttributes(drw);
+
+  m_sketches.Append(ais);
+  m_context->Display(ais, AIS_WireFrame, 0, false);
+  return ais;
+}
+
+void OcctQOpenGLWidgetViewer::clearSketches(bool theToUpdate)
+{
+  for (NCollection_Sequence<Handle(AIS_Shape)>::Iterator it(m_sketches); it.More(); it.Next())
+  {
+    const Handle(AIS_Shape)& aSk = it.Value();
+    if (!aSk.IsNull() && m_context->IsDisplayed(aSk))
+    {
+      m_context->Erase(aSk, false);
+    }
+  }
+  m_sketches.Clear();
+  if (theToUpdate)
+  {
+    if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
+    update();
+  }
 }

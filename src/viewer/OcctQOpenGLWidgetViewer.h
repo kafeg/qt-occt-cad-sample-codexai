@@ -17,6 +17,7 @@ class AIS_Line;
 class AIS_Trihedron;
 class AIS_Shape;
 class Geom_Axis2Placement;
+class Sketch; // forward decl (from src/sketch)
 
 // Reusable OCCT viewer widget (QOpenGLWidget + AIS_ViewController glue)
 // - Owns V3d_Viewer/View and AIS_InteractiveContext
@@ -69,6 +70,14 @@ public: // bodies management
   Handle(AIS_Shape) detectedShape() const;
   // visibility toggling removed; viewer keeps all displayed bodies
 
+public: // sketches management
+  // Display a sketch as a colored wire compound and keep handle for cleanup
+  Handle(AIS_Shape) addSketch(const std::shared_ptr<Sketch>& sketch);
+  // Remove all displayed sketches
+  void clearSketches(bool theToUpdate = true);
+  // Introspection helper for tests
+  int sketchCount() const { return m_sketches.Size(); }
+
 signals:
   void selectionChanged();
 
@@ -96,6 +105,7 @@ private:
   Handle(AIS_Trihedron)          m_originTrihedron;  // origin trihedron
   Handle(Geom_Axis2Placement)    m_originPlacement;  // origin placement
   NCollection_Sequence<Handle(AIS_Shape)> m_bodies;  // tracked displayed bodies
+  NCollection_Sequence<Handle(AIS_Shape)> m_sketches; // tracked displayed sketches
 
   // no deletion-specific state
 };
