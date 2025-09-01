@@ -11,6 +11,10 @@
 #include <Document.h>
 #include <Sketch.h>
 #include <AIS_Shape.hxx>
+#include <MoveFeature.h>
+#include <gp_Quaternion.hxx>
+#include <gp_EulerSequence.hxx>
+#include <cmath>
 
 TabPage::TabPage(QWidget* parent)
   : QWidget(parent)
@@ -108,4 +112,56 @@ void TabPage::selectFeatureInViewer(const Handle(Feature)& f)
   m_viewer->Context()->UpdateCurrentViewer();
   m_viewer->View()->Invalidate();
   m_viewer->update();
+}
+
+void TabPage::activateMove()
+{
+  if (!m_viewer) return;
+  Handle(AIS_Shape) sel = m_viewer->selectedShape();
+  if (sel.IsNull()) return;
+  if (!m_bodyToFeature.Contains(sel)) return;
+  Handle(Feature) src = Handle(Feature)::DownCast(m_bodyToFeature.FindFromKey(sel));
+  if (src.IsNull()) return;
+
+  // Show manipulator and connect finish signal to add MoveFeature
+  m_viewer->showManipulator(sel);
+  // Connect once per activation; capture Source by value
+  QObject::connect(m_viewer, &OcctQOpenGLWidgetViewer::manipulatorFinished, this, [this, src](const gp_Trsf& tr) {
+    // Commit at confirm only
+    gp_XYZ t = tr.TranslationPart();
+    gp_Quaternion q = tr.GetRotation();
+    Standard_Real ax = 0.0, ay = 0.0, az = 0.0;
+    q.GetEulerAngles(gp_Intrinsic_XYZ, ax, ay, az);
+    const double r2d = 180.0 / M_PI;
+    const double rx = ax * r2d;
+    const double ry = ay * r2d;
+    const double rz = az * r2d;
+
+    Handle(MoveFeature) mf = new MoveFeature();
+    mf->setSourceId(src->id());
+    mf->setTranslation(t.X(), t.Y(), t.Z());
+    mf->setRotation(rx, ry, rz);
+    // Hide source in the scene; result should appear as a single moved body
+    src->setSuppressed(true);
+    m_doc->addFeature(mf);
+    m_doc->recompute();
+    syncViewerFromDoc(true);
+    refreshFeatureList();
+  });
+}
+
+void TabPage::confirmMove()
+{
+  if (!m_viewer) return;
+  if (!m_viewer->isManipulatorActive()) return;
+  m_viewer->confirmManipulator();
+}
+
+void TabPage::cancelMove()
+{
+  if (!m_viewer) return;
+  if (!m_viewer->isManipulatorActive()) return;
+  m_viewer->cancelManipulator();
+  // Reset any temporary local transforms by resyncing from document
+  syncViewerFromDoc(true);
 }

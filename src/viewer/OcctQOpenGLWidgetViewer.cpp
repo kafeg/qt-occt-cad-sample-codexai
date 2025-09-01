@@ -334,6 +334,15 @@ void OcctQOpenGLWidgetViewer::mousePressEvent(QMouseEvent* theEvent)
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
+  // If manipulator is under cursor (active on detection), start transform and block camera drag
+  if (!m_manip.IsNull() && m_manip->HasActiveMode())
+  {
+    m_isManipDragging = true;
+    m_lastManipDelta = gp_Trsf();
+    m_manip->StartTransform(aPnt.x(), aPnt.y(), m_view);
+    update();
+    return;
+  }
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
 }
@@ -342,6 +351,26 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
 {
   QOpenGLWidget::mouseReleaseEvent(theEvent);
   if (m_view.IsNull()) return;
+  // If manipulator was dragging, finish manipulation and consume release
+  if (!m_manip.IsNull() && m_isManipDragging)
+  {
+    m_manip->StopTransform(true);
+    // Accumulate delta for multi-step manipulation; do not emit yet
+    m_manipAccumTrsf.Multiply(m_lastManipDelta);
+    m_isManipDragging = false;
+    // keep manipulator visible for further drags
+    if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
+    update();
+    return;
+  }
+  // Finish manipulator transform if any
+  if (!m_manip.IsNull() && (m_manip->HasActiveMode() || m_manip->HasActiveTransformation()))
+  {
+    m_manip->StopTransform(true);
+    m_manipAccumTrsf.Multiply(m_lastManipDelta);
+    if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
+    update();
+  }
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
@@ -372,6 +401,13 @@ void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)
   if (m_view.IsNull()) return;
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aNewPos(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
+  if (!m_manip.IsNull() && m_isManipDragging)
+  {
+    // Drag manipulator only; block camera motions
+    m_lastManipDelta = m_manip->Transform(aNewPos.x(), aNewPos.y(), m_view);
+    update();
+    return;
+  }
   if (UpdateMousePosition(aNewPos,
                           OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()),
                           OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers()),
@@ -569,6 +605,52 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::detectedShape() const
     return Handle(AIS_Shape)::DownCast(m_context->DetectedInteractive());
   }
   return Handle(AIS_Shape)();
+}
+
+void OcctQOpenGLWidgetViewer::showManipulator(const Handle(AIS_Shape)& onShape)
+{
+  if (onShape.IsNull()) return;
+  hideManipulator();
+  m_manip = new AIS_Manipulator();
+  // Attach to the object; disable scaling, enable translation+rotation
+  m_manip->Attach(onShape);
+  m_manip->SetPart(AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
+  m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Translation);
+  m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Rotation);
+  // Activate mode on hover; we only start Transform() on mouse press
+  m_manip->SetModeActivationOnDetection(Standard_True);
+  m_context->Display(m_manip, Standard_False);
+  m_context->SetZLayer(m_manip, Graphic3d_ZLayerId_Top);
+  m_lastManipDelta = gp_Trsf();
+  m_isManipDragging = false;
+  m_manipAccumTrsf = gp_Trsf();
+  if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
+  update();
+}
+
+void OcctQOpenGLWidgetViewer::hideManipulator()
+{
+  if (m_manip.IsNull()) return;
+  if (!m_context.IsNull() && m_context->IsDisplayed(m_manip))
+  {
+    m_context->Erase(m_manip, Standard_False);
+  }
+  m_manip->Detach();
+  m_manip.Nullify();
+  if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
+  update();
+}
+
+void OcctQOpenGLWidgetViewer::confirmManipulator()
+{
+  if (m_manip.IsNull()) return;
+  emit manipulatorFinished(m_manipAccumTrsf);
+  hideManipulator();
+}
+
+void OcctQOpenGLWidgetViewer::cancelManipulator()
+{
+  hideManipulator();
 }
 
 Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketch>& sketch)

@@ -12,6 +12,8 @@ add_library(ui STATIC
     command/CreateCylinderCommand.h
     command/CreateExtrudeCommand.cpp
     command/CreateExtrudeCommand.h
+    command/MoveCommand.cpp
+    command/MoveCommand.h
     dialog/CreateBoxDialog.cpp
     dialog/CreateBoxDialog.h
     dialog/CreateCylinderDialog.cpp

@@ -8,10 +8,12 @@
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_ViewController.hxx>
+#include <AIS_Manipulator.hxx>
 #include <V3d_View.hxx>
 #include <NCollection_Sequence.hxx>
 #include <TopoDS_Shape.hxx>
 #include <Graphic3d_ZLayerId.hxx>
+#include <gp_Trsf.hxx>
 #include <cstdint>
 #include <unordered_map>
 #include <cstdint>
@@ -81,6 +83,14 @@ public: // bodies management
   Handle(AIS_Shape) detectedShape() const;
   // visibility toggling removed; viewer keeps all displayed bodies
 
+public: // manipulator control
+  void showManipulator(const Handle(AIS_Shape)& onShape);
+  void hideManipulator();
+  bool isManipulatorActive() const { return !m_manip.IsNull(); }
+  gp_Trsf manipulatorAccumulatedTrsf() const { return m_manipAccumTrsf; }
+  void confirmManipulator();
+  void cancelManipulator();
+
 public: // sketches management
   // Display a sketch as a colored wire compound and keep handle for cleanup
   Handle(AIS_Shape) addSketch(const std::shared_ptr<Sketch>& sketch);
@@ -96,6 +106,7 @@ public: // sketches management
 
 signals:
   void selectionChanged();
+  void manipulatorFinished(const gp_Trsf& trsf);
 
 private:
   void dumpGlInfo(bool theIsBasic, bool theToPrint); // collect GL info string
@@ -131,6 +142,10 @@ private:
   Graphic3d_ZLayerId m_layerSketch = Graphic3d_ZLayerId_Default;
 
   // no deletion-specific state
+  Handle(AIS_Manipulator) m_manip;
+  gp_Trsf                 m_lastManipDelta;
+  bool                    m_isManipDragging = false;
+  gp_Trsf                 m_manipAccumTrsf;
 };
 
 #endif

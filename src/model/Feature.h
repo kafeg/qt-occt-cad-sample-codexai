@@ -29,6 +29,12 @@ public:
     Radius,
     Height,
     Distance,
+    Tx,
+    Ty,
+    Tz,
+    Rx,
+    Ry,
+    Rz,
   };
 
   struct ParamKeyHash

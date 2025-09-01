@@ -120,6 +120,20 @@ void MainWindow::createMenuBar()
     connect(actAddExtrude, &QAction::triggered, [this]() { addExtrude(); });
   }
   {
+    QAction* actMove = new QAction(file);
+    actMove->setText("Move");
+    file->addAction(actMove);
+    connect(actMove, &QAction::triggered, [this]() {
+      TabPage* p = currentPage(); if (!p) return;
+      auto* v = p->viewer();
+      if (v && v->isManipulatorActive()) p->confirmMove(); else p->activateMove();
+    });
+    QAction* actCancelMove = new QAction(file);
+    actCancelMove->setText("Cancel Move");
+    file->addAction(actCancelMove);
+    connect(actCancelMove, &QAction::triggered, [this]() { TabPage* p = currentPage(); if (p) p->cancelMove(); });
+  }
+  {
     QAction* quit = new QAction(file);
     quit->setText("Quit");
     file->addAction(quit);
@@ -144,6 +158,16 @@ void MainWindow::createToolBar()
   QAction* actAddExtrude = new QAction("Add Extrude", tb);
   connect(actAddExtrude, &QAction::triggered, [this]() { addExtrude(); });
   tb->addAction(actAddExtrude);
+
+  QAction* actMove = new QAction("Move", tb);
+  connect(actMove, &QAction::triggered, [this]() {
+    TabPage* p = currentPage(); if (!p) return; auto* v = p->viewer();
+    if (v && v->isManipulatorActive()) p->confirmMove(); else p->activateMove();
+  });
+  tb->addAction(actMove);
+  QAction* actCancelMove = new QAction("Cancel Move", tb);
+  connect(actCancelMove, &QAction::triggered, [this]() { TabPage* p = currentPage(); if (p) p->cancelMove(); });
+  tb->addAction(actCancelMove);
 
   QAction* actAbout = new QAction("About", tb);
   connect(actAbout, &QAction::triggered, [this]() {

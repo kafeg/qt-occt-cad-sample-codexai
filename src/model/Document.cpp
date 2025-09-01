@@ -1,5 +1,6 @@
 #include "Document.h"
 #include <ExtrudeFeature.h>
+#include <MoveFeature.h>
 #include <Sketch.h>
 
 void Document::clear()
@@ -48,6 +49,8 @@ const NCollection_Sequence<Handle(Feature)>& Document::features() const
 
 void Document::recompute()
 {
+  // Map already-executed features by id for downstream dependency resolution
+  std::unordered_map<DocumentItem::Id, Handle(Feature)> featureById;
   for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_items); it.More(); it.Next()) {
     const Handle(DocumentItem)& di = it.Value();
     Handle(Feature) f = Handle(Feature)::DownCast(di);
@@ -64,7 +67,39 @@ void Document::recompute()
           }
         }
       }
+      // Resolve MoveFeature source by id; allow using suppressed sources as providers
+      if (Handle(MoveFeature) mf = Handle(MoveFeature)::DownCast(f); !mf.IsNull())
+      {
+        if (mf->source().IsNull() && mf->sourceId() != 0)
+        {
+          Handle(Feature) src;
+          auto fit = featureById.find(mf->sourceId());
+          if (fit != featureById.end())
+          {
+            src = fit->second;
+          }
+          if (src.IsNull())
+          {
+            // search previous items for a feature with the same id (even if suppressed)
+            for (NCollection_Sequence<Handle(DocumentItem)>::Iterator jt(m_items); jt.More(); jt.Next())
+            {
+              const Handle(DocumentItem)& prev = jt.Value();
+              if (prev == di) break; // stop at current
+              Handle(Feature) pf = Handle(Feature)::DownCast(prev);
+              if (!pf.IsNull() && pf->id() == mf->sourceId()) { src = pf; break; }
+            }
+          }
+          if (!src.IsNull())
+          {
+            // ensure source has valid shape, even if suppressed
+            if (src->shape().IsNull()) { src->execute(); }
+            mf->setSource(src);
+          }
+        }
+      }
       f->execute();
+      // cache executed (non-suppressed and also MoveFeature) for downstream consumers
+      featureById[f->id()] = f;
     }
   }
 }

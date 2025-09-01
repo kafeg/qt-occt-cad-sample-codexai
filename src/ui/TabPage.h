@@ -39,6 +39,11 @@ public:
   // Select a feature's AIS body in the viewer
   void selectFeatureInViewer(const Handle(Feature)& f);
 
+  // Activate interactive move on current selection; adds MoveFeature on finish
+  void activateMove();
+  void confirmMove();
+  void cancelMove();
+
 private:
   OcctQOpenGLWidgetViewer*                 m_viewer = nullptr; // OCCT viewer widget
   std::unique_ptr<Document>                m_doc;              // model document

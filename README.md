@@ -14,7 +14,7 @@ For a deeper overview and Fusion 360 concept mapping, see `docs/architecture.md`
 
 - Viewer: Reusable OCCT `QOpenGLWidget` (`OcctQOpenGLWidgetViewer`) with input mapped via `AIS_ViewController`. Rendering and input are decoupled from commands.
 - Core (Kernel): Thin wrappers over OCCT (e.g., `BRepPrimAPI_*`, `BRepAlgoAPI_*`) in `KernelAPI` to isolate OCCT usage. Currently: box, cylinder, fuse.
-- Model: `Feature` base class with typed parameter map and resulting `TopoDS_Shape`; `Document` is an ordered list of features and recompute logic.
+- Model: `Feature` base class with typed parameter map and resulting `TopoDS_Shape`; `Document` is an ordered list of features and recompute logic. Includes primitives (`BoxFeature`, `CylinderFeature`), `ExtrudeFeature`, and `MoveFeature` (rigid transform of an upstream feature).
 - UI: Command pattern + dialogs. Example commands: Create Box, Create Cylinder. Menu/toolbar actions open parameter dialogs and push features into the document.
 - Sketch: Placeholder module for future sketch/constraints integration.
 
@@ -35,9 +35,9 @@ For a deeper overview and Fusion 360 concept mapping, see `docs/architecture.md`
 
 - App target: `src/cad-app` (Qt6 GUI).
 - Core wrappers: box, cylinder, fuse.
-- Features: `BoxFeature`, `CylinderFeature` (parameters stored in `Feature` map).
+- Features: `BoxFeature`, `CylinderFeature`, `ExtrudeFeature`, `MoveFeature` (stores Tx/Ty/Tz and Rx/Ry/Rz in degrees).
 - UI commands: Create Box, Create Cylinder; “Add Sample” creates 3 boxes and 3 cylinders arranged in a grid.
-- Viewer: background gradient control, view cube, axes, origin trihedron, auto grid step.
+- Viewer: background gradient control, view cube, axes, origin trihedron, auto grid step, basic `AIS_Manipulator` integration to move/rotate selected shape and commit a `MoveFeature`.
 
 ## Building
 

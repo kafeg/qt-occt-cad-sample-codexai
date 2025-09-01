@@ -5,6 +5,7 @@
 #include <BoxFeature.h>
 #include <CylinderFeature.h>
 #include <Document.h>
+#include <MoveFeature.h>
 
 #include <Standard_WarningsDisable.hxx>
 #include <QListWidget>
@@ -112,6 +113,12 @@ QString FeatureHistoryPanel::itemDisplayText(const Handle(DocumentItem)& it) con
       label = QString("Box [%1, %2, %3]").arg(bf->dx()).arg(bf->dy()).arg(bf->dz());
     else if (Handle(CylinderFeature) cf = Handle(CylinderFeature)::DownCast(f); !cf.IsNull())
       label = QString("Cylinder [R=%1, H=%2]").arg(cf->radius()).arg(cf->height());
+    else if (Handle(MoveFeature) mf = Handle(MoveFeature)::DownCast(f); !mf.IsNull())
+    {
+      label = QString("Move [T=(%1,%2,%3), R=(%4,%5,%6) deg]")
+                .arg(mf->tx()).arg(mf->ty()).arg(mf->tz())
+                .arg(mf->rxDeg()).arg(mf->ryDeg()).arg(mf->rzDeg());
+    }
     // Fallback to RTTI name
     if (label.isEmpty()) label = QString::fromLatin1(f->DynamicType()->Name());
     if (f->isSuppressed()) label += QStringLiteral(" [Suppressed]");
