@@ -181,6 +181,9 @@ void TabPage::activateMove()
 
     Handle(MoveFeature) mf = new MoveFeature();
     mf->setSourceId(src->id());
+    // Store exact transform to avoid Euler reconstruction errors
+    mf->setDeltaTrsf(tr);
+    // Also store decomposed params for UI/serialization readability
     mf->setTranslation(t.X(), t.Y(), t.Z());
     mf->setRotation(rx, ry, rz);
     // Hide source in the scene; result should appear as a single moved body

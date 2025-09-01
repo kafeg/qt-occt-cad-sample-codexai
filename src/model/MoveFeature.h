@@ -3,6 +3,7 @@
 #include "Feature.h"
 #include <Standard_DefineHandle.hxx>
 #include <DocumentItem.h>
+#include <gp_Trsf.hxx>
 
 class MoveFeature;
 DEFINE_STANDARD_HANDLE(MoveFeature, Feature)
@@ -55,6 +56,10 @@ public:
 
   void execute() override;
 
+  // Provide exact affine delta from interactive manipulator
+  void setDeltaTrsf(const gp_Trsf& t) { m_delta = t; }
+  const gp_Trsf& deltaTrsf() const { return m_delta; }
+
 public:
   // DocumentItem
   Kind kind() const override { return Kind::MoveFeature; }
@@ -64,5 +69,5 @@ public:
 private:
   Handle(Feature)  m_source;   // runtime resolved source feature (optional)
   DocumentItem::Id m_sourceId{0};
+  gp_Trsf          m_delta;    // exact transform from manipulator (rotation+translation)
 };
-

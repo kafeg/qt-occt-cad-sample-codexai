@@ -28,14 +28,22 @@ void MoveFeature::execute()
     return;
   }
 
-  // Build transform directly from quaternion (rotation part) and translation part.
-  // The translation we store already includes the manipulator's pivot effect, so
-  // combining them via SetTransformation reproduces the exact affine delta.
-  const double rx = rxDeg() * (M_PI / 180.0);
-  const double ry = ryDeg() * (M_PI / 180.0);
-  const double rz = rzDeg() * (M_PI / 180.0);
-  gp_Quaternion q; q.SetEulerAngles(gp_Intrinsic_XYZ, rx, ry, rz);
-  gp_Trsf trsf; trsf.SetTransformation(q, gp_Vec(tx(), ty(), tz()));
+  // If precise delta is provided (from manipulator), use it as-is to avoid
+  // ambiguities of Euler angle decomposition for combined rotations.
+  gp_Trsf trsf;
+  if (m_delta.Form() != gp_Identity)
+  {
+    trsf = m_delta;
+  }
+  else
+  {
+    // Fallback: rebuild from params (Euler XYZ + T)
+    const double rx = rxDeg() * (M_PI / 180.0);
+    const double ry = ryDeg() * (M_PI / 180.0);
+    const double rz = rzDeg() * (M_PI / 180.0);
+    gp_Quaternion q; q.SetEulerAngles(gp_Intrinsic_XYZ, rx, ry, rz);
+    trsf.SetTransformation(q, gp_Vec(tx(), ty(), tz()));
+  }
 
   BRepBuilderAPI_Transform tr(m_source->shape(), trsf, true);
   m_shape = tr.Shape();
