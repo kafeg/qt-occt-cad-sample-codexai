@@ -46,3 +46,18 @@
 ## UI Actions
 - File/Toolbar: `Add Box`, `Add Cylinder` open dialogs and push features, then `Document::recompute()` and viewer sync.
 - Test toolbar: `Clear All`, `Add Sample` (adds 3 boxes and 3 cylinders; cylinders row offset along +Y). Local transforms applied via AIS for layout only.
+
+## External Learning Resources
+
+- Open CASCADE (OCCT)
+  - OCCT Overview & Docs: https://dev.opencascade.org/doc/overview/html/index.html — Entry point to modeling data, algorithms, and visualization docs used by `KernelAPI` and AIS viewer.
+  - OCCT Resources & Tutorials: https://dev.opencascade.org/resources — Official tutorials/samples to understand primitives, booleans, and viewer basics mirrored by our core/viewer layers.
+
+- Qt 6
+  - Qt 6 Documentation: https://doc.qt.io/qt-6/ — Main docs for widgets, events, and rendering; relevant for `MainWindow`, dialogs, and integration.
+  - QOpenGLWidget: https://doc.qt.io/qt-6/qopenglwidget.html — Rendering surface used by `OcctQOpenGLWidgetViewer` to host OCCT’s 3D viewer.
+  - Qt Widgets Module: https://doc.qt.io/qt-6/qtwidgets-index.html — Menus, dialogs, and layout patterns used throughout the UI layer.
+
+- Autodesk Fusion 360 (Conceptual Reference)
+  - Fusion 360 Help: https://help.autodesk.com/view/fusion360/ENU/ — Official reference for sketch/solid workflows that inspire our feature/timeline model.
+  - Learning Paths & Tutorials: https://www.autodesk.com/learn/paths/learn-fusion-360 — Guided lessons on sketches, constraints, and solid features analogous to our planned sketch module and primitives.

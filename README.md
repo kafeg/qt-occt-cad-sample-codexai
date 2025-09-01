@@ -6,6 +6,12 @@ An extensible, layered skeleton for a parametric CAD application built on Open C
 
 ## Architecture
 
+For a deeper overview and Fusion 360 concept mapping, see `docs/architecture.md`.
+
+## Docs
+
+- Architecture Overview: `docs/architecture.md`
+
 - Viewer: Reusable OCCT `QOpenGLWidget` (`OcctQOpenGLWidgetViewer`) with input mapped via `AIS_ViewController`. Rendering and input are decoupled from commands.
 - Core (Kernel): Thin wrappers over OCCT (e.g., `BRepPrimAPI_*`, `BRepAlgoAPI_*`) in `KernelAPI` to isolate OCCT usage. Currently: box, cylinder, fuse.
 - Model: `Feature` base class with typed parameter map and resulting `TopoDS_Shape`; `Document` is an ordered list of features and recompute logic.
