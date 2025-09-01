@@ -2,7 +2,11 @@
 
 An extensible, layered skeleton for a parametric CAD application built on Open CASCADE Technology (OCCT) and Qt6. The design and UX goals are inspired by modern parametric CAD workflows (browser with features/history, sketch → solid operations, command-driven UI), while keeping rendering and input decoupled from the geometric kernel.
 
-![sample screenshot](/images/occt-qopenglwidget-sample-wnt.png)
+![sample screenshot](/docs/sample-screenshot.png)
+
+Initially inspired by https://github.com/gkv311/occt-samples-qopenglwidget
+
+Mostly this is just playground for try to work with GitHub Codex AI CLI Agent.
 
 ## Architecture
 
