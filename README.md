@@ -6,7 +6,7 @@ An extensible, layered skeleton for a parametric CAD application built on Open C
 
 Initially inspired by https://github.com/gkv311/occt-samples-qopenglwidget
 
-Mostly this is just playground for try to work with GitHub Codex AI CLI Agent.
+Mostly this is just playground for try to work with GitHub Codex AI CLI Agent. 99% code written automatically by Codex by text prompts and manual review. This is not ready project, just simple skeleton which tried to be extandable for future investigations if needed deeper realization of parametric CAD.
 
 ## Architecture
 
