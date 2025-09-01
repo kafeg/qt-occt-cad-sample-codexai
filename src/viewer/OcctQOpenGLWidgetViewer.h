@@ -21,7 +21,7 @@ class Sketch; // forward decl (from src/sketch)
 
 // Reusable OCCT viewer widget (QOpenGLWidget + AIS_ViewController glue)
 // - Owns V3d_Viewer/View and AIS_InteractiveContext
-// - Renders, handles input, selection, grid auto-step, view cube and axes
+// - Renders, handles input, selection, view cube and axes
 class OcctQOpenGLWidgetViewer : public QOpenGLWidget, public AIS_ViewController
 {
   Q_OBJECT
@@ -36,6 +36,11 @@ public:
 
   virtual QSize minimumSizeHint() const override { return QSize(200, 200); }
   virtual QSize sizeHint() const override { return QSize(720, 480); }
+
+public:
+  // Reset camera: look at origin (preserve orientation) and
+  // set eye distance to currentDistance * distanceFactor (default 0.2)
+  void resetViewToOrigin(double distanceFactor = 0.2);
 
 public:
   virtual void OnSubviewChanged(const Handle(AIS_InteractiveContext)&,
@@ -87,7 +92,6 @@ private:
   virtual void handleViewRedraw(const Handle(AIS_InteractiveContext)& theCtx,
                                 const Handle(V3d_View)&               theView) override;
 
-  void updateGridStepForView(const Handle(V3d_View)& theView); // adaptive grid step
   bool rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit) const; // project to Z=0
 
 private:
@@ -98,7 +102,7 @@ private:
   Handle(V3d_View)               m_focusView;        // current focus subview (if any)
   QString                        m_glInfo;           // GL diagnostics info
   bool                           m_isCoreProfile = true; // prefer core GL profile
-  double                         m_gridStep = 10.0;      // current grid step (world units)
+  Handle(AIS_InteractiveObject)  m_grid;             // custom infinite grid
 
   Handle(AIS_Line)               m_axisX;            // X axis guide
   Handle(AIS_Line)               m_axisY;            // Y axis guide

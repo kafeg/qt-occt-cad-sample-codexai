@@ -16,7 +16,9 @@ add_executable(occt-qopenglwidget-tests
   sketch/sketch_constraints_test.cpp
   sketch/sketch_order_export_test.cpp
   sketch/sketch_spatial_index_test.cpp
+  grid_step_test.cpp
   sketch_render_test.cpp
+  view_reset_test.cpp
   serialization/serialization_test.cpp
   ui/command_integration_test.cpp
   ui/document_test.cpp

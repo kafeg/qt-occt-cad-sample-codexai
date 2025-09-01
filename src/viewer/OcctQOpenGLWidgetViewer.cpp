@@ -28,7 +28,7 @@
 #include <Prs3d_TypeOfHighlight.hxx>
 #include <Quantity_Color.hxx>
 #include <Standard_Version.hxx>
-#include <V3d_RectangularGrid.hxx>
+#include "InfiniteGrid.h"
 #include <gp_Pnt.hxx>
 
 #include <BRep_Builder.hxx>
@@ -75,9 +75,7 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   m_viewer->SetDefaultBgGradientColors(aBgTop, aBgBottom, Aspect_GradientFillMethod_Elliptical);
   m_viewer->SetDefaultLights();
   m_viewer->SetLightOn();
-  m_gridStep = 10.0;
-  m_viewer->SetRectangularGridValues(0.0, 0.0, m_gridStep, m_gridStep, 0.0);
-  m_viewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
+  // No built-in OCCT grid; a custom AIS grid object is used instead
 
   m_context = new AIS_InteractiveContext(m_viewer);
 
@@ -148,6 +146,52 @@ OcctQOpenGLWidgetViewer::~OcctQOpenGLWidgetViewer()
   m_viewer.Nullify();
   makeCurrent();
   aDisp.Nullify();
+}
+
+void OcctQOpenGLWidgetViewer::resetViewToOrigin(double distanceFactor)
+{
+  if (m_view.IsNull()) return;
+
+  // Clamp factor to sane range
+  if (!(distanceFactor > 0.0)) distanceFactor = 0.5;
+
+  // Measure current eye-to-at distance
+  Standard_Real ex0 = 0.0, ey0 = 0.0, ez0 = 0.0;
+  Standard_Real ax0 = 0.0, ay0 = 0.0, az0 = 0.0;
+  m_view->Eye(ex0, ey0, ez0);
+  m_view->At(ax0, ay0, az0);
+  const gp_Pnt curEye(ex0, ey0, ez0);
+  const gp_Pnt curAt(ax0, ay0, az0);
+  Standard_Real curDist = curEye.Distance(curAt);
+  if (curDist <= 0.0) curDist = 1000.0; // fallback if degenerate
+
+  // Preserve current view direction; only retarget and scale distance
+  gp_Vec dir(gp_Pnt(ax0, ay0, az0), gp_Pnt(ex0, ey0, ez0));
+  if (dir.Magnitude() <= 0.0)
+  {
+    // Default to +Z if direction is degenerate
+    dir = gp_Vec(0.0, 0.0, 1.0);
+  }
+  dir.Normalize();
+  const Standard_Real newDist = curDist * distanceFactor;
+  m_view->SetAt(0.0, 0.0, 0.0);
+  const Standard_Real nx = 0.0 + dir.X() * newDist;
+  const Standard_Real ny = 0.0 + dir.Y() * newDist;
+  const Standard_Real nz = 0.0 + dir.Z() * newDist;
+  m_view->SetEye(nx, ny, nz);
+
+  // Invalidate and request repaint; also update grid placement if present
+  if (!m_context.IsNull())
+  {
+    m_context->UpdateCurrentViewer();
+  }
+  m_view->Invalidate();
+  if (!m_grid.IsNull())
+  {
+    Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
+    if (!grid.IsNull()) { grid->updateFromView(m_view); m_context->Redisplay(grid, Standard_False); }
+  }
+  update();
 }
 
 void OcctQOpenGLWidgetViewer::dumpGlInfo(bool theIsBasic, bool theToPrint)
@@ -238,7 +282,11 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     trDr->DatumAspect()->SetAxisLength(20.0, 20.0, 20.0);
     m_originTrihedron->SetAttributes(trDr);
     m_context->Display(m_originTrihedron, 0, 2, false);
-    updateGridStepForView(m_view);
+    // Display custom infinite grid and initialize
+    m_grid = new InfiniteGrid();
+    m_context->Display(m_grid, 0, 0, false);
+    Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
+    if (!grid.IsNull()) { grid->updateFromView(m_view); m_context->Redisplay(grid, Standard_False); }
   }
 }
 
@@ -350,10 +398,7 @@ void OcctQOpenGLWidgetViewer::wheelEvent(QWheelEvent* theEvent)
     }
   }
   if (UpdateZoom(Aspect_ScrollDelta(aPos, double(theEvent->angleDelta().y()) / 8.0)))
-  {
-    updateGridStepForView(!m_focusView.IsNull() ? m_focusView : m_view);
-    updateView();
-  }
+  { updateView(); }
 }
 
 void OcctQOpenGLWidgetViewer::updateView()
@@ -417,7 +462,9 @@ void OcctQOpenGLWidgetViewer::handleViewRedraw(const Handle(AIS_InteractiveConte
                                                const Handle(V3d_View)& theView)
 {
   AIS_ViewController::handleViewRedraw(theCtx, theView);
-  updateGridStepForView(theView);
+  // Keep custom grid in sync with current view
+  Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
+  if (!grid.IsNull()) { grid->updateFromView(theView); theCtx->Redisplay(grid, Standard_False); }
   if (myToAskNextFrame) updateView();
 }
 
@@ -433,29 +480,7 @@ bool OcctQOpenGLWidgetViewer::rayHitZ0(const Handle(V3d_View)& theView, int theP
   return Standard_True;
 }
 
-void OcctQOpenGLWidgetViewer::updateGridStepForView(const Handle(V3d_View)& theView)
-{
-  if (theView.IsNull() || m_viewer.IsNull()) return;
-  Handle(Aspect_NeutralWindow) aWnd = Handle(Aspect_NeutralWindow)::DownCast(theView->Window());
-  if (aWnd.IsNull()) return;
-  Standard_Integer vpW = 0, vpH = 0; aWnd->Size(vpW, vpH);
-  if (vpW <= 0 || vpH <= 0) return;
-  const int cx = vpW / 2; const int cy = vpH / 2; gp_Pnt p0, p1;
-  if (!rayHitZ0(theView, cx, cy, p0) || !rayHitZ0(theView, cx + 20, cy, p1)) return;
-  const double pixelsTarget = 22.0;
-  const double worldPer20px = p0.Distance(p1); if (worldPer20px <= 0.0) return;
-  const double worldPerPixel = worldPer20px / 20.0; double desiredStep = worldPerPixel * pixelsTarget;
-  const double minStep = 1.0e-4; if (desiredStep < minStep) desiredStep = minStep;
-  const double maxStep = 1.0e+3; if (desiredStep > maxStep) desiredStep = maxStep;
-  const double pow10 = pow(10.0, floor(log10(desiredStep))); const double norm = desiredStep / pow10;
-  double snapped = 1.0 * pow10;
-  if (norm <= 1.0) snapped = 1.0 * pow10; else if (norm <= 2.0) snapped = 2.0 * pow10;
-  else if (norm <= 5.0) snapped = 5.0 * pow10; else snapped = 10.0 * pow10;
-  if (Abs(snapped - m_gridStep) < (1.0e-6 * Max(1.0, m_gridStep))) return;
-  m_gridStep = snapped;
-  m_viewer->SetRectangularGridValues(0.0, 0.0, m_gridStep, m_gridStep, 0.0);
-  m_viewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
-}
+// updateGridStepForView removed: now handled by InfiniteGrid
 
 void OcctQOpenGLWidgetViewer::OnSubviewChanged(const Handle(AIS_InteractiveContext)&,
                                                const Handle(V3d_View)&,
