@@ -38,9 +38,9 @@ public:
   virtual QSize sizeHint() const override { return QSize(720, 480); }
 
 public:
-  // Reset camera: look at origin (preserve orientation) and
-  // set eye distance to currentDistance * distanceFactor (default 0.2)
-  void resetViewToOrigin(double distanceFactor = 0.2);
+  // Reset camera: look at origin with a fixed isometric projection and
+  // place eye at (0,0,distance) regardless of previous state (default 5.0)
+  void resetViewToOrigin(Standard_Real distance = 5.0);
 
 public:
   virtual void OnSubviewChanged(const Handle(AIS_InteractiveContext)&,

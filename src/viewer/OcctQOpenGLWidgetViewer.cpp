@@ -148,37 +148,17 @@ OcctQOpenGLWidgetViewer::~OcctQOpenGLWidgetViewer()
   aDisp.Nullify();
 }
 
-void OcctQOpenGLWidgetViewer::resetViewToOrigin(double distanceFactor)
+void OcctQOpenGLWidgetViewer::resetViewToOrigin(Standard_Real distance)
 {
   if (m_view.IsNull()) return;
 
-  // Clamp factor to sane range
-  if (!(distanceFactor > 0.0)) distanceFactor = 0.5;
+  if (!(distance > 0.0)) distance = 5.0;
 
-  // Measure current eye-to-at distance
-  Standard_Real ex0 = 0.0, ey0 = 0.0, ez0 = 0.0;
-  Standard_Real ax0 = 0.0, ay0 = 0.0, az0 = 0.0;
-  m_view->Eye(ex0, ey0, ez0);
-  m_view->At(ax0, ay0, az0);
-  const gp_Pnt curEye(ex0, ey0, ez0);
-  const gp_Pnt curAt(ax0, ay0, az0);
-  Standard_Real curDist = curEye.Distance(curAt);
-  if (curDist <= 0.0) curDist = 1000.0; // fallback if degenerate
-
-  // Preserve current view direction; only retarget and scale distance
-  gp_Vec dir(gp_Pnt(ax0, ay0, az0), gp_Pnt(ex0, ey0, ez0));
-  if (dir.Magnitude() <= 0.0)
-  {
-    // Default to +Z if direction is degenerate
-    dir = gp_Vec(0.0, 0.0, 1.0);
-  }
-  dir.Normalize();
-  const Standard_Real newDist = curDist * distanceFactor;
+  // Ignore previous distance/orientation; set fixed orientation and eye
   m_view->SetAt(0.0, 0.0, 0.0);
-  const Standard_Real nx = 0.0 + dir.X() * newDist;
-  const Standard_Real ny = 0.0 + dir.Y() * newDist;
-  const Standard_Real nz = 0.0 + dir.Z() * newDist;
-  m_view->SetEye(nx, ny, nz);
+  m_view->SetProj(V3d_XposYnegZpos);
+  // Place eye along the isometric (+X, -Y, +Z) direction
+  m_view->SetEye(distance, -distance, distance);
 
   // Invalidate and request repaint; also update grid placement if present
   if (!m_context.IsNull())
@@ -290,8 +270,8 @@ void OcctQOpenGLWidgetViewer::initializeGL()
   }
 
   // Position camera towards origin after grid and axes are displayed
-  // Use a small factor to start close to (0,0,0)
-  resetViewToOrigin(0.05);
+  // Use a fixed distance from origin
+  resetViewToOrigin(5.0);
 }
 
 void OcctQOpenGLWidgetViewer::closeEvent(QCloseEvent* theEvent)
