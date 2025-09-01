@@ -29,6 +29,7 @@
 #include <Quantity_Color.hxx>
 #include <QPainter>
 #include <Standard_Version.hxx>
+#include <PrsMgr_DisplayStatus.hxx>
 #include "InfiniteGrid.h"
 #include <gp_Pnt.hxx>
 
@@ -235,7 +236,8 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     aWindow->SetSize(aViewSize.x(), aViewSize.y());
     m_view->SetWindow(aWindow, aGlCtx->RenderingContext());
     dumpGlInfo(true, true);
-    m_context->Display(m_viewCube, 0, 0, false);
+    // Display view cube using its default mode
+    m_context->Display(m_viewCube, Standard_False);
   }
 
   {
@@ -243,18 +245,29 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     const Standard_Real L = 1000.0;
     Handle(Geom_Line) aGeomX = new Geom_Line(gp_Pnt(-L, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0));
     Handle(Geom_Line) aGeomY = new Geom_Line(gp_Pnt(0.0, -L, 0.0), gp_Dir(0.0, 1.0, 0.0));
+    Handle(Geom_Line) aGeomZ = new Geom_Line(gp_Pnt(0.0, 0.0, -L), gp_Dir(0.0, 0.0, 1.0));
     m_axisX = new AIS_Line(aGeomX);
     m_axisY = new AIS_Line(aGeomY);
+    m_axisZ = new AIS_Line(aGeomZ);
     m_axisX->SetColor(Quantity_NOC_RED);
-    m_axisY->SetColor(Quantity_NOC_GREEN);
+    m_axisY->SetColor(Quantity_NOC_BLUE);
+    m_axisZ->SetColor(Quantity_NOC_BLUE);
     Handle(Prs3d_Drawer) xDr = m_axisX->Attributes(); if (xDr.IsNull()) xDr = new Prs3d_Drawer();
     xDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_RED, Aspect_TOL_SOLID, 2.0f));
     m_axisX->SetAttributes(xDr);
     Handle(Prs3d_Drawer) yDr = m_axisY->Attributes(); if (yDr.IsNull()) yDr = new Prs3d_Drawer();
     yDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_GREEN, Aspect_TOL_SOLID, 2.0f));
     m_axisY->SetAttributes(yDr);
-    m_context->Display(m_axisX, 0, 1, false);
-    m_context->Display(m_axisY, 0, 1, false);
+    Handle(Prs3d_Drawer) zDr = m_axisZ->Attributes(); if (zDr.IsNull()) zDr = new Prs3d_Drawer();
+    zDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_BLUE1, Aspect_TOL_SOLID, 2.0f));
+    m_axisZ->SetAttributes(zDr);
+    // Show axes; default selection mode; raise priority
+    m_context->Display(m_axisX, Standard_False);
+    m_context->Display(m_axisY, Standard_False);
+    m_context->Display(m_axisZ, Standard_False);
+    m_context->SetDisplayPriority(m_axisX, 1);
+    m_context->SetDisplayPriority(m_axisY, 1);
+    m_context->SetDisplayPriority(m_axisZ, 1);
 
     m_originPlacement = new Geom_Axis2Placement(gp_Ax2(gp::Origin(), gp::DZ(), gp::DX()));
     m_originTrihedron = new AIS_Trihedron(m_originPlacement);
@@ -262,10 +275,13 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     trDr->SetDatumAspect(new Prs3d_DatumAspect());
     trDr->DatumAspect()->SetAxisLength(20.0, 20.0, 20.0);
     m_originTrihedron->SetAttributes(trDr);
-    m_context->Display(m_originTrihedron, 0, 2, false);
-    // Display custom infinite grid and initialize
+    // Trihedron
+    m_context->Display(m_originTrihedron, Standard_False);
+    m_context->SetDisplayPriority(m_originTrihedron, 2);
+    // Display custom infinite grid and initialize (force immediate update so it becomes visible)
     m_grid = new InfiniteGrid();
-    m_context->Display(m_grid, 0, 0, false);
+    // Grid presentation; selection is disabled via empty ComputeSelection()
+    m_context->Display(m_grid, 0, 0, true, PrsMgr_DisplayStatus_Displayed);
     Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
     if (!grid.IsNull()) { grid->updateFromView(m_view); m_context->Redisplay(grid, Standard_False); }
   }
@@ -291,11 +307,14 @@ void OcctQOpenGLWidgetViewer::keyPressEvent(QKeyEvent* theEvent)
       // Fit-all while preserving axis visibility
       const bool hadX = !m_axisX.IsNull() && m_context->IsDisplayed(m_axisX);
       const bool hadY = !m_axisY.IsNull() && m_context->IsDisplayed(m_axisY);
+      const bool hadZ = !m_axisZ.IsNull() && m_context->IsDisplayed(m_axisZ);
       if (hadX) m_context->Erase(m_axisX, false);
       if (hadY) m_context->Erase(m_axisY, false);
+      if (hadZ) m_context->Erase(m_axisZ, false);
       m_view->FitAll(0.01, false);
-      if (hadX) m_context->Display(m_axisX, 0, 1, false);
-      if (hadY) m_context->Display(m_axisY, 0, 1, false);
+      if (hadX) { m_context->Display(m_axisX, Standard_False); m_context->SetDisplayPriority(m_axisX, 1); }
+      if (hadY) { m_context->Display(m_axisY, Standard_False); m_context->SetDisplayPriority(m_axisY, 1); }
+      if (hadZ) { m_context->Display(m_axisZ, Standard_False); m_context->SetDisplayPriority(m_axisZ, 1); }
       update();
       return;
     }
@@ -501,7 +520,9 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addBody(const TopoDS_Shape& theShape,
 {
   Handle(AIS_Shape) aShape = new AIS_Shape(theShape);
   m_bodies.Append(aShape);
-  m_context->Display(aShape, theDispMode, theDispPriority, theToUpdate);
+  aShape->SetDisplayMode(theDispMode);
+  m_context->Display(aShape, theDispMode, 0, theToUpdate, PrsMgr_DisplayStatus_Displayed);
+  if (theDispPriority != 0) { m_context->SetDisplayPriority(aShape, theDispPriority); }
   return aShape;
 }
 
@@ -588,7 +609,8 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketc
   ais->SetAttributes(drw);
 
   m_sketches.Append(ais);
-  m_context->Display(ais, AIS_WireFrame, 0, false);
+  ais->SetDisplayMode(AIS_WireFrame);
+  m_context->Display(ais, AIS_WireFrame, 0, false, PrsMgr_DisplayStatus_Displayed);
   return ais;
 }
 

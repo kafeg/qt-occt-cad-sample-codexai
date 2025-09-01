@@ -61,3 +61,8 @@
 - Autodesk Fusion 360 (Conceptual Reference)
   - Fusion 360 Help: https://help.autodesk.com/view/fusion360/ENU/ — Official reference for sketch/solid workflows that inspire our feature/timeline model.
   - Learning Paths & Tutorials: https://www.autodesk.com/learn/paths/learn-fusion-360 — Guided lessons on sketches, constraints, and solid features analogous to our planned sketch module and primitives.
+
+## Notes for Agents
+- Prefer real, local versions over guesses. Use the headers installed by vcpkg in `build/vcpkg_installed/<triplet>/include/opencascade/` to confirm OCCT APIs and enums.
+- Baseline in this repo: OpenCascade 7.9.1, Qt 6.9.1 — target these directly; avoid version guards unless explicitly requested.
+- No network assumptions; rely on local docs/code. Keep changes minimal and respect the code style.

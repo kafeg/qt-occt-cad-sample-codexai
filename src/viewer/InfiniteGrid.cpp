@@ -154,8 +154,9 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
   if (gridSegs > 0)
   {
     // Separate minor and major lines (every 10th) for better visibility
-    Handle(Graphic3d_ArrayOfSegments) segMinor = new Graphic3d_ArrayOfSegments(2 * gridSegs, gridSegs);
-    Handle(Graphic3d_ArrayOfSegments) segMajor = new Graphic3d_ArrayOfSegments(2 * gridSegs / 10 + 4, gridSegs / 10 + 2);
+    // Unindexed arrays: pairs of vertices define segments implicitly
+    Handle(Graphic3d_ArrayOfSegments) segMinor = new Graphic3d_ArrayOfSegments(2 * gridSegs);
+    Handle(Graphic3d_ArrayOfSegments) segMajor = new Graphic3d_ArrayOfSegments(2 * gridSegs / 10 + 4);
 
     auto isMajor = [](Standard_Integer i) {
       Standard_Integer m = i % 10; if (m < 0) m += 10; return m == 0; };
@@ -167,7 +168,6 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
       Handle(Graphic3d_ArrayOfSegments)& target = isMajor(ix) ? segMajor : segMinor;
       target->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)m_YMin, 0.0f);
       target->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)m_YMax, 0.0f);
-      target->AddEdge(2);
     }
     // Horizontal lines (constant Y)
     for (Standard_Integer iy = y0; iy <= y1; ++iy)
@@ -176,7 +176,6 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
       Handle(Graphic3d_ArrayOfSegments)& target = isMajor(iy) ? segMajor : segMinor;
       target->AddVertex((Standard_ShortReal)m_XMin, (Standard_ShortReal)y, 0.0f);
       target->AddVertex((Standard_ShortReal)m_XMax, (Standard_ShortReal)y, 0.0f);
-      target->AddEdge(2);
     }
 
     if (segMinor->VertexNumber() > 0)
@@ -196,17 +195,17 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
   // Axes: separate groups and arrays for X and Y with distinct colors
   {
     // X axis
-    Handle(Graphic3d_ArrayOfSegments) aAxisX = new Graphic3d_ArrayOfSegments(2, 1);
+    Handle(Graphic3d_ArrayOfSegments) aAxisX = new Graphic3d_ArrayOfSegments(2);
     aAxisX->AddVertex((Standard_ShortReal)m_XMin, 0.0f, 0.0f);
-    aAxisX->AddVertex((Standard_ShortReal)m_XMax, 0.0f, 0.0f); aAxisX->AddEdge(2);
+    aAxisX->AddVertex((Standard_ShortReal)m_XMax, 0.0f, 0.0f);
     Handle(Graphic3d_Group) gX = thePrs->NewGroup();
     gX->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kAxesXColor(), Aspect_TOL_SOLID, 2.0f));
     gX->AddPrimitiveArray(aAxisX);
 
     // Y axis
-    Handle(Graphic3d_ArrayOfSegments) aAxisY = new Graphic3d_ArrayOfSegments(2, 1);
+    Handle(Graphic3d_ArrayOfSegments) aAxisY = new Graphic3d_ArrayOfSegments(2);
     aAxisY->AddVertex(0.0f, (Standard_ShortReal)m_YMin, 0.0f);
-    aAxisY->AddVertex(0.0f, (Standard_ShortReal)m_YMax, 0.0f); aAxisY->AddEdge(2);
+    aAxisY->AddVertex(0.0f, (Standard_ShortReal)m_YMax, 0.0f);
     Handle(Graphic3d_Group) gY = thePrs->NewGroup();
     gY->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kAxesYColor(), Aspect_TOL_SOLID, 2.0f));
     gY->AddPrimitiveArray(aAxisY);
@@ -215,11 +214,11 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
   // Origin marker: small cross sized relative to step
   {
     const Standard_Real s = Max(0.25 * m_Step, 1.0e-3);
-    Handle(Graphic3d_ArrayOfSegments) aCross = new Graphic3d_ArrayOfSegments(4, 2);
+    Handle(Graphic3d_ArrayOfSegments) aCross = new Graphic3d_ArrayOfSegments(4);
     aCross->AddVertex((Standard_ShortReal)(-s), 0.0f, 0.0f);
-    aCross->AddVertex((Standard_ShortReal)(+s), 0.0f, 0.0f); aCross->AddEdge(2);
+    aCross->AddVertex((Standard_ShortReal)(+s), 0.0f, 0.0f);
     aCross->AddVertex(0.0f, (Standard_ShortReal)(-s), 0.0f);
-    aCross->AddVertex(0.0f, (Standard_ShortReal)(+s), 0.0f); aCross->AddEdge(2);
+    aCross->AddVertex(0.0f, (Standard_ShortReal)(+s), 0.0f);
     Handle(Graphic3d_Group) gO = thePrs->NewGroup();
     gO->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(kOriginColor(), Aspect_TOL_SOLID, 2.0f));
     gO->AddPrimitiveArray(aCross);
