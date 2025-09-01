@@ -1,5 +1,6 @@
 add_library(viewer STATIC
-    OcctQOpenGLWidgetViewer.cpp
+  OcctQOpenGLWidgetViewer.cpp
+  CustomManipulator.cpp
     OcctQOpenGLWidgetViewer.h
     OcctGlTools.cpp
     OcctGlTools.h

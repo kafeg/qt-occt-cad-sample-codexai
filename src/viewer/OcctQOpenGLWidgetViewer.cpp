@@ -34,6 +34,7 @@
 #include "InfiniteGrid.h"
 #include <gp_Pnt.hxx>
 #include "SceneGizmos.h"
+#include "CustomManipulator.h"
 
 #include <BRep_Builder.hxx>
 #include <TopoDS_Compound.hxx>
@@ -614,15 +615,30 @@ void OcctQOpenGLWidgetViewer::showManipulator(const Handle(AIS_Shape)& onShape)
 {
   if (onShape.IsNull()) return;
   hideManipulator();
-  m_manip = new AIS_Manipulator();
-  // Attach to the object; disable scaling, enable translation+rotation
-  m_manip->Attach(onShape);
+  m_manip = new CustomManipulator();
+  m_manip->SetSkinMode(AIS_Manipulator::ManipulatorSkin_Shaded); // keep shaded, custom hides scale knobs
+  // Attach to the object with modes disabled; we'll enable only needed ones explicitly
+  AIS_Manipulator::OptionsForAttach opts;
+  opts.SetEnableModes(Standard_False); // do not auto-activate all selection modes
+  m_manip->Attach(onShape, opts);
+  // Hide all scaling visuals (center + axes) — not supported in MoveFeature
   m_manip->SetPart(AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
+  m_manip->SetPart(0, AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
+  m_manip->SetPart(1, AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
+  m_manip->SetPart(2, AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
+  // Hide translation plane handles (squares between axes) — also not supported
+  m_manip->SetPart(AIS_ManipulatorMode::AIS_MM_TranslationPlane, Standard_False);
+  m_manip->SetPart(0, AIS_ManipulatorMode::AIS_MM_TranslationPlane, Standard_False);
+  m_manip->SetPart(1, AIS_ManipulatorMode::AIS_MM_TranslationPlane, Standard_False);
+  m_manip->SetPart(2, AIS_ManipulatorMode::AIS_MM_TranslationPlane, Standard_False);
   m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Translation);
   m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Rotation);
   // Do NOT auto-activate on hover; start only on explicit press
   m_manip->SetModeActivationOnDetection(Standard_False);
   m_context->Display(m_manip, Standard_False);
+  // Enable only required manipulation modes (no scaling or translation-plane)
+  m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Translation);
+  m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Rotation);
   m_context->SetZLayer(m_manip, Graphic3d_ZLayerId_Top);
   m_lastManipDelta = gp_Trsf();
   m_isManipDragging = false;
