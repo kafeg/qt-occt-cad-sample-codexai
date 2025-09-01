@@ -12,6 +12,8 @@ add_executable(occt-qopenglwidget-tests
   features/cylinder_feature_test.cpp
   features/extrude_feature_test.cpp
   features/move_feature_test.cpp
+  features/move_feature_rotation_test.cpp
+  features/move_feature_stress_test.cpp
   model/document_timeline_test.cpp
   sketch/sketch_storage_test.cpp
   sketch/sketch_constraints_test.cpp
