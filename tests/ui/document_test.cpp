@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Document.h>
-#include <CreateBoxCommand.h>
+#include <command/CreateBoxCommand.h>
 #include <BoxFeature.h>
 
 // These tests model the idea of tabs: independent documents.
@@ -47,4 +47,3 @@ TEST(TabsModel, CommandsApplyPerDocument)
   EXPECT_EQ(doc1.features().Size(), 1);
   EXPECT_EQ(doc2.features().Size(), 1);
 }
-

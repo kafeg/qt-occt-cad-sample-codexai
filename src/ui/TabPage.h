@@ -11,6 +11,7 @@
 class Document;
 class OcctQOpenGLWidgetViewer;
 
+// Per-tab page: owns a Document and embeds a reusable 3D viewer
 class TabPage : public QWidget
 {
   Q_OBJECT
@@ -18,15 +19,15 @@ public:
   explicit TabPage(QWidget* parent = nullptr);
   ~TabPage() override;
 
-  OcctQOpenGLWidgetViewer* viewer() const { return m_viewer; }
-  Document&                doc()          { return *m_doc; }
+  OcctQOpenGLWidgetViewer* viewer() const { return m_viewer; } // access embedded viewer
+  Document&                doc()          { return *m_doc; }   // access document
 
-  TColStd_IndexedDataMapOfTransientTransient& featureToBody() { return m_featureToBody; }
-  TColStd_IndexedDataMapOfTransientTransient& bodyToFeature() { return m_bodyToFeature; }
+  TColStd_IndexedDataMapOfTransientTransient& featureToBody() { return m_featureToBody; } // Feature -> AIS map
+  TColStd_IndexedDataMapOfTransientTransient& bodyToFeature() { return m_bodyToFeature; } // AIS -> Feature map
 
 private:
-  OcctQOpenGLWidgetViewer*                 m_viewer = nullptr;
-  std::unique_ptr<Document>                m_doc;
-  TColStd_IndexedDataMapOfTransientTransient m_featureToBody;
-  TColStd_IndexedDataMapOfTransientTransient m_bodyToFeature;
+  OcctQOpenGLWidgetViewer*                 m_viewer = nullptr; // OCCT viewer widget
+  std::unique_ptr<Document>                m_doc;              // model document
+  TColStd_IndexedDataMapOfTransientTransient m_featureToBody;  // feature -> body
+  TColStd_IndexedDataMapOfTransientTransient m_bodyToFeature;  // body -> feature
 };

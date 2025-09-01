@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <Document.h>
-#include <CreateBoxCommand.h>
-#include <CreateCylinderCommand.h>
+#include <command/CreateBoxCommand.h>
+#include <command/CreateCylinderCommand.h>
 
 TEST(UICommands, CreateBoxAddsFeature) {
   Document doc;
@@ -38,4 +38,3 @@ TEST(UICommands, CreateCylinderAddsFeature) {
   auto f = doc.features().First();
   EXPECT_FALSE(f.IsNull());
 }
-

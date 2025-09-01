@@ -12,14 +12,14 @@
 class Feature;
 DEFINE_STANDARD_HANDLE(Feature, Standard_Transient)
 
-// Abstract feature with parameters and resulting shape
+// Abstract feature with typed parameter map and resulting shape
 class Feature : public Standard_Transient
 {
   DEFINE_STANDARD_RTTIEXT(Feature, Standard_Transient)
 
 public:
   // Common parameter keys across all features
-  enum class ParamKey
+  enum class ParamKey // common keys shared by primitives
   {
     Dx,
     Dy,
@@ -33,8 +33,8 @@ public:
     std::size_t operator()(ParamKey k) const noexcept { return static_cast<std::size_t>(k); }
   };
 
-  using ParamValue = std::variant<int, double, TCollection_AsciiString>;
-  using ParamMap   = std::unordered_map<ParamKey, ParamValue, ParamKeyHash>;
+  using ParamValue = std::variant<int, double, TCollection_AsciiString>;     // numeric or string param
+  using ParamMap   = std::unordered_map<ParamKey, ParamValue, ParamKeyHash>; // keyed parameter map
 
   virtual ~Feature() = default;
 

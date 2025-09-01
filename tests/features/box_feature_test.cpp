@@ -4,10 +4,7 @@
 
 #include <TopExp_Explorer.hxx>
 #include <TopAbs_ShapeEnum.hxx>
-#include <Bnd_Box.hxx>
-#include <BRepBndLib.hxx>
-#include <BRepGProp.hxx>
-#include <GProp_GProps.hxx>
+#include <common/test_utils.h>
 
 TEST(Model, BoxFeatureProducesSixFaces) {
   Handle(BoxFeature) bf = new BoxFeature();
@@ -15,11 +12,7 @@ TEST(Model, BoxFeatureProducesSixFaces) {
   bf->execute();
 
   const auto& shp = bf->shape();
-  int faceCount = 0;
-  for (TopExp_Explorer exp(shp, TopAbs_FACE); exp.More(); exp.Next()) {
-    ++faceCount;
-  }
-  EXPECT_EQ(faceCount, 6);
+  EXPECT_EQ(countFaces(shp), 6);
 }
 
 TEST(Model, BoxFeatureIsSolidWithBBoxAndVolume) {
@@ -33,19 +26,12 @@ TEST(Model, BoxFeatureIsSolidWithBBoxAndVolume) {
   EXPECT_EQ(shp.ShapeType(), TopAbs_SOLID);
 
   // Bounding box should match dimensions (within small tolerance)
-  Bnd_Box bb;
-  BRepBndLib::Add(shp, bb);
-  Standard_Real xmin = 0, ymin = 0, zmin = 0, xmax = 0, ymax = 0, zmax = 0;
-  bb.Get(xmin, ymin, zmin, xmax, ymax, zmax);
-  const double tol = 1e-9;
-  EXPECT_NEAR(xmax - xmin, dx, tol);
-  EXPECT_NEAR(ymax - ymin, dy, tol);
-  EXPECT_NEAR(zmax - zmin, dz, tol);
+  auto ext = bboxExtents(shp);
+  const double tol = 1e-6;
+  EXPECT_NEAR(ext[0], dx, tol);
+  EXPECT_NEAR(ext[1], dy, tol);
+  EXPECT_NEAR(ext[2], dz, tol);
 
   // Volume check
-  GProp_GProps props;
-  BRepGProp::VolumeProperties(shp, props);
-  const double volume = props.Mass();
-  EXPECT_NEAR(volume, dx * dy * dz, 1e-6);
+  EXPECT_NEAR(volume(shp), dx * dy * dz, 1e-6);
 }
-

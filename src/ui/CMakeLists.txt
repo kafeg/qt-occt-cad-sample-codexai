@@ -3,15 +3,15 @@ add_library(ui STATIC
     MainWindow.h
     TabPage.cpp
     TabPage.h
-    AbstractCommand.h
-    CreateBoxDialog.cpp
-    CreateBoxDialog.h
-    CreateBoxCommand.cpp
-    CreateBoxCommand.h
-    CreateCylinderDialog.cpp
-    CreateCylinderDialog.h
-    CreateCylinderCommand.cpp
-    CreateCylinderCommand.h
+    command/AbstractCommand.h
+    command/CreateBoxCommand.cpp
+    command/CreateBoxCommand.h
+    command/CreateCylinderCommand.cpp
+    command/CreateCylinderCommand.h
+    dialog/CreateBoxDialog.cpp
+    dialog/CreateBoxDialog.h
+    dialog/CreateCylinderDialog.cpp
+    dialog/CreateCylinderDialog.h
 )
 target_link_libraries(ui PUBLIC viewer model Qt6::Widgets Qt6::OpenGLWidgets)
 target_include_directories(ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -14,6 +14,7 @@ class OcctQOpenGLWidgetViewer;
 class QTabWidget;
 class TabPage;
 
+// Main app window: manages tabs, menu/toolbars, and sync to viewer
 class MainWindow : public QMainWindow
 {
   Q_OBJECT
@@ -23,17 +24,17 @@ public:
   ~MainWindow();
 
 private:
-  void createMenuBar();
-  void createToolBar();
-  void addBox();
-  void addCylinder();
-  void syncViewerFromDoc(bool toUpdate = true);
-  void clearAll();
-  void addSample();
-  void addNewTab();
+  void createMenuBar();             // File/Test menus and actions
+  void createToolBar();             // Toolbar with background slider and test actions
+  void addBox();                    // Open dialog and add BoxFeature
+  void addCylinder();               // Open dialog and add CylinderFeature
+  void syncViewerFromDoc(bool toUpdate = true); // Rebuild AIS bodies from Document
+  void clearAll();                  // Clear document and viewer
+  void addSample();                 // Add arranged sample primitives (test-only helpers)
+  void addNewTab();                 // Add a new tab page
 
   TabPage* currentPage() const;
 
 private:
-  QTabWidget* m_tabs = nullptr;
+  QTabWidget* m_tabs = nullptr; // App tabs; each holds a TabPage
 };

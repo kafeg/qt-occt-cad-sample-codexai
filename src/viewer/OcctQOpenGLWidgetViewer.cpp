@@ -132,6 +132,7 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
 
 OcctQOpenGLWidgetViewer::~OcctQOpenGLWidgetViewer()
 {
+  // Properly release OCCT resources bound to Qt GL context
   Handle(Aspect_DisplayConnection) aDisp = m_viewer->Driver()->GetDisplayConnection();
   m_context->RemoveAll(false);
   m_context.Nullify();
@@ -144,6 +145,7 @@ OcctQOpenGLWidgetViewer::~OcctQOpenGLWidgetViewer()
 
 void OcctQOpenGLWidgetViewer::dumpGlInfo(bool theIsBasic, bool theToPrint)
 {
+  // Collect key GL capabilities into a single text blob
   TColStd_IndexedDataMapOfStringString aGlCapsDict;
   m_view->DiagnosticInformation(aGlCapsDict,
                                 theIsBasic ? Graphic3d_DiagnosticInfo_Basic : Graphic3d_DiagnosticInfo_Complete);
@@ -174,6 +176,7 @@ void OcctQOpenGLWidgetViewer::initializeGL()
   aNativeWin      = (Aspect_Drawable)aWglWin;
 #endif
 
+  // Wrap current Qt OpenGL context for OCCT rendering
   Handle(OpenGl_Context) aGlCtx = new OpenGl_Context();
   if (!aGlCtx->Init(m_isCoreProfile))
   {
@@ -183,6 +186,7 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     return;
   }
 
+  // Bind OCCT neutral window to QWidget surface and size
   Handle(Aspect_NeutralWindow) aWindow = Handle(Aspect_NeutralWindow)::DownCast(m_view->Window());
   if (!aWindow.IsNull())
   {
@@ -203,7 +207,7 @@ void OcctQOpenGLWidgetViewer::initializeGL()
   }
 
   {
-    // guides and origin
+    // Guides and origin gizmos (X/Y lines, origin trihedron)
     const Standard_Real L = 1000.0;
     Handle(Geom_Line) aGeomX = new Geom_Line(gp_Pnt(-L, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0));
     Handle(Geom_Line) aGeomY = new Geom_Line(gp_Pnt(0.0, -L, 0.0), gp_Dir(0.0, 1.0, 0.0));
@@ -244,6 +248,7 @@ void OcctQOpenGLWidgetViewer::keyPressEvent(QKeyEvent* theEvent)
   {
     case Aspect_VKey_Escape: QApplication::exit(); return;
     case Aspect_VKey_F: {
+      // Fit-all while preserving axis visibility
       const bool hadX = !m_axisX.IsNull() && m_context->IsDisplayed(m_axisX);
       const bool hadY = !m_axisY.IsNull() && m_context->IsDisplayed(m_axisY);
       if (hadX) m_context->Erase(m_axisX, false);
@@ -325,6 +330,7 @@ void OcctQOpenGLWidgetViewer::wheelEvent(QWheelEvent* theEvent)
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPos(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
 #endif
+  // If subviews present, redirect wheel focus to picked subview
   if (!m_view->Subviews().IsEmpty())
   {
     Handle(V3d_View) aPickedView = m_view->PickSubview(aPos);

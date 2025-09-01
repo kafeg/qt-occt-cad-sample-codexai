@@ -14,6 +14,9 @@ add_executable(occt-qopenglwidget-tests
   ui/document_test.cpp
 )
 
+# Allow tests to include headers within tests/ (e.g. common/test_utils.h)
+target_include_directories(occt-qopenglwidget-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 target_link_libraries(occt-qopenglwidget-tests PRIVATE
   GTest::gtest
   GTest::gtest_main

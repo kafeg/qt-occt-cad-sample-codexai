@@ -18,10 +18,10 @@
 #include <Standard_Version.hxx>
 
 #include <Document.h>
-#include <CreateBoxCommand.h>
-#include <CreateBoxDialog.h>
-#include <CreateCylinderCommand.h>
-#include <CreateCylinderDialog.h>
+#include <command/CreateBoxCommand.h>
+#include <dialog/CreateBoxDialog.h>
+#include <command/CreateCylinderCommand.h>
+#include <dialog/CreateCylinderDialog.h>
 // model/viewer headers for sync helpers
 #include <Feature.h>
 #include <BoxFeature.h>
@@ -78,11 +78,13 @@ void MainWindow::createMenuBar()
     QAction* split = new QAction(file);
     split->setText("Split Views");
     file->addAction(split);
+    // Toggle split view: enable/disable subview composer and manage subviews
     connect(split, &QAction::triggered, [this]() {
       TabPage* page = currentPage(); if (!page) return;
       auto* viewer = page->viewer();
       if (!viewer->View()->Subviews().IsEmpty())
       {
+        // Disable composer and remove subviews
         viewer->View()->View()->SetSubviewComposer(false);
         NCollection_Sequence<Handle(V3d_View)> aSubviews = viewer->View()->Subviews();
         for (const Handle(V3d_View)& aSubviewIter : aSubviews) aSubviewIter->Remove();
@@ -90,6 +92,7 @@ void MainWindow::createMenuBar()
       }
       else
       {
+        // Enable composer and create two subviews side-by-side
         viewer->View()->View()->SetSubviewComposer(true);
         Handle(V3d_View) aSubView1 = new V3d_View(viewer->Viewer());
         aSubView1->SetImmediateUpdate(false);
@@ -153,7 +156,7 @@ void MainWindow::createToolBar()
   QWidget* bgBox = new QWidget(tb);
   QHBoxLayout* bgLay = new QHBoxLayout(bgBox);
   bgLay->setContentsMargins(6, 0, 6, 0);
-  QLabel* lbl = new QLabel("Background", bgBox);
+  QLabel* lbl = new QLabel("Background", bgBox); // Background gradient brightness
   bgLay->addWidget(lbl);
   QSlider* slider = new QSlider(Qt::Horizontal, bgBox);
   slider->setRange(0, 255);
@@ -164,6 +167,7 @@ void MainWindow::createToolBar()
   slider->setValue(64);
   slider->setFixedWidth(200);
   bgLay->addWidget(slider);
+  // Adjust background gradient based on slider
   connect(slider, &QSlider::valueChanged, [this](int theValue) {
     TabPage* page = currentPage(); if (!page) return;
     auto* viewer = page->viewer();
@@ -253,6 +257,7 @@ void MainWindow::clearAll()
 
 void MainWindow::addSample()
 {
+  // Add 3 boxes along +X and 3 cylinders along +X offset by +Y; positions via AIS local transforms
   TabPage* page = currentPage(); if (!page) return;
   const double dx = 20.0, dy = 20.0, dz = 20.0;
   const double gap = 5.0;

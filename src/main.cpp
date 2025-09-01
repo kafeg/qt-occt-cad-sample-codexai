@@ -1,3 +1,4 @@
+// Qt application entry point; creates MainWindow and starts the event loop
 #include "ui/MainWindow.h"
 
 #include <Standard_WarningsDisable.hxx>
@@ -16,13 +17,14 @@ int main(int argc, char** argv)
   QCoreApplication::setApplicationVersion(OCC_VERSION_STRING_EXT);
 
 #ifdef __APPLE__
-  bool           isCoreProfile = true;
-  QSurfaceFormat aGlFormat;
-  aGlFormat.setDepthBufferSize(24);
-  aGlFormat.setStencilBufferSize(8);
-  if (isCoreProfile) aGlFormat.setVersion(4, 5);
-  aGlFormat.setProfile(isCoreProfile ? QSurfaceFormat::CoreProfile : QSurfaceFormat::CompatibilityProfile);
-  QSurfaceFormat::setDefaultFormat(aGlFormat);
+  // macOS: force a Core Profile GL context for OCCT 3D viewer
+  const bool     isCoreProfile = true;
+  QSurfaceFormat glfmt;
+  glfmt.setDepthBufferSize(24);
+  glfmt.setStencilBufferSize(8);
+  if (isCoreProfile) glfmt.setVersion(4, 5);
+  glfmt.setProfile(isCoreProfile ? QSurfaceFormat::CoreProfile : QSurfaceFormat::CompatibilityProfile);
+  QSurfaceFormat::setDefaultFormat(glfmt);
 #endif
 
   MainWindow win;
@@ -30,4 +32,3 @@ int main(int argc, char** argv)
   win.show();
   return app.exec();
 }
-

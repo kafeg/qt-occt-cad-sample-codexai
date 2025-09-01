@@ -3,16 +3,17 @@
 #include "Feature.h"
 #include <NCollection_Sequence.hxx>
 
+// Minimal parametric document: ordered list of features and recompute
 class Document
 {
 public:
-  void clear();
-  void addFeature(const Handle(Feature)& f);
-  const NCollection_Sequence<Handle(Feature)>& features() const { return m_features; }
-  void recompute();
-  void removeLast();
-  void removeFeature(const Handle(Feature)& f);
+  void clear();                                               // Remove all features
+  void addFeature(const Handle(Feature)& f);                  // Append a feature
+  const NCollection_Sequence<Handle(Feature)>& features() const { return m_features; } // Read-only access
+  void recompute();                                           // Execute features in order
+  void removeLast();                                          // Pop last feature
+  void removeFeature(const Handle(Feature)& f);               // Remove by handle (first match)
 
 private:
-  NCollection_Sequence<Handle(Feature)> m_features;
+  NCollection_Sequence<Handle(Feature)> m_features; // ordered model features
 };

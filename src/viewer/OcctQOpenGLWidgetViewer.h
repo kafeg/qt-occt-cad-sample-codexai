@@ -18,6 +18,9 @@ class AIS_Trihedron;
 class AIS_Shape;
 class Geom_Axis2Placement;
 
+// Reusable OCCT viewer widget (QOpenGLWidget + AIS_ViewController glue)
+// - Owns V3d_Viewer/View and AIS_InteractiveContext
+// - Renders, handles input, selection, grid auto-step, view cube and axes
 class OcctQOpenGLWidgetViewer : public QOpenGLWidget, public AIS_ViewController
 {
   Q_OBJECT
@@ -25,10 +28,10 @@ public:
   OcctQOpenGLWidgetViewer(QWidget* theParent = nullptr);
   virtual ~OcctQOpenGLWidgetViewer();
 
-  const Handle(V3d_Viewer)& Viewer() const { return m_viewer; }
-  const Handle(V3d_View)& View() const { return m_view; }
-  const Handle(AIS_InteractiveContext)& Context() const { return m_context; }
-  const QString& getGlInfo() const { return m_glInfo; }
+  const Handle(V3d_Viewer)& Viewer() const { return m_viewer; }              // OCCT viewer
+  const Handle(V3d_View)& View() const { return m_view; }                    // active view
+  const Handle(AIS_InteractiveContext)& Context() const { return m_context; }// AIS context
+  const QString& getGlInfo() const { return m_glInfo; }                      // aggregated GL info
 
   virtual QSize minimumSizeHint() const override { return QSize(200, 200); }
   virtual QSize sizeHint() const override { return QSize(720, 480); }
@@ -36,26 +39,26 @@ public:
 public:
   virtual void OnSubviewChanged(const Handle(AIS_InteractiveContext)&,
                                 const Handle(V3d_View)&,
-                                const Handle(V3d_View)& theNewView) override;
+                                const Handle(V3d_View)& theNewView) override; // track focus subview
 
 protected:
-  virtual void initializeGL() override;
-  virtual void paintGL() override;
+  virtual void initializeGL() override; // bind OCCT view to Qt surface
+  virtual void paintGL() override;      // render frame
 
 protected:
-  virtual void closeEvent(QCloseEvent* theEvent) override;
-  virtual void keyPressEvent(QKeyEvent* theEvent) override;
-  virtual void mousePressEvent(QMouseEvent* theEvent) override;
-  virtual void mouseReleaseEvent(QMouseEvent* theEvent) override;
-  virtual void mouseMoveEvent(QMouseEvent* theEvent) override;
-  virtual void wheelEvent(QWheelEvent* theEvent) override;
+  virtual void closeEvent(QCloseEvent* theEvent) override;       // simple accept
+  virtual void keyPressEvent(QKeyEvent* theEvent) override;       // fit-all helper
+  virtual void mousePressEvent(QMouseEvent* theEvent) override;   // delegate to AIS_ViewController
+  virtual void mouseReleaseEvent(QMouseEvent* theEvent) override; // single-select on click
+  virtual void mouseMoveEvent(QMouseEvent* theEvent) override;    // orbit/pan/rotate
+  virtual void wheelEvent(QWheelEvent* theEvent) override;        // zoom + subviews
 
 public: // bodies management
-  Handle(AIS_Shape) addBody(const TopoDS_Shape& theShape,
+  Handle(AIS_Shape) addBody(const TopoDS_Shape& theShape, // display a shape and keep handle
                             AIS_DisplayMode    theDispMode = AIS_Shaded,
                             Standard_Integer   theDispPriority = 0,
                             bool               theToUpdate = false);
-  void clearBodies(bool theToUpdate = true);
+  void clearBodies(bool theToUpdate = true); // erase all tracked bodies
   // Alias for clarity: add a shape into AIS context
   Handle(AIS_Shape) addShape(const TopoDS_Shape& theShape,
                              AIS_DisplayMode    theDispMode = AIS_Shaded,
@@ -67,29 +70,29 @@ public: // bodies management
   // visibility toggling removed; viewer keeps all displayed bodies
 
 private:
-  void dumpGlInfo(bool theIsBasic, bool theToPrint);
-  void updateView();
+  void dumpGlInfo(bool theIsBasic, bool theToPrint); // collect GL info string
+  void updateView();                                  // schedule repaint
   virtual void handleViewRedraw(const Handle(AIS_InteractiveContext)& theCtx,
                                 const Handle(V3d_View)&               theView) override;
 
-  void updateGridStepForView(const Handle(V3d_View)& theView);
-  bool rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit) const;
+  void updateGridStepForView(const Handle(V3d_View)& theView); // adaptive grid step
+  bool rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit) const; // project to Z=0
 
 private:
-  Handle(V3d_Viewer)             m_viewer;
-  Handle(V3d_View)               m_view;
-  Handle(AIS_InteractiveContext) m_context;
-  Handle(AIS_ViewCube)           m_viewCube;
-  Handle(V3d_View)               m_focusView;
-  QString                        m_glInfo;
-  bool                           m_isCoreProfile = true;
-  double                         m_gridStep = 10.0;
+  Handle(V3d_Viewer)             m_viewer;           // core OCCT viewer
+  Handle(V3d_View)               m_view;             // main view
+  Handle(AIS_InteractiveContext) m_context;          // AIS context for display/selection
+  Handle(AIS_ViewCube)           m_viewCube;         // persistent view cube
+  Handle(V3d_View)               m_focusView;        // current focus subview (if any)
+  QString                        m_glInfo;           // GL diagnostics info
+  bool                           m_isCoreProfile = true; // prefer core GL profile
+  double                         m_gridStep = 10.0;      // current grid step (world units)
 
-  Handle(AIS_Line)               m_axisX;
-  Handle(AIS_Line)               m_axisY;
-  Handle(AIS_Trihedron)          m_originTrihedron;
-  Handle(Geom_Axis2Placement)    m_originPlacement;
-  NCollection_Sequence<Handle(AIS_Shape)> m_bodies;
+  Handle(AIS_Line)               m_axisX;            // X axis guide
+  Handle(AIS_Line)               m_axisY;            // Y axis guide
+  Handle(AIS_Trihedron)          m_originTrihedron;  // origin trihedron
+  Handle(Geom_Axis2Placement)    m_originPlacement;  // origin placement
+  NCollection_Sequence<Handle(AIS_Shape)> m_bodies;  // tracked displayed bodies
 
   // no deletion-specific state
 };
