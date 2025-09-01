@@ -4,6 +4,8 @@
 #include <BRepBuilderAPI_Transform.hxx>
 #include <gp_Ax1.hxx>
 #include <gp_Trsf.hxx>
+#include <gp_Quaternion.hxx>
+#include <gp_EulerSequence.hxx>
 #include <gp.hxx>
 
 #include <sstream>
@@ -26,27 +28,14 @@ void MoveFeature::execute()
     return;
   }
 
-  // Build transform: apply rotations around X, Y, Z (degrees), then translation
-  gp_Trsf trsf; // identity
+  // Build transform directly from quaternion (rotation part) and translation part.
+  // The translation we store already includes the manipulator's pivot effect, so
+  // combining them via SetTransformation reproduces the exact affine delta.
   const double rx = rxDeg() * (M_PI / 180.0);
   const double ry = ryDeg() * (M_PI / 180.0);
   const double rz = rzDeg() * (M_PI / 180.0);
-  if (std::abs(rx) > 0.0)
-  {
-    gp_Trsf r; r.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp::DX()), rx); trsf.Multiply(r);
-  }
-  if (std::abs(ry) > 0.0)
-  {
-    gp_Trsf r; r.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp::DY()), ry); trsf.Multiply(r);
-  }
-  if (std::abs(rz) > 0.0)
-  {
-    gp_Trsf r; r.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp::DZ()), rz); trsf.Multiply(r);
-  }
-  if (std::abs(tx()) > 0.0 || std::abs(ty()) > 0.0 || std::abs(tz()) > 0.0)
-  {
-    gp_Trsf t; t.SetTranslation(gp_Vec(tx(), ty(), tz())); trsf.Multiply(t);
-  }
+  gp_Quaternion q; q.SetEulerAngles(gp_Intrinsic_XYZ, rx, ry, rz);
+  gp_Trsf trsf; trsf.SetTransformation(q, gp_Vec(tx(), ty(), tz()));
 
   BRepBuilderAPI_Transform tr(m_source->shape(), trsf, true);
   m_shape = tr.Shape();
