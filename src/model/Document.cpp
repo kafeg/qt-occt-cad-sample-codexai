@@ -6,6 +6,7 @@ void Document::clear()
 {
   m_items.Clear();
   m_registry.clear();
+  m_sketchList.clear();
   m_featuresCache.Clear();
   m_featuresCacheDirty = true;
 }
@@ -100,7 +101,11 @@ void Document::addItem(const std::shared_ptr<DocumentItem>& item)
 
 void Document::addSketch(const std::shared_ptr<Sketch>& s)
 {
-  addItem(s);
+  if (!s) return;
+  // Preserve insertion order for sketches
+  m_sketchList.push_back(s);
+  // Register in the generic item registry for dependency resolution
+  m_registry[s->id()] = s;
 }
 
 std::shared_ptr<Sketch> Document::findSketch(DocumentItem::Id id) const
@@ -112,12 +117,6 @@ std::shared_ptr<Sketch> Document::findSketch(DocumentItem::Id id) const
 
 std::vector<std::shared_ptr<Sketch>> Document::sketches() const
 {
-  std::vector<std::shared_ptr<Sketch>> out;
-  out.reserve(m_registry.size());
-  for (const auto& kv : m_registry)
-  {
-    if (auto sk = std::dynamic_pointer_cast<Sketch>(kv.second))
-      out.push_back(std::move(sk));
-  }
-  return out;
+  // Return the ordered list to keep stable, insertion-order enumeration
+  return m_sketchList;
 }

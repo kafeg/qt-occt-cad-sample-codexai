@@ -6,6 +6,7 @@
 #include <DocumentItem.h>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 class Sketch;
 
@@ -42,4 +43,6 @@ private:
 
   // Item registry for non-handle items used for dependency resolution (e.g., sketches held as std::shared_ptr)
   std::unordered_map<DocumentItem::Id, std::shared_ptr<DocumentItem>> m_registry;
+  // Ordered list of sketches preserving insertion order
+  std::vector<std::shared_ptr<Sketch>> m_sketchList;
 };

@@ -14,6 +14,7 @@ const bool kSketchReg = [](){
 #include <cmath>
 #include <deque>
 #include <unordered_set>
+#include <algorithm>
 
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
@@ -32,6 +33,116 @@ inline bool nearlyEqual(double a, double b, double tol)
 {
   return std::abs(a - b) <= tol;
 }
+
+// Simple 2D k-d tree for range queries (axis-aligned rectangle)
+// Used to find near-coincident endpoints in O(log n + k)
+namespace {
+struct KDPoint
+{
+  double x{0.0};
+  double y{0.0};
+  int    id{-1}; // external identifier (endpoint index)
+};
+
+struct KDNode
+{
+  int point{-1};     // index into pts
+  int left{-1};
+  int right{-1};
+  int axis{0};       // 0 = X, 1 = Y
+  double minx{0}, maxx{0}, miny{0}, maxy{0};
+};
+
+class KDTree2D
+{
+public:
+  explicit KDTree2D(std::vector<KDPoint> pts)
+      : pts_(std::move(pts))
+  {
+    if (!pts_.empty())
+    {
+      std::vector<int> idx(pts_.size());
+      for (int i = 0; i < static_cast<int>(pts_.size()); ++i) idx[i] = i;
+      nodes_.reserve(pts_.size());
+      root_ = build(idx.begin(), idx.end(), /*depth*/ 0);
+    }
+  }
+
+  // Visit all points within axis-aligned rectangle [xmin,xmax] x [ymin,ymax]
+  template <typename Visitor>
+  void rangeQuery(double xmin, double ymin, double xmax, double ymax, Visitor visit) const
+  {
+    if (root_ != -1)
+      rangeQueryRec(root_, xmin, ymin, xmax, ymax, visit);
+  }
+
+private:
+  using It = std::vector<int>::iterator;
+
+  int build(It begin, It end, int depth)
+  {
+    if (begin == end) return -1;
+    int axis = depth % 2;
+    auto mid = begin + (std::distance(begin, end) / 2);
+    std::nth_element(begin, mid, end, [&](int a, int b){
+      return axis == 0 ? (pts_[a].x < pts_[b].x) : (pts_[a].y < pts_[b].y);
+    });
+
+    int nodeIndex = static_cast<int>(nodes_.size());
+    nodes_.push_back(KDNode{});
+    KDNode& node = nodes_.back();
+    node.axis = axis;
+    node.point = *mid;
+
+    // Build subtrees
+    node.left = build(begin, mid, depth + 1);
+    node.right = build(mid + 1, end, depth + 1);
+
+    // Compute bounding box
+    const KDPoint& p = pts_[node.point];
+    node.minx = node.maxx = p.x;
+    node.miny = node.maxy = p.y;
+    if (node.left != -1)
+    {
+      const KDNode& L = nodes_[node.left];
+      node.minx = std::min(node.minx, L.minx);
+      node.maxx = std::max(node.maxx, L.maxx);
+      node.miny = std::min(node.miny, L.miny);
+      node.maxy = std::max(node.maxy, L.maxy);
+    }
+    if (node.right != -1)
+    {
+      const KDNode& R = nodes_[node.right];
+      node.minx = std::min(node.minx, R.minx);
+      node.maxx = std::max(node.maxx, R.maxx);
+      node.miny = std::min(node.miny, R.miny);
+      node.maxy = std::max(node.maxy, R.maxy);
+    }
+
+    return nodeIndex;
+  }
+
+  template <typename Visitor>
+  void rangeQueryRec(int nodeIndex, double xmin, double ymin, double xmax, double ymax, Visitor visit) const
+  {
+    const KDNode& node = nodes_[nodeIndex];
+    // If node bounding box does not intersect query rect, prune
+    if (node.maxx < xmin || node.minx > xmax || node.maxy < ymin || node.miny > ymax)
+      return;
+
+    const KDPoint& p = pts_[node.point];
+    if (p.x >= xmin && p.x <= xmax && p.y >= ymin && p.y <= ymax)
+      visit(p);
+
+    if (node.left != -1)  rangeQueryRec(node.left, xmin, ymin, xmax, ymax, visit);
+    if (node.right != -1) rangeQueryRec(node.right, xmin, ymin, xmax, ymax, visit);
+  }
+
+  std::vector<KDPoint> pts_;
+  std::vector<KDNode>  nodes_;
+  int root_{-1};
+};
+} // namespace
 
 inline bool samePoint(const gp_Pnt2d& a, const gp_Pnt2d& b, double tol)
 {
@@ -68,25 +179,42 @@ void Sketch::solveConstraints(double tol)
   const std::size_t epCount = curves_.size() * 2;
   ufInit(epCount);
 
-  // First, union existing near-coincident endpoints (geometric proximity)
-  for (std::size_t i = 0; i < curves_.size(); ++i)
+  // First, union existing near-coincident endpoints using spatial index (k-d tree)
+  if (!curves_.empty())
   {
-    for (std::size_t j = i + 1; j < curves_.size(); ++j)
+    std::vector<KDPoint> pts;
+    pts.reserve(epCount);
+    for (std::size_t i = 0; i < curves_.size(); ++i)
     {
-      for (int ei = 0; ei < 2; ++ei)
+      for (int e = 0; e < 2; ++e)
       {
-        EndpointRef ri{static_cast<int>(i), ei};
-        const auto pi = getEndpoint(ri);
-        for (int ej = 0; ej < 2; ++ej)
+        EndpointRef r{static_cast<int>(i), e};
+        const auto p = getEndpoint(r);
+        pts.push_back(KDPoint{p.X(), p.Y(), static_cast<int>(endpointKey(r))});
+      }
+    }
+    KDTree2D kdt(std::move(pts));
+
+    // For each endpoint, query its neighborhood rectangle [x±tol, y±tol]
+    for (std::size_t i = 0; i < epCount; ++i)
+    {
+      int cid = static_cast<int>(i);
+      // Re-extract point position
+      int curveIdx = static_cast<int>(i / 2);
+      int endIdx   = static_cast<int>(i % 2);
+      const gp_Pnt2d p = getEndpoint(EndpointRef{curveIdx, endIdx});
+      const double xmin = p.X() - tol, xmax = p.X() + tol;
+      const double ymin = p.Y() - tol, ymax = p.Y() + tol;
+      kdt.rangeQuery(xmin, ymin, xmax, ymax, [&](const KDPoint& q){
+        if (q.id > cid) // avoid duplicate unions
         {
-          EndpointRef rj{static_cast<int>(j), ej};
-          const auto pj = getEndpoint(rj);
-          if (samePoint(pi, pj, tol))
+          // Match original samePoint semantics (axis-wise tolerance)
+          if (nearlyEqual(p.X(), q.x, tol) && nearlyEqual(p.Y(), q.y, tol))
           {
-            ufUnion(endpointKey(ri), endpointKey(rj));
+            ufUnion(static_cast<std::size_t>(cid), static_cast<std::size_t>(q.id));
           }
         }
-      }
+      });
     }
   }
 
@@ -152,26 +280,40 @@ std::vector<Sketch::Wire> Sketch::computeWires(double tol) const
   // Initialize UF if empty (e.g., computeWires called before solveConstraints)
   if (uf_parent_.size() != n * 2)
   {
-    // build a temporary UF based on geometry-only clustering
+    // build a temporary UF based on geometry-only clustering via k-d tree
     const_cast<Sketch*>(this)->ufInit(n * 2);
-    for (std::size_t i = 0; i < n; ++i)
+    if (n > 0)
     {
-      for (std::size_t j = i + 1; j < n; ++j)
+      const std::size_t epCount = n * 2;
+      std::vector<KDPoint> pts;
+      pts.reserve(epCount);
+      for (std::size_t i = 0; i < n; ++i)
       {
-        for (int ei = 0; ei < 2; ++ei)
+        for (int e = 0; e < 2; ++e)
         {
-          EndpointRef ri{static_cast<int>(i), ei};
-          const auto pi = getEndpoint(ri);
-          for (int ej = 0; ej < 2; ++ej)
+          EndpointRef r{static_cast<int>(i), e};
+          const auto p = getEndpoint(r);
+          pts.push_back(KDPoint{p.X(), p.Y(), static_cast<int>(endpointKey(r))});
+        }
+      }
+      KDTree2D kdt(std::move(pts));
+      for (std::size_t i = 0; i < epCount; ++i)
+      {
+        int cid = static_cast<int>(i);
+        int curveIdx = static_cast<int>(i / 2);
+        int endIdx   = static_cast<int>(i % 2);
+        const gp_Pnt2d p = getEndpoint(EndpointRef{curveIdx, endIdx});
+        const double xmin = p.X() - tol, xmax = p.X() + tol;
+        const double ymin = p.Y() - tol, ymax = p.Y() + tol;
+        kdt.rangeQuery(xmin, ymin, xmax, ymax, [&](const KDPoint& q){
+          if (q.id > cid)
           {
-            EndpointRef rj{static_cast<int>(j), ej};
-            const auto pj = getEndpoint(rj);
-            if (samePoint(pi, pj, tol))
+            if (nearlyEqual(p.X(), q.x, tol) && nearlyEqual(p.Y(), q.y, tol))
             {
-              const_cast<Sketch*>(this)->ufUnion(endpointKey(ri), endpointKey(rj));
+              const_cast<Sketch*>(this)->ufUnion(static_cast<std::size_t>(cid), static_cast<std::size_t>(q.id));
             }
           }
-        }
+        });
       }
     }
   }

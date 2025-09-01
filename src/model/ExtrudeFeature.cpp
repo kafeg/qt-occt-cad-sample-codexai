@@ -14,25 +14,10 @@ const bool kExtrudeFeatureReg = [](){
 }();
 }
 
-namespace
-{
-static double paramAsDouble(const Feature::ParamMap& pm, Feature::ParamKey key, double defVal)
-{
-  auto it = pm.find(key);
-  if (it == pm.end())
-    return defVal;
-  const Feature::ParamValue& v = it->second;
-  if (std::holds_alternative<double>(v))
-    return std::get<double>(v);
-  if (std::holds_alternative<int>(v))
-    return static_cast<double>(std::get<int>(v));
-  return defVal;
-}
-} // namespace
 
 double ExtrudeFeature::distance() const
 {
-  return paramAsDouble(params(), Feature::ParamKey::Distance, 0.0);
+  return Feature::paramAsDouble(params(), Feature::ParamKey::Distance, 0.0);
 }
 
 void ExtrudeFeature::execute()

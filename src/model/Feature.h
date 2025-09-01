@@ -71,4 +71,7 @@ protected:
   ParamMap                m_params;
   TopoDS_Shape            m_shape; // resulting shape
   bool                    m_suppressed = false; // execution/display suppressed
+
+  // Helper: read numeric parameter as double (accepts int/double; otherwise returns defVal)
+  static double paramAsDouble(const ParamMap& pm, ParamKey key, double defVal);
 };

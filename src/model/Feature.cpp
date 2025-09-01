@@ -97,3 +97,16 @@ void Feature::deserialize(const std::string& data)
     }
   }
 }
+
+double Feature::paramAsDouble(const ParamMap& pm, ParamKey key, double defVal)
+{
+  auto it = pm.find(key);
+  if (it == pm.end())
+    return defVal;
+  const ParamValue& v = it->second;
+  if (std::holds_alternative<double>(v))
+    return std::get<double>(v);
+  if (std::holds_alternative<int>(v))
+    return static_cast<double>(std::get<int>(v));
+  return defVal;
+}
