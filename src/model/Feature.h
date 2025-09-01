@@ -26,6 +26,7 @@ public:
     Dz,
     Radius,
     Height,
+    Distance,
   };
 
   struct ParamKeyHash

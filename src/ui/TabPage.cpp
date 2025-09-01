@@ -7,6 +7,7 @@
 #include <Standard_WarningsRestore.hxx>
 
 #include <Document.h>
+#include <Sketch.h>
 
 TabPage::TabPage(QWidget* parent)
   : QWidget(parent)

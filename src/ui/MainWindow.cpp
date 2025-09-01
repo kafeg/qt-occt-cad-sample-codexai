@@ -22,6 +22,10 @@
 #include <dialog/CreateBoxDialog.h>
 #include <command/CreateCylinderCommand.h>
 #include <dialog/CreateCylinderDialog.h>
+#include <command/CreateExtrudeCommand.h>
+#include <dialog/CreateExtrudeDialog.h>
+// sketch for extrusion
+#include <Sketch.h>
 // model/viewer headers for sync helpers
 #include <Feature.h>
 #include <BoxFeature.h>
@@ -117,6 +121,12 @@ void MainWindow::createMenuBar()
     actAddCyl->setText("Add Cylinder");
     file->addAction(actAddCyl);
     connect(actAddCyl, &QAction::triggered, [this]() { addCylinder(); });
+  }
+  {
+    QAction* actAddExtrude = new QAction(file);
+    actAddExtrude->setText("Add Extrude");
+    file->addAction(actAddExtrude);
+    connect(actAddExtrude, &QAction::triggered, [this]() { addExtrude(); });
   }
   {
     QAction* quit = new QAction(file);
@@ -219,6 +229,47 @@ void MainWindow::addCylinder()
   if (dlg.exec() != QDialog::Accepted) return;
 
   CreateCylinderCommand cmd(dlg.radius(), dlg.height());
+  cmd.execute(page->doc());
+  syncViewerFromDoc(true);
+}
+
+void MainWindow::addExtrude()
+{
+  TabPage* page = currentPage(); if (!page) return;
+
+  // Ensure there is at least one sketch to pick; if none, create a sample rectangle sketch
+  if (page->sketches().empty())
+  {
+    auto sk = std::make_shared<Sketch>();
+    const double w = 20.0, h = 10.0;
+    auto c1 = sk->addLine(gp_Pnt2d(0.0, 0.0), gp_Pnt2d(w, 0.0));
+    auto c2 = sk->addLine(gp_Pnt2d(w, 0.0), gp_Pnt2d(w, h));
+    auto c3 = sk->addLine(gp_Pnt2d(w, h), gp_Pnt2d(0.0, h));
+    auto c4 = sk->addLine(gp_Pnt2d(0.0, h), gp_Pnt2d(0.0, 0.0));
+    sk->addCoincident({c1, 1}, {c2, 0});
+    sk->addCoincident({c2, 1}, {c3, 0});
+    sk->addCoincident({c3, 1}, {c4, 0});
+    sk->addCoincident({c4, 1}, {c1, 0});
+    sk->solveConstraints();
+    page->sketches().push_back(sk);
+  }
+
+  // Build names for selection
+  QStringList names;
+  for (int i = 0; i < static_cast<int>(page->sketches().size()); ++i)
+  {
+    names << QString("Sketch %1").arg(i + 1);
+  }
+
+  CreateExtrudeDialog dlg(this);
+  dlg.setSketchNames(names);
+  if (dlg.exec() != QDialog::Accepted) return;
+
+  int idx = dlg.selectedSketchIndex();
+  if (idx < 0 || idx >= static_cast<int>(page->sketches().size())) return;
+
+  auto sketch = page->sketches().at(static_cast<std::size_t>(idx));
+  CreateExtrudeCommand cmd(sketch, dlg.distance());
   cmd.execute(page->doc());
   syncViewerFromDoc(true);
 }

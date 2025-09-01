@@ -28,6 +28,7 @@ private:
   void createToolBar();             // Toolbar with background slider and test actions
   void addBox();                    // Open dialog and add BoxFeature
   void addCylinder();               // Open dialog and add CylinderFeature
+  void addExtrude();                // Open dialog, select sketch, add ExtrudeFeature
   void syncViewerFromDoc(bool toUpdate = true); // Rebuild AIS bodies from Document
   void clearAll();                  // Clear document and viewer
   void addSample();                 // Add arranged sample primitives (test-only helpers)

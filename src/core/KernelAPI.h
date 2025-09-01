@@ -2,6 +2,8 @@
 #pragma once
 
 #include <TopoDS_Shape.hxx>
+#include <TopoDS_Wire.hxx>
+#include <vector>
 
 namespace KernelAPI
 {
@@ -12,4 +14,9 @@ namespace KernelAPI
 
   // Boolean fuse (union) of two shapes; returns the combined solid
   TopoDS_Shape fuse(const TopoDS_Shape& a, const TopoDS_Shape& b);
+
+  // Linear extrusion (prism) of one or more planar profile wires along +Z by a distance
+  // - Each wire is treated independently and the resulting prisms are fused
+  // - Input wires are assumed to lie in the XY plane (Z=0)
+  TopoDS_Shape extrude(const std::vector<TopoDS_Wire>& wires, double distance);
 }

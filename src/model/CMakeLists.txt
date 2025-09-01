@@ -7,6 +7,8 @@ add_library(model STATIC
     BoxFeature.h
     CylinderFeature.cpp
     CylinderFeature.h
+    ExtrudeFeature.cpp
+    ExtrudeFeature.h
 )
-target_link_libraries(model PUBLIC core)
+target_link_libraries(model PUBLIC core sketch)
 target_include_directories(model PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
