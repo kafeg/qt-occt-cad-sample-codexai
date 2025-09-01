@@ -575,6 +575,8 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketc
   m_sketches.Append(ais);
   ais->SetDisplayMode(AIS_WireFrame);
   m_context->Display(ais, AIS_WireFrame, 0, false, PrsMgr_DisplayStatus_Displayed);
+  // Render sketches with maximum priority to avoid z-fighting with grid
+  m_context->SetZLayer(ais, Graphic3d_ZLayerId_Topmost);
   return ais;
 }
 
