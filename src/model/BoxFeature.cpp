@@ -1,9 +1,17 @@
 #include "BoxFeature.h"
+#include <DocumentItem.h>
 
 #include <KernelAPI.h>
 #include <variant>
 
 IMPLEMENT_STANDARD_RTTIEXT(BoxFeature, Feature)
+
+namespace {
+const bool kBoxFeatureReg = [](){
+  DocumentItem::registerFactory(DocumentItem::Kind::BoxFeature, [](){ return std::shared_ptr<DocumentItem>(new BoxFeature()); });
+  return true;
+}();
+}
 
 namespace
 {

@@ -9,11 +9,13 @@
 #include <utility>
 #include <vector>
 
+#include <DocumentItem.h>
+
 // Lightweight 2D sketch container with simple constraint handling
 // - Stores lines and circular arcs in 2D (gp_Pnt2d)
 // - Supports Coincident endpoint constraints (union-find based)
 // - Computes wires as connected sets of curves by shared endpoints
-class Sketch
+class Sketch : public DocumentItem
 {
 public:
   using CurveId = int;
@@ -82,6 +84,11 @@ public:
 
 public:
   Sketch() = default;
+
+  // DocumentItem
+  Kind kind() const override { return Kind::Sketch; }
+  std::string serialize() const override;
+  void        deserialize(const std::string& data) override;
 
   // Add primitives
   CurveId addLine(const gp_Pnt2d& a, const gp_Pnt2d& b);

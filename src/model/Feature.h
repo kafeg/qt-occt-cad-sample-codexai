@@ -9,11 +9,13 @@
 #include <variant>
 #include <string>
 
+#include <DocumentItem.h>
+
 class Feature;
 DEFINE_STANDARD_HANDLE(Feature, Standard_Transient)
 
 // Abstract feature with typed parameter map and resulting shape
-class Feature : public Standard_Transient
+class Feature : public Standard_Transient, public DocumentItem
 {
   DEFINE_STANDARD_RTTIEXT(Feature, Standard_Transient)
 
@@ -57,6 +59,12 @@ public:
   // Suppression flag: suppressed features are skipped during recompute and not displayed
   bool isSuppressed() const { return m_suppressed; }
   void setSuppressed(bool on) { m_suppressed = on; }
+
+  // DocumentItem interface
+  // Base Feature encodes common fields: name, suppressed flag, and params
+  virtual Kind kind() const override = 0;
+  std::string serialize() const override;
+  void        deserialize(const std::string& data) override;
 
 protected:
   TCollection_AsciiString m_name;

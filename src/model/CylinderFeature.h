@@ -28,4 +28,7 @@ public:
   double height() const;
 
   void execute() override;
+
+  // DocumentItem
+  Kind kind() const override { return Kind::CylinderFeature; }
 };

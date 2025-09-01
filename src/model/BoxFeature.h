@@ -36,4 +36,7 @@ public:
 
   // Feature API
   void execute() override;
+
+  // DocumentItem
+  Kind kind() const override { return Kind::BoxFeature; }
 };

@@ -10,5 +10,5 @@ add_library(model STATIC
     ExtrudeFeature.cpp
     ExtrudeFeature.h
 )
-target_link_libraries(model PUBLIC core sketch)
+target_link_libraries(model PUBLIC core sketch doc)
 target_include_directories(model PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -141,6 +141,9 @@ void MainWindow::createToolBar()
   connect(actAddCyl, &QAction::triggered, [this]() { addCylinder(); });
   tb->addAction(actAddCyl);
 
+  QAction* actAddExtrude = new QAction("Add Extrude", tb);
+  connect(actAddExtrude, &QAction::triggered, [this]() { addExtrude(); });
+  tb->addAction(actAddExtrude);
 
   QAction* actAbout = new QAction("About", tb);
   connect(actAbout, &QAction::triggered, [this]() {
@@ -185,7 +188,7 @@ void MainWindow::addExtrude()
   TabPage* page = currentPage(); if (!page) return;
 
   // Ensure there is at least one sketch to pick; if none, create a sample rectangle sketch
-  if (page->sketches().empty())
+  if (page->doc().sketches().empty())
   {
     auto sk = std::make_shared<Sketch>();
     const double w = 20.0, h = 10.0;
@@ -198,24 +201,23 @@ void MainWindow::addExtrude()
     sk->addCoincident({c3, 1}, {c4, 0});
     sk->addCoincident({c4, 1}, {c1, 0});
     sk->solveConstraints();
-    page->sketches().push_back(sk);
+    page->doc().addSketch(sk);
   }
 
-  // Build names for selection
+  // Build names for selection from the document's registered sketches
+  const auto sketches = page->doc().sketches();
   QStringList names;
-  for (int i = 0; i < static_cast<int>(page->sketches().size()); ++i)
-  {
+  for (int i = 0; i < static_cast<int>(sketches.size()); ++i)
     names << QString("Sketch %1").arg(i + 1);
-  }
 
   CreateExtrudeDialog dlg(this);
   dlg.setSketchNames(names);
   if (dlg.exec() != QDialog::Accepted) return;
 
   int idx = dlg.selectedSketchIndex();
-  if (idx < 0 || idx >= static_cast<int>(page->sketches().size())) return;
+  if (idx < 0 || idx >= static_cast<int>(sketches.size())) return;
 
-  auto sketch = page->sketches().at(static_cast<std::size_t>(idx));
+  auto sketch = sketches.at(static_cast<std::size_t>(idx));
   CreateExtrudeCommand cmd(sketch, dlg.distance());
   cmd.execute(page->doc());
   page->syncViewerFromDoc(true);
