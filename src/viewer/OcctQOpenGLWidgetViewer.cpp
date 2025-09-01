@@ -30,6 +30,7 @@
 #include <QPainter>
 #include <Standard_Version.hxx>
 #include <PrsMgr_DisplayStatus.hxx>
+#include <Graphic3d_ZLayerSettings.hxx>
 #include "InfiniteGrid.h"
 #include <gp_Pnt.hxx>
 #include "SceneGizmos.h"
@@ -241,15 +242,54 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     m_context->Display(m_viewCube, Standard_False);
   }
 
+  // Configure Z-layer behavior: make Topmost a pure overlay (no depth test/write)
+  {
+    Graphic3d_ZLayerSettings topmost = m_viewer->ZLayerSettings(Graphic3d_ZLayerId_Topmost);
+    topmost.SetName("TopmostOverlay");
+    topmost.SetEnableDepthTest(Standard_False);
+    topmost.SetEnableDepthWrite(Standard_False);
+    // Do not clear depth; keep previous layers' depth for other overlays that may inherit
+    topmost.SetClearDepth(Standard_False);
+    m_viewer->SetZLayerSettings(Graphic3d_ZLayerId_Topmost, topmost);
+  }
+
+  // Create custom Z-layers to control order: Default < Axes < Sketch < Top
+  {
+    Graphic3d_ZLayerSettings axes;
+    axes.SetName("AxesLayer");
+    axes.SetEnableDepthTest(Standard_True);
+    axes.SetEnableDepthWrite(Standard_True);
+    // Insert Axes before Sketch (which we insert before Top)
+    Graphic3d_ZLayerSettings sketch;
+    sketch.SetName("SketchLayer");
+    sketch.SetEnableDepthTest(Standard_True);
+    sketch.SetEnableDepthWrite(Standard_True);
+
+    // First insert Sketch before Top to have it between Default and Top
+    m_viewer->InsertLayerBefore(m_layerSketch, sketch, Graphic3d_ZLayerId_Top);
+    // Then insert Axes before Sketch so that Default < Axes < Sketch < Top
+    m_viewer->InsertLayerBefore(m_layerAxes, axes, m_layerSketch);
+  }
+
   {
     // Gizmos overlay: axes + trihedron in a dedicated helper
     if (!m_gizmos) m_gizmos = std::make_unique<SceneGizmos>();
     m_originPlacement = new Geom_Axis2Placement(gp_Ax2(gp::Origin(), gp::DZ(), gp::DX()));
     m_gizmos->install(m_context, m_originPlacement, Standard_True);
+    // Place gizmos into dedicated Axes layer to render above grid but below sketches/bodies
+    if (m_gizmos)
+    {
+      if (!m_gizmos->axisX().IsNull()) m_context->SetZLayer(m_gizmos->axisX(), m_layerAxes);
+      if (!m_gizmos->axisY().IsNull()) m_context->SetZLayer(m_gizmos->axisY(), m_layerAxes);
+      if (!m_gizmos->axisZ().IsNull()) m_context->SetZLayer(m_gizmos->axisZ(), m_layerAxes);
+      if (!m_gizmos->trihedron().IsNull()) m_context->SetZLayer(m_gizmos->trihedron(), m_layerAxes);
+    }
     // Display custom infinite grid and initialize (force immediate update so it becomes visible)
     m_grid = new InfiniteGrid();
     // Grid presentation; selection is disabled via empty ComputeSelection()
     m_context->Display(m_grid, 0, 0, true, PrsMgr_DisplayStatus_Displayed);
+    // Keep grid in Default layer explicitly (depth-aware, behind overlays)
+    m_context->SetZLayer(m_grid, Graphic3d_ZLayerId_Default);
     Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
     if (!grid.IsNull()) { grid->updateFromView(m_view); m_context->Redisplay(grid, Standard_False); }
   }
@@ -486,6 +526,8 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addBody(const TopoDS_Shape& theShape,
   m_bodies.Append(aShape);
   aShape->SetDisplayMode(theDispMode);
   m_context->Display(aShape, theDispMode, 0, theToUpdate, PrsMgr_DisplayStatus_Displayed);
+  // Bodies drawn last among 3D content
+  m_context->SetZLayer(aShape, Graphic3d_ZLayerId_Top);
   if (theDispPriority != 0) { m_context->SetDisplayPriority(aShape, theDispPriority); }
   return aShape;
 }
@@ -575,8 +617,10 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketc
   m_sketches.Append(ais);
   ais->SetDisplayMode(AIS_WireFrame);
   m_context->Display(ais, AIS_WireFrame, 0, false, PrsMgr_DisplayStatus_Displayed);
-  // Render sketches with maximum priority to avoid z-fighting with grid
-  m_context->SetZLayer(ais, Graphic3d_ZLayerId_Topmost);
+  // Default: depth-aware sketches in dedicated Sketch layer (above axes, below bodies)
+  m_context->SetZLayer(ais, m_layerSketch);
+  // Keep mapping id -> AIS for edit overlay toggling
+  m_sketchById[sketch->id()] = ais;
   return ais;
 }
 
@@ -591,9 +635,56 @@ void OcctQOpenGLWidgetViewer::clearSketches(bool theToUpdate)
     }
   }
   m_sketches.Clear();
+  m_sketchById.clear();
+  m_activeSketchId = 0;
   if (theToUpdate)
   {
     if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
     update();
   }
+}
+
+bool OcctQOpenGLWidgetViewer::setSketchEditMode(std::uint64_t sketchId, bool enabled, bool theToUpdate)
+{
+  if (sketchId == 0) return false;
+  // Demote previously active
+  if (m_activeSketchId != 0 && (!enabled || m_activeSketchId != sketchId))
+  {
+    auto itPrev = m_sketchById.find(m_activeSketchId);
+    if (itPrev != m_sketchById.end() && !itPrev->second.IsNull())
+    {
+      Handle(AIS_Shape) prev = itPrev->second;
+      m_context->SetZLayer(prev, m_layerSketch);
+      Handle(Prs3d_Drawer) drwPrev = prev->Attributes(); if (drwPrev.IsNull()) drwPrev = new Prs3d_Drawer();
+      Handle(Prs3d_LineAspect) laPrev = new Prs3d_LineAspect(drwPrev->Color(), Aspect_TOL_SOLID, 2.0f);
+      drwPrev->SetLineAspect(laPrev);
+      drwPrev->SetTransparency(0.0f);
+      prev->SetAttributes(drwPrev);
+      m_context->Redisplay(prev, Standard_False);
+    }
+    m_activeSketchId = 0;
+  }
+
+  if (!enabled)
+  {
+    if (theToUpdate && !m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); update(); }
+    return true;
+  }
+
+  auto it = m_sketchById.find(sketchId);
+  if (it == m_sketchById.end() || it->second.IsNull()) return false;
+
+  Handle(AIS_Shape) ais = it->second;
+  // Promote to overlay: Topmost without depth (configured in initializeGL)
+  m_context->SetZLayer(ais, Graphic3d_ZLayerId_Topmost);
+  // Emphasize style a bit in edit mode
+  Handle(Prs3d_Drawer) drw = ais->Attributes(); if (drw.IsNull()) drw = new Prs3d_Drawer();
+  Handle(Prs3d_LineAspect) la = new Prs3d_LineAspect(drw->Color(), Aspect_TOL_SOLID, 3.0f);
+  drw->SetLineAspect(la);
+  drw->SetTransparency(0.0f);
+  ais->SetAttributes(drw);
+  m_context->Redisplay(ais, Standard_False);
+  m_activeSketchId = sketchId;
+  if (theToUpdate && !m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); update(); }
+  return true;
 }

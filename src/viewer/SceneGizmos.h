@@ -60,10 +60,12 @@ public:
 
     if (topmostOverlay)
     {
-      ctx->SetZLayer(m_axisX, Graphic3d_ZLayerId_Topmost);
-      ctx->SetZLayer(m_axisY, Graphic3d_ZLayerId_Topmost);
-      ctx->SetZLayer(m_axisZ, Graphic3d_ZLayerId_Topmost);
-      ctx->SetZLayer(m_trihedron, Graphic3d_ZLayerId_Topmost);
+      // Keep axes/trihedron in Top overlay (depth-aware),
+      // sketches and other 3D overlays go into Topmost (set elsewhere)
+      ctx->SetZLayer(m_axisX, Graphic3d_ZLayerId_Top);
+      ctx->SetZLayer(m_axisY, Graphic3d_ZLayerId_Top);
+      ctx->SetZLayer(m_axisZ, Graphic3d_ZLayerId_Top);
+      ctx->SetZLayer(m_trihedron, Graphic3d_ZLayerId_Top);
     }
   }
 
@@ -98,4 +100,3 @@ private:
 };
 
 #endif
-

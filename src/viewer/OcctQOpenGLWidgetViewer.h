@@ -11,6 +11,11 @@
 #include <V3d_View.hxx>
 #include <NCollection_Sequence.hxx>
 #include <TopoDS_Shape.hxx>
+#include <Graphic3d_ZLayerId.hxx>
+#include <cstdint>
+#include <unordered_map>
+#include <cstdint>
+#include <unordered_map>
 
 class SceneGizmos;
 class AIS_ViewCube;
@@ -84,6 +89,11 @@ public: // sketches management
   // Introspection helper for tests
   int sketchCount() const { return m_sketches.Size(); }
 
+  // Toggle a sketch between depth-aware (Top) and edit overlay (Topmost w/o depth)
+  // Returns false if sketchId is unknown to the viewer.
+  bool setSketchEditMode(std::uint64_t sketchId, bool enabled, bool theToUpdate = true);
+  void clearSketchEditMode(bool theToUpdate = true) { (void)setSketchEditMode(m_activeSketchId, false, theToUpdate); }
+
 signals:
   void selectionChanged();
 
@@ -113,6 +123,12 @@ private:
   std::unique_ptr<SceneGizmos>   m_gizmos;           // axes + trihedron manager
   NCollection_Sequence<Handle(AIS_Shape)> m_bodies;  // tracked displayed bodies
   NCollection_Sequence<Handle(AIS_Shape)> m_sketches; // tracked displayed sketches
+  std::unordered_map<std::uint64_t, Handle(AIS_Shape)> m_sketchById; // id -> AIS mapping
+  std::uint64_t m_activeSketchId = 0; // 0 = none
+
+  // Custom Z-layers to ensure desired order: Default < Axes < Sketch < Top < Topmost < TopOSD
+  Graphic3d_ZLayerId m_layerAxes   = Graphic3d_ZLayerId_Default;
+  Graphic3d_ZLayerId m_layerSketch = Graphic3d_ZLayerId_Default;
 
   // no deletion-specific state
 };
