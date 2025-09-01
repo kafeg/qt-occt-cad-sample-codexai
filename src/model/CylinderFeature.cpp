@@ -33,6 +33,5 @@ double CylinderFeature::height() const
 
 void CylinderFeature::execute()
 {
-  myShape = KernelAPI::makeCylinder(radius(), height());
+  m_shape = KernelAPI::makeCylinder(radius(), height());
 }
-

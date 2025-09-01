@@ -16,6 +16,6 @@ public:
   double height() const;
 
 private:
-  QDoubleSpinBox* myRadius;
-  QDoubleSpinBox* myHeight;
+  QDoubleSpinBox* m_radius;
+  QDoubleSpinBox* m_height;
 };

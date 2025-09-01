@@ -18,16 +18,15 @@ public:
   explicit TabPage(QWidget* parent = nullptr);
   ~TabPage() override;
 
-  OcctQOpenGLWidgetViewer* viewer() const { return myViewer; }
-  Document&                doc()          { return *myDoc; }
+  OcctQOpenGLWidgetViewer* viewer() const { return m_viewer; }
+  Document&                doc()          { return *m_doc; }
 
-  TColStd_IndexedDataMapOfTransientTransient& featureToBody() { return myFeatureToBody; }
-  TColStd_IndexedDataMapOfTransientTransient& bodyToFeature() { return myBodyToFeature; }
+  TColStd_IndexedDataMapOfTransientTransient& featureToBody() { return m_featureToBody; }
+  TColStd_IndexedDataMapOfTransientTransient& bodyToFeature() { return m_bodyToFeature; }
 
 private:
-  OcctQOpenGLWidgetViewer*                 myViewer = nullptr;
-  std::unique_ptr<Document>                myDoc;
-  TColStd_IndexedDataMapOfTransientTransient myFeatureToBody;
-  TColStd_IndexedDataMapOfTransientTransient myBodyToFeature;
+  OcctQOpenGLWidgetViewer*                 m_viewer = nullptr;
+  std::unique_ptr<Document>                m_doc;
+  TColStd_IndexedDataMapOfTransientTransient m_featureToBody;
+  TColStd_IndexedDataMapOfTransientTransient m_bodyToFeature;
 };
-

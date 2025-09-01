@@ -12,10 +12,10 @@ CreateBoxDialog::CreateBoxDialog(QWidget* parent)
 {
   setWindowTitle("Create Box");
 
-  myDx = new QDoubleSpinBox(this);
-  myDy = new QDoubleSpinBox(this);
-  myDz = new QDoubleSpinBox(this);
-  for (auto sb : {myDx, myDy, myDz}) {
+  m_dx = new QDoubleSpinBox(this);
+  m_dy = new QDoubleSpinBox(this);
+  m_dz = new QDoubleSpinBox(this);
+  for (auto sb : {m_dx, m_dy, m_dz}) {
     sb->setRange(0.001, 1e6);
     sb->setDecimals(3);
     sb->setSingleStep(1.0);
@@ -23,9 +23,9 @@ CreateBoxDialog::CreateBoxDialog(QWidget* parent)
   }
 
   QFormLayout* form = new QFormLayout();
-  form->addRow("X (dx)", myDx);
-  form->addRow("Y (dy)", myDy);
-  form->addRow("Z (dz)", myDz);
+  form->addRow("X (dx)", m_dx);
+  form->addRow("Y (dy)", m_dy);
+  form->addRow("Z (dz)", m_dz);
 
   QDialogButtonBox* btns = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
   connect(btns, &QDialogButtonBox::accepted, this, &QDialog::accept);
@@ -37,7 +37,6 @@ CreateBoxDialog::CreateBoxDialog(QWidget* parent)
   setLayout(lay);
 }
 
-double CreateBoxDialog::dx() const { return myDx->value(); }
-double CreateBoxDialog::dy() const { return myDy->value(); }
-double CreateBoxDialog::dz() const { return myDz->value(); }
-
+double CreateBoxDialog::dx() const { return m_dx->value(); }
+double CreateBoxDialog::dy() const { return m_dy->value(); }
+double CreateBoxDialog::dz() const { return m_dz->value(); }

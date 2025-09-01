@@ -25,10 +25,10 @@ public:
   OcctQOpenGLWidgetViewer(QWidget* theParent = nullptr);
   virtual ~OcctQOpenGLWidgetViewer();
 
-  const Handle(V3d_Viewer)& Viewer() const { return myViewer; }
-  const Handle(V3d_View)& View() const { return myView; }
-  const Handle(AIS_InteractiveContext)& Context() const { return myContext; }
-  const QString& getGlInfo() const { return myGlInfo; }
+  const Handle(V3d_Viewer)& Viewer() const { return m_viewer; }
+  const Handle(V3d_View)& View() const { return m_view; }
+  const Handle(AIS_InteractiveContext)& Context() const { return m_context; }
+  const QString& getGlInfo() const { return m_glInfo; }
 
   virtual QSize minimumSizeHint() const override { return QSize(200, 200); }
   virtual QSize sizeHint() const override { return QSize(720, 480); }
@@ -76,20 +76,20 @@ private:
   bool rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit) const;
 
 private:
-  Handle(V3d_Viewer)             myViewer;
-  Handle(V3d_View)               myView;
-  Handle(AIS_InteractiveContext) myContext;
-  Handle(AIS_ViewCube)           myViewCube;
-  Handle(V3d_View)               myFocusView;
-  QString                        myGlInfo;
-  bool                           myIsCoreProfile = true;
-  double                         myGridStep = 10.0;
+  Handle(V3d_Viewer)             m_viewer;
+  Handle(V3d_View)               m_view;
+  Handle(AIS_InteractiveContext) m_context;
+  Handle(AIS_ViewCube)           m_viewCube;
+  Handle(V3d_View)               m_focusView;
+  QString                        m_glInfo;
+  bool                           m_isCoreProfile = true;
+  double                         m_gridStep = 10.0;
 
-  Handle(AIS_Line)               myAxisX;
-  Handle(AIS_Line)               myAxisY;
-  Handle(AIS_Trihedron)          myOriginTrihedron;
-  Handle(Geom_Axis2Placement)    myOriginPlacement;
-  NCollection_Sequence<Handle(AIS_Shape)> myBodies;
+  Handle(AIS_Line)               m_axisX;
+  Handle(AIS_Line)               m_axisY;
+  Handle(AIS_Trihedron)          m_originTrihedron;
+  Handle(Geom_Axis2Placement)    m_originPlacement;
+  NCollection_Sequence<Handle(AIS_Shape)> m_bodies;
 
   // no deletion-specific state
 };

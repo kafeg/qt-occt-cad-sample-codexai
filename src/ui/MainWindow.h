@@ -35,5 +35,5 @@ private:
   TabPage* currentPage() const;
 
 private:
-  QTabWidget* myTabs = nullptr;
+  QTabWidget* m_tabs = nullptr;
 };

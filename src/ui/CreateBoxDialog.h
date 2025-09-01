@@ -17,8 +17,7 @@ public:
   double dz() const;
 
 private:
-  QDoubleSpinBox* myDx;
-  QDoubleSpinBox* myDy;
-  QDoubleSpinBox* myDz;
+  QDoubleSpinBox* m_dx;
+  QDoubleSpinBox* m_dy;
+  QDoubleSpinBox* m_dz;
 };
-

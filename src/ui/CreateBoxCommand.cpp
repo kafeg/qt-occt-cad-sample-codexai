@@ -6,7 +6,7 @@
 void CreateBoxCommand::execute(Document& doc)
 {
   Handle(BoxFeature) bf = new BoxFeature();
-  bf->setSize(myDx, myDy, myDz);
+  bf->setSize(m_dx, m_dy, m_dz);
   doc.addFeature(bf);
   doc.recompute();
 }

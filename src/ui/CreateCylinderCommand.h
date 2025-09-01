@@ -6,11 +6,11 @@ class CreateCylinderCommand : public AbstractCommand
 {
 public:
   CreateCylinderCommand(double radius, double height)
-      : myRadius(radius), myHeight(height) {}
+      : m_radius(radius), m_height(height) {}
 
   void execute(Document& doc) override;
 
 private:
-  double myRadius{10.0};
-  double myHeight{20.0};
+  double m_radius{10.0};
+  double m_height{20.0};
 };

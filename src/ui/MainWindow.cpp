@@ -33,17 +33,17 @@
 
 MainWindow::MainWindow()
 {
-  myTabs = new QTabWidget(this);
-  myTabs->setTabsClosable(true);
-  connect(myTabs, &QTabWidget::tabCloseRequested, [this](int index) {
-    QWidget* w = myTabs->widget(index);
-    myTabs->removeTab(index);
+  m_tabs = new QTabWidget(this);
+  m_tabs->setTabsClosable(true);
+  connect(m_tabs, &QTabWidget::tabCloseRequested, [this](int index) {
+    QWidget* w = m_tabs->widget(index);
+    m_tabs->removeTab(index);
     delete w;
-    if (myTabs->count() == 0) {
+    if (m_tabs->count() == 0) {
       addNewTab();
     }
   });
-  setCentralWidget(myTabs);
+  setCentralWidget(m_tabs);
   addNewTab();
   createMenuBar();
   createToolBar();
@@ -70,8 +70,8 @@ void MainWindow::createMenuBar()
     closeTab->setShortcuts({ QKeySequence(QStringLiteral("Ctrl+W")), QKeySequence(QStringLiteral("Meta+W")) });
     file->addAction(closeTab);
     connect(closeTab, &QAction::triggered, [this]() {
-      const int idx = myTabs->currentIndex();
-      if (idx >= 0) emit myTabs->tabCloseRequested(idx);
+      const int idx = m_tabs->currentIndex();
+      if (idx >= 0) emit m_tabs->tabCloseRequested(idx);
     });
   }
   {
@@ -80,27 +80,27 @@ void MainWindow::createMenuBar()
     file->addAction(split);
     connect(split, &QAction::triggered, [this]() {
       TabPage* page = currentPage(); if (!page) return;
-      auto* myViewer = page->viewer();
-      if (!myViewer->View()->Subviews().IsEmpty())
+      auto* viewer = page->viewer();
+      if (!viewer->View()->Subviews().IsEmpty())
       {
-        myViewer->View()->View()->SetSubviewComposer(false);
-        NCollection_Sequence<Handle(V3d_View)> aSubviews = myViewer->View()->Subviews();
+        viewer->View()->View()->SetSubviewComposer(false);
+        NCollection_Sequence<Handle(V3d_View)> aSubviews = viewer->View()->Subviews();
         for (const Handle(V3d_View)& aSubviewIter : aSubviews) aSubviewIter->Remove();
-        myViewer->OnSubviewChanged(myViewer->Context(), nullptr, myViewer->View());
+        viewer->OnSubviewChanged(viewer->Context(), nullptr, viewer->View());
       }
       else
       {
-        myViewer->View()->View()->SetSubviewComposer(true);
-        Handle(V3d_View) aSubView1 = new V3d_View(myViewer->Viewer());
+        viewer->View()->View()->SetSubviewComposer(true);
+        Handle(V3d_View) aSubView1 = new V3d_View(viewer->Viewer());
         aSubView1->SetImmediateUpdate(false);
-        aSubView1->SetWindow(myViewer->View(), Graphic3d_Vec2d(0.5, 1.0), Aspect_TOTP_LEFT_UPPER, Graphic3d_Vec2d(0.0, 0.0));
-        Handle(V3d_View) aSubView2 = new V3d_View(myViewer->Viewer());
+        aSubView1->SetWindow(viewer->View(), Graphic3d_Vec2d(0.5, 1.0), Aspect_TOTP_LEFT_UPPER, Graphic3d_Vec2d(0.0, 0.0));
+        Handle(V3d_View) aSubView2 = new V3d_View(viewer->Viewer());
         aSubView2->SetImmediateUpdate(false);
-        aSubView2->SetWindow(myViewer->View(), Graphic3d_Vec2d(0.5, 1.0), Aspect_TOTP_LEFT_UPPER, Graphic3d_Vec2d(0.5, 0.0));
-        myViewer->OnSubviewChanged(myViewer->Context(), nullptr, aSubView1);
+        aSubView2->SetWindow(viewer->View(), Graphic3d_Vec2d(0.5, 1.0), Aspect_TOTP_LEFT_UPPER, Graphic3d_Vec2d(0.5, 0.0));
+        viewer->OnSubviewChanged(viewer->Context(), nullptr, aSubView1);
       }
-      myViewer->View()->Invalidate();
-      myViewer->update();
+      viewer->View()->Invalidate();
+      viewer->update();
     });
   }
   {
@@ -141,12 +141,12 @@ void MainWindow::createToolBar()
   QAction* actAbout = new QAction("About", tb);
   connect(actAbout, &QAction::triggered, [this]() {
     TabPage* page = currentPage(); if (!page) return;
-    auto* myViewer = page->viewer();
+    auto* viewer = page->viewer();
     QMessageBox::information(0,
                              "About",
                              QString() + "Parametric CAD skeleton using OCCT + Qt6\n\n"
                                + "Open CASCADE Technology v." OCC_VERSION_STRING_EXT "\n"
-                               + "Qt v." QT_VERSION_STR "\n\n" + "OpenGL info:\n" + myViewer->getGlInfo());
+                               + "Qt v." QT_VERSION_STR "\n\n" + "OpenGL info:\n" + viewer->getGlInfo());
   });
   tb->addAction(actAbout);
 
@@ -166,18 +166,18 @@ void MainWindow::createToolBar()
   bgLay->addWidget(slider);
   connect(slider, &QSlider::valueChanged, [this](int theValue) {
     TabPage* page = currentPage(); if (!page) return;
-    auto* myViewer = page->viewer();
+    auto* viewer = page->viewer();
     const float          aVal = theValue / 255.0f;
     const Quantity_Color aColor(aVal, aVal, aVal, Quantity_TOC_sRGB);
     const Quantity_Color aBottom(0.40f, 0.40f, 0.40f, Quantity_TOC_sRGB);
-    for (const Handle(V3d_View)& aSubviewIter : myViewer->View()->Subviews())
+    for (const Handle(V3d_View)& aSubviewIter : viewer->View()->Subviews())
     {
       aSubviewIter->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
       aSubviewIter->Invalidate();
     }
-    myViewer->View()->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
-    myViewer->View()->Invalidate();
-    myViewer->update();
+    viewer->View()->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
+    viewer->View()->Invalidate();
+    viewer->update();
   });
   QWidgetAction* bgAction = new QWidgetAction(tb);
   bgAction->setDefaultWidget(bgBox);
@@ -224,23 +224,23 @@ void MainWindow::addCylinder()
 void MainWindow::syncViewerFromDoc(bool toUpdate)
 {
   TabPage* page = currentPage(); if (!page) return;
-  auto* myViewer = page->viewer();
+  auto* viewer = page->viewer();
   page->featureToBody().Clear();
   page->bodyToFeature().Clear();
-  myViewer->clearBodies(false);
+  viewer->clearBodies(false);
   for (NCollection_Sequence<Handle(Feature)>::Iterator it(page->doc().features()); it.More(); it.Next())
   {
     const Handle(Feature)& f = it.Value(); if (f.IsNull()) continue;
-    Handle(AIS_Shape) body = myViewer->addShape(f->shape(), AIS_Shaded, 0, false);
+    Handle(AIS_Shape) body = viewer->addShape(f->shape(), AIS_Shaded, 0, false);
     page->featureToBody().Add(f, body);
     page->bodyToFeature().Add(body, f);
   }
   if (toUpdate)
   {
     // Ensure OCCT view invalidates and redraws after content changes
-    myViewer->Context()->UpdateCurrentViewer();
-    myViewer->View()->Invalidate();
-    myViewer->update();
+    viewer->Context()->UpdateCurrentViewer();
+    viewer->View()->Invalidate();
+    viewer->update();
   }
 }
 
@@ -316,11 +316,11 @@ void MainWindow::addSample()
 void MainWindow::addNewTab()
 {
   auto* page = new TabPage(this);
-  int idx = myTabs->addTab(page, QString("Untitled %1").arg(myTabs->count() + 1));
-  myTabs->setCurrentIndex(idx);
+  int idx = m_tabs->addTab(page, QString("Untitled %1").arg(m_tabs->count() + 1));
+  m_tabs->setCurrentIndex(idx);
 }
 
 TabPage* MainWindow::currentPage() const
 {
-  return qobject_cast<TabPage*>(myTabs ? myTabs->currentWidget() : nullptr);
+  return qobject_cast<TabPage*>(m_tabs ? m_tabs->currentWidget() : nullptr);
 }

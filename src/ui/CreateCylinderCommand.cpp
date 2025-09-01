@@ -6,7 +6,7 @@
 void CreateCylinderCommand::execute(Document& doc)
 {
   Handle(CylinderFeature) cf = new CylinderFeature();
-  cf->set(myRadius, myHeight);
+  cf->set(m_radius, m_height);
   doc.addFeature(cf);
   doc.recompute();
 }

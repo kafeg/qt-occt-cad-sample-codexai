@@ -42,19 +42,19 @@ public:
   virtual void execute() = 0;
 
   // Access computed shape
-  virtual const TopoDS_Shape& shape() const { return myShape; }
+  virtual const TopoDS_Shape& shape() const { return m_shape; }
 
   // Optional: basic name and parameter accessors
-  const TCollection_AsciiString& name() const { return myName; }
+  const TCollection_AsciiString& name() const { return m_name; }
 
-  void setName(const TCollection_AsciiString& theName) { myName = theName; }
+  void setName(const TCollection_AsciiString& theName) { m_name = theName; }
 
-  const ParamMap& params() const { return myParams; }
+  const ParamMap& params() const { return m_params; }
 
-  ParamMap& params() { return myParams; }
+  ParamMap& params() { return m_params; }
 
 protected:
-  TCollection_AsciiString myName;
-  ParamMap                myParams;
-  TopoDS_Shape            myShape; // resulting shape
+  TCollection_AsciiString m_name;
+  ParamMap                m_params;
+  TopoDS_Shape            m_shape; // resulting shape
 };

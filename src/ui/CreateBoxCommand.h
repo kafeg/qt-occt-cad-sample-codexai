@@ -6,16 +6,16 @@ class CreateBoxCommand : public AbstractCommand
 {
 public:
   CreateBoxCommand(double dx, double dy, double dz)
-      : myDx(dx),
-        myDy(dy),
-        myDz(dz)
+      : m_dx(dx),
+        m_dy(dy),
+        m_dz(dz)
   {
   }
 
   void execute(Document& doc) override;
 
 private:
-  double myDx{10.0};
-  double myDy{10.0};
-  double myDz{10.0};
+  double m_dx{10.0};
+  double m_dy{10.0};
+  double m_dz{10.0};
 };

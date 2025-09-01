@@ -2,17 +2,17 @@
 
 void Document::clear()
 {
-  myFeatures.Clear();
+  m_features.Clear();
 }
 
 void Document::addFeature(const Handle(Feature)& f)
 {
-  myFeatures.Append(f);
+  m_features.Append(f);
 }
 
 void Document::recompute()
 {
-  for (NCollection_Sequence<Handle(Feature)>::Iterator it(myFeatures); it.More(); it.Next()) {
+  for (NCollection_Sequence<Handle(Feature)>::Iterator it(m_features); it.More(); it.Next()) {
     const Handle(Feature)& f = it.Value();
     if (!f.IsNull()) {
       f->execute();
@@ -22,20 +22,20 @@ void Document::recompute()
 
 void Document::removeLast()
 {
-  if (!myFeatures.IsEmpty())
+  if (!m_features.IsEmpty())
   {
-    myFeatures.Remove(myFeatures.Size());
+    m_features.Remove(m_features.Size());
   }
 }
 
 void Document::removeFeature(const Handle(Feature)& f)
 {
   if (f.IsNull()) return;
-  for (int i = 1; i <= myFeatures.Size(); ++i)
+  for (int i = 1; i <= m_features.Size(); ++i)
   {
-    if (myFeatures.Value(i) == f)
+    if (m_features.Value(i) == f)
     {
-      myFeatures.Remove(i);
+      m_features.Remove(i);
       break;
     }
   }

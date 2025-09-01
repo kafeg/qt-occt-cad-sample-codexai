@@ -61,29 +61,29 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   aDriver->ChangeOptions().buffersOpaqueAlpha = true;
   aDriver->ChangeOptions().useSystemBuffer = false;
 
-  myViewer = new V3d_Viewer(aDriver);
+  m_viewer = new V3d_Viewer(aDriver);
   const Quantity_Color aBgTop(0.24, 0.24, 0.24, Quantity_TOC_sRGB);
   const Quantity_Color aBgBottom(0.36, 0.36, 0.36, Quantity_TOC_sRGB);
-  myViewer->SetDefaultBackgroundColor(aBgTop);
-  myViewer->SetDefaultBgGradientColors(aBgTop, aBgBottom, Aspect_GradientFillMethod_Elliptical);
-  myViewer->SetDefaultLights();
-  myViewer->SetLightOn();
-  myGridStep = 10.0;
-  myViewer->SetRectangularGridValues(0.0, 0.0, myGridStep, myGridStep, 0.0);
-  myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
+  m_viewer->SetDefaultBackgroundColor(aBgTop);
+  m_viewer->SetDefaultBgGradientColors(aBgTop, aBgBottom, Aspect_GradientFillMethod_Elliptical);
+  m_viewer->SetDefaultLights();
+  m_viewer->SetLightOn();
+  m_gridStep = 10.0;
+  m_viewer->SetRectangularGridValues(0.0, 0.0, m_gridStep, m_gridStep, 0.0);
+  m_viewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 
-  myContext = new AIS_InteractiveContext(myViewer);
+  m_context = new AIS_InteractiveContext(m_viewer);
 
   // Tweak highlight styles for better feedback
   {
-    Handle(Prs3d_Drawer) aSel = myContext->SelectionStyle();
+    Handle(Prs3d_Drawer) aSel = m_context->SelectionStyle();
     if (!aSel.IsNull())
     {
       aSel->SetColor(Quantity_NOC_ORANGE);
       aSel->SetDisplayMode(AIS_Shaded);
       aSel->SetTransparency(0.2f);
     }
-    Handle(Prs3d_Drawer) aDyn = myContext->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic);
+    Handle(Prs3d_Drawer) aDyn = m_context->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic);
     if (!aDyn.IsNull())
     {
       aDyn->SetColor(Quantity_NOC_CYAN1);
@@ -92,24 +92,24 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
     }
   }
 
-  myViewCube = new AIS_ViewCube();
-  myViewCube->SetViewAnimation(myViewAnimation);
-  myViewCube->SetFixedAnimationLoop(false);
-  myViewCube->SetAutoStartAnimation(true);
-  myViewCube->SetSize(60.0);
-  myViewCube->SetBoxColor(Quantity_NOC_GRAY70);
-  myViewCube->TransformPersistence()->SetCorner2d(Aspect_TOTP_RIGHT_UPPER);
-  myViewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(80, 80));
+  m_viewCube = new AIS_ViewCube();
+  m_viewCube->SetViewAnimation(myViewAnimation);
+  m_viewCube->SetFixedAnimationLoop(false);
+  m_viewCube->SetAutoStartAnimation(true);
+  m_viewCube->SetSize(60.0);
+  m_viewCube->SetBoxColor(Quantity_NOC_GRAY70);
+  m_viewCube->TransformPersistence()->SetCorner2d(Aspect_TOTP_RIGHT_UPPER);
+  m_viewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(80, 80));
 
-  myView = myViewer->CreateView();
-  myView->SetBgGradientColors(aBgTop, aBgBottom, Aspect_GradientFillMethod_Elliptical);
-  myView->SetImmediateUpdate(false);
+  m_view = m_viewer->CreateView();
+  m_view->SetBgGradientColors(aBgTop, aBgBottom, Aspect_GradientFillMethod_Elliptical);
+  m_view->SetImmediateUpdate(false);
 #ifndef __APPLE__
-  myView->ChangeRenderingParams().NbMsaaSamples = 4;
+  m_view->ChangeRenderingParams().NbMsaaSamples = 4;
 #endif
-  myView->ChangeRenderingParams().ToShowStats = true;
-  myView->ChangeRenderingParams().StatsTextHeight = 24;
-  myView->ChangeRenderingParams().CollectedStats = (Graphic3d_RenderingParams::PerfCounters)(
+  m_view->ChangeRenderingParams().ToShowStats = true;
+  m_view->ChangeRenderingParams().StatsTextHeight = 24;
+  m_view->ChangeRenderingParams().CollectedStats = (Graphic3d_RenderingParams::PerfCounters)(
     Graphic3d_RenderingParams::PerfCounters_FrameRate | Graphic3d_RenderingParams::PerfCounters_Triangles);
 
   setMouseTracking(true);
@@ -122,8 +122,8 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   aGlFormat.setDepthBufferSize(24);
   aGlFormat.setStencilBufferSize(8);
   aDriver->ChangeOptions().contextDebug = aGlFormat.testOption(QSurfaceFormat::DebugContext);
-  if (myIsCoreProfile) aGlFormat.setVersion(4, 5);
-  aGlFormat.setProfile(myIsCoreProfile ? QSurfaceFormat::CoreProfile : QSurfaceFormat::CompatibilityProfile);
+  if (m_isCoreProfile) aGlFormat.setVersion(4, 5);
+  aGlFormat.setProfile(m_isCoreProfile ? QSurfaceFormat::CoreProfile : QSurfaceFormat::CompatibilityProfile);
   setFormat(aGlFormat);
 #if defined(_WIN32)
   QCoreApplication::setAttribute(Qt::AA_UseDesktopOpenGL);
@@ -132,12 +132,12 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
 
 OcctQOpenGLWidgetViewer::~OcctQOpenGLWidgetViewer()
 {
-  Handle(Aspect_DisplayConnection) aDisp = myViewer->Driver()->GetDisplayConnection();
-  myContext->RemoveAll(false);
-  myContext.Nullify();
-  myView->Remove();
-  myView.Nullify();
-  myViewer.Nullify();
+  Handle(Aspect_DisplayConnection) aDisp = m_viewer->Driver()->GetDisplayConnection();
+  m_context->RemoveAll(false);
+  m_context.Nullify();
+  m_view->Remove();
+  m_view.Nullify();
+  m_viewer.Nullify();
   makeCurrent();
   aDisp.Nullify();
 }
@@ -145,7 +145,7 @@ OcctQOpenGLWidgetViewer::~OcctQOpenGLWidgetViewer()
 void OcctQOpenGLWidgetViewer::dumpGlInfo(bool theIsBasic, bool theToPrint)
 {
   TColStd_IndexedDataMapOfStringString aGlCapsDict;
-  myView->DiagnosticInformation(aGlCapsDict,
+  m_view->DiagnosticInformation(aGlCapsDict,
                                 theIsBasic ? Graphic3d_DiagnosticInfo_Basic : Graphic3d_DiagnosticInfo_Complete);
   TCollection_AsciiString anInfo;
   for (TColStd_IndexedDataMapOfStringString::Iterator aValueIter(aGlCapsDict); aValueIter.More(); aValueIter.Next())
@@ -157,7 +157,7 @@ void OcctQOpenGLWidgetViewer::dumpGlInfo(bool theIsBasic, bool theToPrint)
     }
   }
   if (theToPrint) Message::SendInfo(anInfo);
-  myGlInfo = QString::fromUtf8(anInfo.ToCString());
+  m_glInfo = QString::fromUtf8(anInfo.ToCString());
 }
 
 void OcctQOpenGLWidgetViewer::initializeGL()
@@ -175,7 +175,7 @@ void OcctQOpenGLWidgetViewer::initializeGL()
 #endif
 
   Handle(OpenGl_Context) aGlCtx = new OpenGl_Context();
-  if (!aGlCtx->Init(myIsCoreProfile))
+  if (!aGlCtx->Init(m_isCoreProfile))
   {
     Message::SendFail() << "Error: OpenGl_Context is unable to wrap OpenGL context";
     QMessageBox::critical(0, "Failure", "OpenGl_Context is unable to wrap OpenGL context");
@@ -183,12 +183,12 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     return;
   }
 
-  Handle(Aspect_NeutralWindow) aWindow = Handle(Aspect_NeutralWindow)::DownCast(myView->Window());
+  Handle(Aspect_NeutralWindow) aWindow = Handle(Aspect_NeutralWindow)::DownCast(m_view->Window());
   if (!aWindow.IsNull())
   {
     aWindow->SetNativeHandle(aNativeWin);
     aWindow->SetSize(aViewSize.x(), aViewSize.y());
-    myView->SetWindow(aWindow, aGlCtx->RenderingContext());
+    m_view->SetWindow(aWindow, aGlCtx->RenderingContext());
     dumpGlInfo(true, true);
   }
   else
@@ -197,9 +197,9 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     aWindow->SetVirtual(true);
     aWindow->SetNativeHandle(aNativeWin);
     aWindow->SetSize(aViewSize.x(), aViewSize.y());
-    myView->SetWindow(aWindow, aGlCtx->RenderingContext());
+    m_view->SetWindow(aWindow, aGlCtx->RenderingContext());
     dumpGlInfo(true, true);
-    myContext->Display(myViewCube, 0, 0, false);
+    m_context->Display(m_viewCube, 0, 0, false);
   }
 
   {
@@ -207,27 +207,27 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     const Standard_Real L = 1000.0;
     Handle(Geom_Line) aGeomX = new Geom_Line(gp_Pnt(-L, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0));
     Handle(Geom_Line) aGeomY = new Geom_Line(gp_Pnt(0.0, -L, 0.0), gp_Dir(0.0, 1.0, 0.0));
-    myAxisX = new AIS_Line(aGeomX);
-    myAxisY = new AIS_Line(aGeomY);
-    myAxisX->SetColor(Quantity_NOC_RED);
-    myAxisY->SetColor(Quantity_NOC_GREEN);
-    Handle(Prs3d_Drawer) xDr = myAxisX->Attributes(); if (xDr.IsNull()) xDr = new Prs3d_Drawer();
+    m_axisX = new AIS_Line(aGeomX);
+    m_axisY = new AIS_Line(aGeomY);
+    m_axisX->SetColor(Quantity_NOC_RED);
+    m_axisY->SetColor(Quantity_NOC_GREEN);
+    Handle(Prs3d_Drawer) xDr = m_axisX->Attributes(); if (xDr.IsNull()) xDr = new Prs3d_Drawer();
     xDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_RED, Aspect_TOL_SOLID, 2.0f));
-    myAxisX->SetAttributes(xDr);
-    Handle(Prs3d_Drawer) yDr = myAxisY->Attributes(); if (yDr.IsNull()) yDr = new Prs3d_Drawer();
+    m_axisX->SetAttributes(xDr);
+    Handle(Prs3d_Drawer) yDr = m_axisY->Attributes(); if (yDr.IsNull()) yDr = new Prs3d_Drawer();
     yDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_GREEN, Aspect_TOL_SOLID, 2.0f));
-    myAxisY->SetAttributes(yDr);
-    myContext->Display(myAxisX, 0, 1, false);
-    myContext->Display(myAxisY, 0, 1, false);
+    m_axisY->SetAttributes(yDr);
+    m_context->Display(m_axisX, 0, 1, false);
+    m_context->Display(m_axisY, 0, 1, false);
 
-    myOriginPlacement = new Geom_Axis2Placement(gp_Ax2(gp::Origin(), gp::DZ(), gp::DX()));
-    myOriginTrihedron = new AIS_Trihedron(myOriginPlacement);
-    Handle(Prs3d_Drawer) trDr = myOriginTrihedron->Attributes(); if (trDr.IsNull()) trDr = new Prs3d_Drawer();
+    m_originPlacement = new Geom_Axis2Placement(gp_Ax2(gp::Origin(), gp::DZ(), gp::DX()));
+    m_originTrihedron = new AIS_Trihedron(m_originPlacement);
+    Handle(Prs3d_Drawer) trDr = m_originTrihedron->Attributes(); if (trDr.IsNull()) trDr = new Prs3d_Drawer();
     trDr->SetDatumAspect(new Prs3d_DatumAspect());
     trDr->DatumAspect()->SetAxisLength(20.0, 20.0, 20.0);
-    myOriginTrihedron->SetAttributes(trDr);
-    myContext->Display(myOriginTrihedron, 0, 2, false);
-    updateGridStepForView(myView);
+    m_originTrihedron->SetAttributes(trDr);
+    m_context->Display(m_originTrihedron, 0, 2, false);
+    updateGridStepForView(m_view);
   }
 }
 
@@ -238,19 +238,19 @@ void OcctQOpenGLWidgetViewer::closeEvent(QCloseEvent* theEvent)
 
 void OcctQOpenGLWidgetViewer::keyPressEvent(QKeyEvent* theEvent)
 {
-  if (myView.IsNull()) return;
+  if (m_view.IsNull()) return;
   const Aspect_VKey aKey = OcctQtTools::qtKey2VKey(theEvent->key());
   switch (aKey)
   {
     case Aspect_VKey_Escape: QApplication::exit(); return;
     case Aspect_VKey_F: {
-      const bool hadX = !myAxisX.IsNull() && myContext->IsDisplayed(myAxisX);
-      const bool hadY = !myAxisY.IsNull() && myContext->IsDisplayed(myAxisY);
-      if (hadX) myContext->Erase(myAxisX, false);
-      if (hadY) myContext->Erase(myAxisY, false);
-      myView->FitAll(0.01, false);
-      if (hadX) myContext->Display(myAxisX, 0, 1, false);
-      if (hadY) myContext->Display(myAxisY, 0, 1, false);
+      const bool hadX = !m_axisX.IsNull() && m_context->IsDisplayed(m_axisX);
+      const bool hadY = !m_axisY.IsNull() && m_context->IsDisplayed(m_axisY);
+      if (hadX) m_context->Erase(m_axisX, false);
+      if (hadY) m_context->Erase(m_axisY, false);
+      m_view->FitAll(0.01, false);
+      if (hadX) m_context->Display(m_axisX, 0, 1, false);
+      if (hadY) m_context->Display(m_axisY, 0, 1, false);
       update();
       return;
     }
@@ -262,7 +262,7 @@ void OcctQOpenGLWidgetViewer::keyPressEvent(QKeyEvent* theEvent)
 void OcctQOpenGLWidgetViewer::mousePressEvent(QMouseEvent* theEvent)
 {
   QOpenGLWidget::mousePressEvent(theEvent);
-  if (myView.IsNull()) return;
+  if (m_view.IsNull()) return;
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
@@ -273,34 +273,34 @@ void OcctQOpenGLWidgetViewer::mousePressEvent(QMouseEvent* theEvent)
 void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
 {
   QOpenGLWidget::mouseReleaseEvent(theEvent);
-  if (myView.IsNull()) return;
+  if (m_view.IsNull()) return;
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
   // Selection: ensure exactly one is selected on click, no toggling/accumulation
-  if (!myContext.IsNull() && myContext->HasDetected())
+  if (!m_context.IsNull() && m_context->HasDetected())
   {
-    Handle(AIS_Shape) det = Handle(AIS_Shape)::DownCast(myContext->DetectedInteractive());
-    myContext->ClearSelected(false);
+    Handle(AIS_Shape) det = Handle(AIS_Shape)::DownCast(m_context->DetectedInteractive());
+    m_context->ClearSelected(false);
     if (!det.IsNull())
     {
-      myContext->AddOrRemoveSelected(det, false);
+      m_context->AddOrRemoveSelected(det, false);
     }
   }
   else
   {
-    myContext->ClearSelected(false);
+    m_context->ClearSelected(false);
   }
-  if (!myView.IsNull()) { myContext->UpdateCurrentViewer(); myView->Invalidate(); }
+  if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
   update();
 }
 
 void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)
 {
   QOpenGLWidget::mouseMoveEvent(theEvent);
-  if (myView.IsNull()) return;
+  if (m_view.IsNull()) return;
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aNewPos(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   if (UpdateMousePosition(aNewPos,
@@ -316,7 +316,7 @@ void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)
 void OcctQOpenGLWidgetViewer::wheelEvent(QWheelEvent* theEvent)
 {
   QOpenGLWidget::wheelEvent(theEvent);
-  if (myView.IsNull()) return;
+  if (m_view.IsNull()) return;
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPos(Graphic3d_Vec2d(theEvent->position().x() * aPixelRatio,
@@ -325,19 +325,19 @@ void OcctQOpenGLWidgetViewer::wheelEvent(QWheelEvent* theEvent)
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPos(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
 #endif
-  if (!myView->Subviews().IsEmpty())
+  if (!m_view->Subviews().IsEmpty())
   {
-    Handle(V3d_View) aPickedView = myView->PickSubview(aPos);
-    if (!aPickedView.IsNull() && aPickedView != myFocusView)
+    Handle(V3d_View) aPickedView = m_view->PickSubview(aPos);
+    if (!aPickedView.IsNull() && aPickedView != m_focusView)
     {
-      OnSubviewChanged(myContext, myFocusView, aPickedView);
+      OnSubviewChanged(m_context, m_focusView, aPickedView);
       updateView();
       return;
     }
   }
   if (UpdateZoom(Aspect_ScrollDelta(aPos, double(theEvent->angleDelta().y()) / 8.0)))
   {
-    updateGridStepForView(!myFocusView.IsNull() ? myFocusView : myView);
+    updateGridStepForView(!m_focusView.IsNull() ? m_focusView : m_view);
     updateView();
   }
 }
@@ -349,19 +349,19 @@ void OcctQOpenGLWidgetViewer::updateView()
 
 void OcctQOpenGLWidgetViewer::paintGL()
 {
-  if (myView.IsNull() || myView->Window().IsNull()) return;
+  if (m_view.IsNull() || m_view->Window().IsNull()) return;
   Aspect_Drawable aNativeWin = (Aspect_Drawable)winId();
 #ifdef _WIN32
   HDC  aWglDevCtx = wglGetCurrentDC();
   HWND aWglWin    = WindowFromDC(aWglDevCtx);
   aNativeWin      = (Aspect_Drawable)aWglWin;
 #endif
-  if (myView->Window()->NativeHandle() != aNativeWin)
+  if (m_view->Window()->NativeHandle() != aNativeWin)
   {
     initializeGL();
     return;
   }
-  Handle(OpenGl_Context)     aGlCtx      = OcctGlTools::GetGlContext(myView);
+  Handle(OpenGl_Context)     aGlCtx      = OcctGlTools::GetGlContext(m_view);
   Handle(OpenGl_FrameBuffer) aDefaultFbo = aGlCtx->DefaultFrameBuffer();
   if (aDefaultFbo.IsNull())
   {
@@ -379,24 +379,24 @@ void OcctQOpenGLWidgetViewer::paintGL()
 
   Graphic3d_Vec2i aViewSizeOld;
   const Graphic3d_Vec2i aViewSizeNew = aDefaultFbo->GetVPSize();
-  Handle(Aspect_NeutralWindow) aWindow = Handle(Aspect_NeutralWindow)::DownCast(myView->Window());
+  Handle(Aspect_NeutralWindow) aWindow = Handle(Aspect_NeutralWindow)::DownCast(m_view->Window());
   aWindow->Size(aViewSizeOld.x(), aViewSizeOld.y());
   if (aViewSizeNew != aViewSizeOld)
   {
     aWindow->SetSize(aViewSizeNew.x(), aViewSizeNew.y());
-    myView->MustBeResized();
-    myView->Invalidate();
+    m_view->MustBeResized();
+    m_view->Invalidate();
     dumpGlInfo(true, false);
-    for (const Handle(V3d_View)& aSubviewIter : myView->Subviews())
+    for (const Handle(V3d_View)& aSubviewIter : m_view->Subviews())
     {
       aSubviewIter->MustBeResized();
       aSubviewIter->Invalidate();
       aDefaultFbo->SetupViewport(aGlCtx);
     }
   }
-  Handle(V3d_View) aView = !myFocusView.IsNull() ? myFocusView : myView;
+  Handle(V3d_View) aView = !m_focusView.IsNull() ? m_focusView : m_view;
   aView->InvalidateImmediate();
-  FlushViewEvents(myContext, aView, true);
+  FlushViewEvents(m_context, aView, true);
 }
 
 void OcctQOpenGLWidgetViewer::handleViewRedraw(const Handle(AIS_InteractiveContext)& theCtx,
@@ -421,7 +421,7 @@ bool OcctQOpenGLWidgetViewer::rayHitZ0(const Handle(V3d_View)& theView, int theP
 
 void OcctQOpenGLWidgetViewer::updateGridStepForView(const Handle(V3d_View)& theView)
 {
-  if (theView.IsNull() || myViewer.IsNull()) return;
+  if (theView.IsNull() || m_viewer.IsNull()) return;
   Handle(Aspect_NeutralWindow) aWnd = Handle(Aspect_NeutralWindow)::DownCast(theView->Window());
   if (aWnd.IsNull()) return;
   Standard_Integer vpW = 0, vpH = 0; aWnd->Size(vpW, vpH);
@@ -437,17 +437,17 @@ void OcctQOpenGLWidgetViewer::updateGridStepForView(const Handle(V3d_View)& theV
   double snapped = 1.0 * pow10;
   if (norm <= 1.0) snapped = 1.0 * pow10; else if (norm <= 2.0) snapped = 2.0 * pow10;
   else if (norm <= 5.0) snapped = 5.0 * pow10; else snapped = 10.0 * pow10;
-  if (Abs(snapped - myGridStep) < (1.0e-6 * Max(1.0, myGridStep))) return;
-  myGridStep = snapped;
-  myViewer->SetRectangularGridValues(0.0, 0.0, myGridStep, myGridStep, 0.0);
-  myViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
+  if (Abs(snapped - m_gridStep) < (1.0e-6 * Max(1.0, m_gridStep))) return;
+  m_gridStep = snapped;
+  m_viewer->SetRectangularGridValues(0.0, 0.0, m_gridStep, m_gridStep, 0.0);
+  m_viewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
 }
 
 void OcctQOpenGLWidgetViewer::OnSubviewChanged(const Handle(AIS_InteractiveContext)&,
                                                const Handle(V3d_View)&,
                                                const Handle(V3d_View)& theNewView)
 {
-  myFocusView = theNewView;
+  m_focusView = theNewView;
 }
 
 Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addBody(const TopoDS_Shape& theShape,
@@ -456,25 +456,25 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addBody(const TopoDS_Shape& theShape,
                                                    bool theToUpdate)
 {
   Handle(AIS_Shape) aShape = new AIS_Shape(theShape);
-  myBodies.Append(aShape);
-  myContext->Display(aShape, theDispMode, theDispPriority, theToUpdate);
+  m_bodies.Append(aShape);
+  m_context->Display(aShape, theDispMode, theDispPriority, theToUpdate);
   return aShape;
 }
 
 void OcctQOpenGLWidgetViewer::clearBodies(bool theToUpdate)
 {
-  for (NCollection_Sequence<Handle(AIS_Shape)>::Iterator it(myBodies); it.More(); it.Next())
+  for (NCollection_Sequence<Handle(AIS_Shape)>::Iterator it(m_bodies); it.More(); it.Next())
   {
     const Handle(AIS_Shape)& aBody = it.Value();
-    if (!aBody.IsNull() && myContext->IsDisplayed(aBody))
+    if (!aBody.IsNull() && m_context->IsDisplayed(aBody))
     {
-      myContext->Erase(aBody, false);
+      m_context->Erase(aBody, false);
     }
   }
-  myBodies.Clear();
+  m_bodies.Clear();
   if (theToUpdate)
   {
-    if (!myView.IsNull()) { myContext->UpdateCurrentViewer(); myView->Invalidate(); }
+    if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
     update();
   }
 }
@@ -483,9 +483,9 @@ void OcctQOpenGLWidgetViewer::clearBodies(bool theToUpdate)
 Handle(AIS_Shape) OcctQOpenGLWidgetViewer::selectedShape() const
 {
   Handle(AIS_Shape) result;
-  for (myContext->InitSelected(); myContext->MoreSelected(); myContext->NextSelected())
+  for (m_context->InitSelected(); m_context->MoreSelected(); m_context->NextSelected())
   {
-    result = Handle(AIS_Shape)::DownCast(myContext->SelectedInteractive());
+    result = Handle(AIS_Shape)::DownCast(m_context->SelectedInteractive());
     if (!result.IsNull()) break;
   }
   return result;
@@ -493,9 +493,9 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::selectedShape() const
 
 Handle(AIS_Shape) OcctQOpenGLWidgetViewer::detectedShape() const
 {
-  if (!myContext.IsNull() && myContext->HasDetected())
+  if (!m_context.IsNull() && m_context->HasDetected())
   {
-    return Handle(AIS_Shape)::DownCast(myContext->DetectedInteractive());
+    return Handle(AIS_Shape)::DownCast(m_context->DetectedInteractive());
   }
   return Handle(AIS_Shape)();
 }

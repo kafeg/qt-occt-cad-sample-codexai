@@ -12,19 +12,19 @@ CreateCylinderDialog::CreateCylinderDialog(QWidget* parent)
 {
   setWindowTitle("Create Cylinder");
 
-  myRadius = new QDoubleSpinBox(this);
-  myHeight = new QDoubleSpinBox(this);
-  for (auto sb : {myRadius, myHeight}) {
+  m_radius = new QDoubleSpinBox(this);
+  m_height = new QDoubleSpinBox(this);
+  for (auto sb : {m_radius, m_height}) {
     sb->setRange(0.001, 1e6);
     sb->setDecimals(3);
     sb->setSingleStep(1.0);
   }
-  myRadius->setValue(10.0);
-  myHeight->setValue(20.0);
+  m_radius->setValue(10.0);
+  m_height->setValue(20.0);
 
   QFormLayout* form = new QFormLayout();
-  form->addRow("Radius", myRadius);
-  form->addRow("Height", myHeight);
+  form->addRow("Radius", m_radius);
+  form->addRow("Height", m_height);
 
   QDialogButtonBox* btns = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
   connect(btns, &QDialogButtonBox::accepted, this, &QDialog::accept);
@@ -36,5 +36,5 @@ CreateCylinderDialog::CreateCylinderDialog(QWidget* parent)
   setLayout(lay);
 }
 
-double CreateCylinderDialog::radius() const { return myRadius->value(); }
-double CreateCylinderDialog::height() const { return myHeight->value(); }
+double CreateCylinderDialog::radius() const { return m_radius->value(); }
+double CreateCylinderDialog::height() const { return m_height->value(); }

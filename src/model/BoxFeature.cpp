@@ -38,5 +38,5 @@ double BoxFeature::dz() const
 
 void BoxFeature::execute()
 {
-  myShape = KernelAPI::makeBox(dx(), dy(), dz());
+  m_shape = KernelAPI::makeBox(dx(), dy(), dz());
 }
