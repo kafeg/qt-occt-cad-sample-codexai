@@ -4,14 +4,10 @@
 
 #include <Standard_WarningsDisable.hxx>
 #include <QAction>
-#include <QHBoxLayout>
 #include <QTabWidget>
-#include <QLabel>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QSlider>
 #include <QToolBar>
-#include <QWidgetAction>
 #include <Standard_WarningsRestore.hxx>
 
 #include <Quantity_Color.hxx>
@@ -28,11 +24,6 @@
 #include <Sketch.h>
 // model/viewer headers for sync helpers
 #include <Feature.h>
-#include <BoxFeature.h>
-#include <gp_Trsf.hxx>
-#include <gp_Vec.hxx>
-#include <AIS_Shape.hxx>
-#include <CylinderFeature.h>
 #include "TabPage.h"
 
 MainWindow::MainWindow()
@@ -162,53 +153,7 @@ void MainWindow::createToolBar()
                                + "Qt v." QT_VERSION_STR "\n\n" + "OpenGL info:\n" + viewer->getGlInfo());
   });
   tb->addAction(actAbout);
-
-  QWidget* bgBox = new QWidget(tb);
-  QHBoxLayout* bgLay = new QHBoxLayout(bgBox);
-  bgLay->setContentsMargins(6, 0, 6, 0);
-  QLabel* lbl = new QLabel("Background", bgBox); // Background gradient brightness
-  bgLay->addWidget(lbl);
-  QSlider* slider = new QSlider(Qt::Horizontal, bgBox);
-  slider->setRange(0, 255);
-  slider->setSingleStep(1);
-  slider->setPageStep(15);
-  slider->setTickInterval(15);
-  slider->setTickPosition(QSlider::NoTicks);
-  slider->setValue(64);
-  slider->setFixedWidth(200);
-  bgLay->addWidget(slider);
-  // Adjust background gradient based on slider
-  connect(slider, &QSlider::valueChanged, [this](int theValue) {
-    TabPage* page = currentPage(); if (!page) return;
-    auto* viewer = page->viewer();
-    const float          aVal = theValue / 255.0f;
-    const Quantity_Color aColor(aVal, aVal, aVal, Quantity_TOC_sRGB);
-    const Quantity_Color aBottom(0.40f, 0.40f, 0.40f, Quantity_TOC_sRGB);
-    for (const Handle(V3d_View)& aSubviewIter : viewer->View()->Subviews())
-    {
-      aSubviewIter->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
-      aSubviewIter->Invalidate();
-    }
-    viewer->View()->SetBgGradientColors(aColor, aBottom, Aspect_GradientFillMethod_Elliptical);
-    viewer->View()->Invalidate();
-    viewer->update();
-  });
-  QWidgetAction* bgAction = new QWidgetAction(tb);
-  bgAction->setDefaultWidget(bgBox);
-  tb->addAction(bgAction);
-
   addToolBar(Qt::TopToolBarArea, tb);
-
-  // Test toolbar block
-  QToolBar* ttest = new QToolBar("Test", this);
-  ttest->setMovable(true);
-  QAction* actClearAll = new QAction("Clear All", ttest);
-  connect(actClearAll, &QAction::triggered, [this]() { clearAll(); });
-  ttest->addAction(actClearAll);
-  QAction* actAddSample = new QAction("Add Sample", ttest);
-  connect(actAddSample, &QAction::triggered, [this]() { addSample(); });
-  ttest->addAction(actAddSample);
-  addToolBar(Qt::TopToolBarArea, ttest);
 }
 
 void MainWindow::addBox()
@@ -283,78 +228,6 @@ void MainWindow::syncViewerFromDoc(bool toUpdate)
 {
   TabPage* page = currentPage(); if (!page) return;
   page->syncViewerFromDoc(toUpdate);
-}
-
-void MainWindow::clearAll()
-{
-  TabPage* page = currentPage(); if (!page) return;
-  page->doc().clear();
-  page->viewer()->clearBodies(true);
-  page->refreshFeatureList();
-}
-
-void MainWindow::addSample()
-{
-  // Add 3 boxes along +X and 3 cylinders along +X offset by +Y; positions via AIS local transforms
-  TabPage* page = currentPage(); if (!page) return;
-  const double dx = 20.0, dy = 20.0, dz = 20.0;
-  const double gap = 5.0;
-  // Boxes
-  Handle(BoxFeature) b1 = new BoxFeature(dx, dy, dz);
-  Handle(BoxFeature) b2 = new BoxFeature(dx, dy, dz);
-  Handle(BoxFeature) b3 = new BoxFeature(dx, dy, dz);
-  page->doc().addFeature(b1);
-  page->doc().addFeature(b2);
-  page->doc().addFeature(b3);
-  // Cylinders placed nearby along +Y
-  const double cr = 10.0;
-  const double ch = dz;
-  Handle(CylinderFeature) c1 = new CylinderFeature(cr, ch);
-  Handle(CylinderFeature) c2 = new CylinderFeature(cr, ch);
-  Handle(CylinderFeature) c3 = new CylinderFeature(cr, ch);
-  page->doc().addFeature(c1);
-  page->doc().addFeature(c2);
-  page->doc().addFeature(c3);
-  page->doc().recompute();
-  // Sync without update to apply local transforms first
-  page->syncViewerFromDoc(false);
-  // Position shapes independently in viewer (test-only)
-  if (page->featureToBody().Contains(b1))
-  {
-    Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(b1));
-    if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(0.0, 0.0, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
-  }
-  if (page->featureToBody().Contains(b2))
-  {
-    Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(b2));
-    if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(dx + gap, 0.0, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
-  }
-  if (page->featureToBody().Contains(b3))
-  {
-    Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(b3));
-    if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(2.0 * (dx + gap), 0.0, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
-  }
-  const double yoff = dy + gap;
-  if (page->featureToBody().Contains(c1))
-  {
-    Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(c1));
-    if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(0.0, yoff, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
-  }
-  if (page->featureToBody().Contains(c2))
-  {
-    Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(c2));
-    if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(dx + gap, yoff, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
-  }
-  if (page->featureToBody().Contains(c3))
-  {
-    Handle(AIS_Shape) s = Handle(AIS_Shape)::DownCast(page->featureToBody().FindFromKey(c3));
-    if (!s.IsNull()) { gp_Trsf tr; tr.SetTranslation(gp_Vec(2.0 * (dx + gap), yoff, 0.0)); s->SetLocalTransformation(tr); page->viewer()->Context()->Redisplay(s, false); }
-  }
-  // Force viewer to refresh immediately after redisplay
-  page->viewer()->Context()->UpdateCurrentViewer();
-  page->viewer()->View()->Invalidate();
-  page->viewer()->update();
-  page->refreshFeatureList();
 }
 
 void MainWindow::addNewTab()

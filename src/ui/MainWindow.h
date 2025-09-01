@@ -25,13 +25,11 @@ public:
 
 private:
   void createMenuBar();             // File/Test menus and actions
-  void createToolBar();             // Toolbar with background slider and test actions
+  void createToolBar();             // Toolbar with core actions (no slider)
   void addBox();                    // Open dialog and add BoxFeature
   void addCylinder();               // Open dialog and add CylinderFeature
   void addExtrude();                // Open dialog, select sketch, add ExtrudeFeature
   void syncViewerFromDoc(bool toUpdate = true); // Rebuild AIS bodies from Document
-  void clearAll();                  // Clear document and viewer
-  void addSample();                 // Add arranged sample primitives (test-only helpers)
   void addNewTab();                 // Add a new tab page
 
   TabPage* currentPage() const;
