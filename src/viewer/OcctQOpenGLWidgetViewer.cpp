@@ -165,6 +165,16 @@ void OcctQOpenGLWidgetViewer::resetViewToOrigin(Standard_Real distance)
   // Place eye along the isometric (+X, -Y, +Z) direction
   m_view->SetEye(distance, -distance, distance);
 
+  // Make the initial framing closer by shrinking the view size (orthographic zoom).
+  // We scale current view size down to 20% to appear ~5x closer by default.
+  Standard_Real aW = 0.0, aH = 0.0;
+  m_view->Size(aW, aH);
+  const Standard_Real aMax = (aW > aH ? aW : aH);
+  if (aMax > 0.0)
+  {
+    m_view->SetSize(aMax * 0.20); // smaller size => larger zoom-in
+  }
+
   // Invalidate and request repaint; also update grid placement if present
   if (!m_context.IsNull())
   {
@@ -296,8 +306,8 @@ void OcctQOpenGLWidgetViewer::initializeGL()
   }
 
   // Position camera towards origin after grid and axes are displayed
-  // Use a fixed distance from origin
-  resetViewToOrigin(5.0);
+  // Use a closer fixed distance from origin for better default framing
+  resetViewToOrigin(1.2);
 }
 
 void OcctQOpenGLWidgetViewer::closeEvent(QCloseEvent* theEvent)
@@ -562,6 +572,7 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addBody(const TopoDS_Shape& theShape,
                                                    Standard_Integer theDispPriority,
                                                    bool theToUpdate)
 {
+  const bool wasEmpty = m_bodies.IsEmpty();
   Handle(AIS_Shape) aShape = new AIS_Shape(theShape);
   m_bodies.Append(aShape);
   aShape->SetDisplayMode(theDispMode);
@@ -569,6 +580,7 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addBody(const TopoDS_Shape& theShape,
   // Bodies drawn last among 3D content
   m_context->SetZLayer(aShape, Graphic3d_ZLayerId_Top);
   if (theDispPriority != 0) { m_context->SetDisplayPriority(aShape, theDispPriority); }
+  // No auto-fit here; initial camera is configured once at initialization.
   return aShape;
 }
 

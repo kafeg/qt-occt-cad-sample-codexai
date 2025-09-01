@@ -48,7 +48,8 @@ public:
 public:
   // Reset camera: look at origin with a fixed isometric projection and
   // place eye at (0,0,distance) regardless of previous state (default 5.0)
-  void resetViewToOrigin(Standard_Real distance = 5.0);
+  // Place camera in fixed isometric orientation, closer by default
+  void resetViewToOrigin(Standard_Real distance = 1.2);
 
 public:
   virtual void OnSubviewChanged(const Handle(AIS_InteractiveContext)&,
