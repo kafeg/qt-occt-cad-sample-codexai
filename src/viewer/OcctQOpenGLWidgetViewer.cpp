@@ -355,22 +355,16 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
   if (!m_manip.IsNull() && m_isManipDragging)
   {
     m_manip->StopTransform(true);
-    // Accumulate delta for multi-step manipulation; do not emit yet
-    m_manipAccumTrsf.Multiply(m_lastManipDelta);
+    // Accumulate delta for multi-step manipulation in correct order
+    // (new incremental delta applied before previously accumulated transform)
+    m_manipAccumTrsf.PreMultiply(m_lastManipDelta);
     m_isManipDragging = false;
     // keep manipulator visible for further drags
     if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
     update();
     return;
   }
-  // Finish manipulator transform if any
-  if (!m_manip.IsNull() && (m_manip->HasActiveMode() || m_manip->HasActiveTransformation()))
-  {
-    m_manip->StopTransform(true);
-    m_manipAccumTrsf.Multiply(m_lastManipDelta);
-    if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
-    update();
-  }
+  // No accumulation outside of a drag session.
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());

@@ -91,6 +91,10 @@ public: // manipulator control
   void confirmManipulator();
   void cancelManipulator();
 
+  // Test helper: emit manipulatorFinished with a provided transform
+  // to simulate a confirm without interactive dragging.
+  void emitManipulatorFinishedForTest(const gp_Trsf& tr) { emit manipulatorFinished(tr); }
+
 public: // sketches management
   // Display a sketch as a colored wire compound and keep handle for cleanup
   Handle(AIS_Shape) addSketch(const std::shared_ptr<Sketch>& sketch);
