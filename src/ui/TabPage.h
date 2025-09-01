@@ -3,6 +3,7 @@
 
 #include <Standard_WarningsDisable.hxx>
 #include <QWidget>
+#include <QObject>
 #include <Standard_WarningsRestore.hxx>
 
 #include <TColStd_IndexedDataMapOfTransientTransient.hxx>
@@ -51,4 +52,5 @@ private:
   TColStd_IndexedDataMapOfTransientTransient m_bodyToFeature;  // body -> feature
   std::unordered_map<DocumentItem::Id, Handle(AIS_Shape)> m_sketchToHandle; // sketch id -> AIS handle
   FeatureHistoryPanel*                     m_history = nullptr;// feature history panel
+  QMetaObject::Connection                  m_connManipFinished; // manipulatorFinished connection
 };

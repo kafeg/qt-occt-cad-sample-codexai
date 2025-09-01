@@ -15,6 +15,8 @@
 #include <gp_Quaternion.hxx>
 #include <gp_EulerSequence.hxx>
 #include <cmath>
+#include <algorithm>
+#include <vector>
 
 TabPage::TabPage(QWidget* parent)
   : QWidget(parent)
@@ -37,11 +39,48 @@ TabPage::TabPage(QWidget* parent)
   connect(m_history, &FeatureHistoryPanel::requestRemoveSelected, [this]() {
     // Remove selected items; currently only Feature removal is supported
     auto sel = m_history->selectedItems();
+    // Track sources of removed MoveFeatures to restore suppression when removing the last move
+    std::vector<DocumentItem::Id> toUnsuppressIds;
     for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(sel); it.More(); it.Next())
     {
       const Handle(DocumentItem)& di = it.Value();
       if (Handle(Feature) f = Handle(Feature)::DownCast(di); !f.IsNull())
+      {
+        if (Handle(MoveFeature) mf = Handle(MoveFeature)::DownCast(f); !mf.IsNull())
+        {
+          if (mf->sourceId() != 0) toUnsuppressIds.push_back(mf->sourceId());
+        }
         m_doc->removeFeature(f);
+      }
+    }
+    // Deduplicate ids
+    std::sort(toUnsuppressIds.begin(), toUnsuppressIds.end());
+    toUnsuppressIds.erase(std::unique(toUnsuppressIds.begin(), toUnsuppressIds.end()), toUnsuppressIds.end());
+    // For each recorded source id, unsuppress the feature if no remaining MoveFeature still references it
+    if (!toUnsuppressIds.empty())
+    {
+      const auto& feats = m_doc->features();
+      for (DocumentItem::Id sid : toUnsuppressIds)
+      {
+        Handle(Feature) src;
+        for (NCollection_Sequence<Handle(Feature)>::Iterator fit(feats); fit.More(); fit.Next())
+        {
+          const Handle(Feature)& ff = fit.Value();
+          if (!ff.IsNull() && ff->id() == sid) { src = ff; break; }
+        }
+        if (src.IsNull()) continue;
+        // Check if any MoveFeature still references this source id
+        bool stillReferenced = false;
+        for (NCollection_Sequence<Handle(Feature)>::Iterator fit(feats); fit.More(); fit.Next())
+        {
+          Handle(MoveFeature) remMf = Handle(MoveFeature)::DownCast(fit.Value());
+          if (!remMf.IsNull() && remMf->sourceId() == sid) { stillReferenced = true; break; }
+        }
+        if (!stillReferenced && src->isSuppressed())
+        {
+          src->setSuppressed(false);
+        }
+      }
     }
     m_doc->recompute();
     syncViewerFromDoc(true);
@@ -125,8 +164,11 @@ void TabPage::activateMove()
 
   // Show manipulator and connect finish signal to add MoveFeature
   m_viewer->showManipulator(sel);
+  // Drop any previous connection(s) for this signal to avoid duplicate commits
+  QObject::disconnect(m_viewer, &OcctQOpenGLWidgetViewer::manipulatorFinished, this, nullptr);
+  if (m_connManipFinished) { QObject::disconnect(m_connManipFinished); m_connManipFinished = QMetaObject::Connection(); }
   // Connect once per activation; capture Source by value
-  QObject::connect(m_viewer, &OcctQOpenGLWidgetViewer::manipulatorFinished, this, [this, src](const gp_Trsf& tr) {
+  m_connManipFinished = QObject::connect(m_viewer, &OcctQOpenGLWidgetViewer::manipulatorFinished, this, [this, src](const gp_Trsf& tr) {
     // Commit at confirm only
     gp_XYZ t = tr.TranslationPart();
     gp_Quaternion q = tr.GetRotation();
@@ -147,6 +189,8 @@ void TabPage::activateMove()
     m_doc->recompute();
     syncViewerFromDoc(true);
     refreshFeatureList();
+    // Disconnect to prevent multiple triggers on subsequent confirmations
+    if (m_connManipFinished) { QObject::disconnect(m_connManipFinished); m_connManipFinished = QMetaObject::Connection(); }
   });
 }
 
@@ -155,12 +199,16 @@ void TabPage::confirmMove()
   if (!m_viewer) return;
   if (!m_viewer->isManipulatorActive()) return;
   m_viewer->confirmManipulator();
+  // Keep state clean in case of edge conditions
+  if (m_connManipFinished) { QObject::disconnect(m_connManipFinished); m_connManipFinished = QMetaObject::Connection(); }
 }
 
 void TabPage::cancelMove()
 {
   if (!m_viewer) return;
   if (!m_viewer->isManipulatorActive()) return;
+  // Cancel move means no commit; drop any pending connection
+  if (m_connManipFinished) { QObject::disconnect(m_connManipFinished); m_connManipFinished = QMetaObject::Connection(); }
   m_viewer->cancelManipulator();
   // Reset any temporary local transforms by resyncing from document
   syncViewerFromDoc(true);
