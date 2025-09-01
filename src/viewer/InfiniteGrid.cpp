@@ -12,8 +12,8 @@ IMPLEMENT_STANDARD_RTTIEXT(InfiniteGrid, AIS_InteractiveObject)
 
 namespace {
 // Softer, less intrusive tones
-static inline Quantity_Color kGridMinorColor() { return Quantity_Color(Quantity_NOC_GRAY80); }
-static inline Quantity_Color kGridMajorColor() { return Quantity_Color(Quantity_NOC_GRAY60); }
+static inline Quantity_Color kGridMinorColor() { return Quantity_Color(Quantity_NOC_GRAY90); }
+static inline Quantity_Color kGridMajorColor() { return Quantity_Color(Quantity_NOC_GRAY70); }
 }
 
 void InfiniteGrid::updateFromView(const Handle(V3d_View)& theView)
@@ -164,9 +164,9 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
   thePrs->Clear();
   if (!m_Initialized || m_Step <= 0.0) return;
 
-  // Apply subtle transparency to entire grid
+  // Apply subtle transparency to entire grid (higher = more transparent)
   Handle(Prs3d_Drawer) aDr = Attributes(); if (aDr.IsNull()) aDr = new Prs3d_Drawer();
-  aDr->SetTransparency(0.65f); // 0=opaque, 1=fully transparent
+  aDr->SetTransparency(0.80f); // 0=opaque, 1=fully transparent
   SetAttributes(aDr);
 
   // Build grid segments
@@ -188,21 +188,24 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
     auto isMajor = [](Standard_Integer i) {
       Standard_Integer m = i % 10; if (m < 0) m += 10; return m == 0; };
 
+    // Depth bias to avoid z-fighting with axes/origin (push grid slightly "behind")
+    const Standard_Real zBias = -1.0e-3 * Max(m_Step, 1.0);
+
     // Vertical lines (constant X)
     for (Standard_Integer ix = x0; ix <= x1; ++ix)
     {
       const Standard_Real x = ix * m_Step;
       Handle(Graphic3d_ArrayOfSegments)& target = isMajor(ix) ? segMajor : segMinor;
-      target->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)m_YMin, 0.0f);
-      target->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)m_YMax, 0.0f);
+      target->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)m_YMin, (Standard_ShortReal)zBias);
+      target->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)m_YMax, (Standard_ShortReal)zBias);
     }
     // Horizontal lines (constant Y)
     for (Standard_Integer iy = y0; iy <= y1; ++iy)
     {
       const Standard_Real y = iy * m_Step;
       Handle(Graphic3d_ArrayOfSegments)& target = isMajor(iy) ? segMajor : segMinor;
-      target->AddVertex((Standard_ShortReal)m_XMin, (Standard_ShortReal)y, 0.0f);
-      target->AddVertex((Standard_ShortReal)m_XMax, (Standard_ShortReal)y, 0.0f);
+      target->AddVertex((Standard_ShortReal)m_XMin, (Standard_ShortReal)y, (Standard_ShortReal)zBias);
+      target->AddVertex((Standard_ShortReal)m_XMax, (Standard_ShortReal)y, (Standard_ShortReal)zBias);
     }
 
     if (segMinor->VertexNumber() > 0)

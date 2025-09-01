@@ -12,6 +12,7 @@
 #include <NCollection_Sequence.hxx>
 #include <TopoDS_Shape.hxx>
 
+class SceneGizmos;
 class AIS_ViewCube;
 class AIS_Line;
 class AIS_Trihedron;
@@ -109,6 +110,7 @@ private:
   Handle(AIS_Line)               m_axisZ;            // Z axis guide
   Handle(AIS_Trihedron)          m_originTrihedron;  // origin trihedron
   Handle(Geom_Axis2Placement)    m_originPlacement;  // origin placement
+  std::unique_ptr<SceneGizmos>   m_gizmos;           // axes + trihedron manager
   NCollection_Sequence<Handle(AIS_Shape)> m_bodies;  // tracked displayed bodies
   NCollection_Sequence<Handle(AIS_Shape)> m_sketches; // tracked displayed sketches
 

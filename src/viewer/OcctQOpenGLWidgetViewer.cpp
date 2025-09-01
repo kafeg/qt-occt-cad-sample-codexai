@@ -32,6 +32,7 @@
 #include <PrsMgr_DisplayStatus.hxx>
 #include "InfiniteGrid.h"
 #include <gp_Pnt.hxx>
+#include "SceneGizmos.h"
 
 #include <BRep_Builder.hxx>
 #include <TopoDS_Compound.hxx>
@@ -241,43 +242,10 @@ void OcctQOpenGLWidgetViewer::initializeGL()
   }
 
   {
-    // Guides and origin gizmos (X/Y lines, origin trihedron)
-    const Standard_Real L = 1000.0;
-    Handle(Geom_Line) aGeomX = new Geom_Line(gp_Pnt(-L, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0));
-    Handle(Geom_Line) aGeomY = new Geom_Line(gp_Pnt(0.0, -L, 0.0), gp_Dir(0.0, 1.0, 0.0));
-    Handle(Geom_Line) aGeomZ = new Geom_Line(gp_Pnt(0.0, 0.0, -L), gp_Dir(0.0, 0.0, 1.0));
-    m_axisX = new AIS_Line(aGeomX);
-    m_axisY = new AIS_Line(aGeomY);
-    m_axisZ = new AIS_Line(aGeomZ);
-    m_axisX->SetColor(Quantity_NOC_RED);
-    m_axisY->SetColor(Quantity_NOC_BLUE);
-    m_axisZ->SetColor(Quantity_NOC_BLUE);
-    Handle(Prs3d_Drawer) xDr = m_axisX->Attributes(); if (xDr.IsNull()) xDr = new Prs3d_Drawer();
-    xDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_RED, Aspect_TOL_SOLID, 2.0f));
-    m_axisX->SetAttributes(xDr);
-    Handle(Prs3d_Drawer) yDr = m_axisY->Attributes(); if (yDr.IsNull()) yDr = new Prs3d_Drawer();
-    yDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_GREEN, Aspect_TOL_SOLID, 2.0f));
-    m_axisY->SetAttributes(yDr);
-    Handle(Prs3d_Drawer) zDr = m_axisZ->Attributes(); if (zDr.IsNull()) zDr = new Prs3d_Drawer();
-    zDr->SetLineAspect(new Prs3d_LineAspect(Quantity_NOC_BLUE1, Aspect_TOL_SOLID, 2.0f));
-    m_axisZ->SetAttributes(zDr);
-    // Show axes; default selection mode; raise priority
-    m_context->Display(m_axisX, Standard_False);
-    m_context->Display(m_axisY, Standard_False);
-    m_context->Display(m_axisZ, Standard_False);
-    m_context->SetDisplayPriority(m_axisX, 1);
-    m_context->SetDisplayPriority(m_axisY, 1);
-    m_context->SetDisplayPriority(m_axisZ, 1);
-
+    // Gizmos overlay: axes + trihedron in a dedicated helper
+    if (!m_gizmos) m_gizmos = std::make_unique<SceneGizmos>();
     m_originPlacement = new Geom_Axis2Placement(gp_Ax2(gp::Origin(), gp::DZ(), gp::DX()));
-    m_originTrihedron = new AIS_Trihedron(m_originPlacement);
-    Handle(Prs3d_Drawer) trDr = m_originTrihedron->Attributes(); if (trDr.IsNull()) trDr = new Prs3d_Drawer();
-    trDr->SetDatumAspect(new Prs3d_DatumAspect());
-    trDr->DatumAspect()->SetAxisLength(20.0, 20.0, 20.0);
-    m_originTrihedron->SetAttributes(trDr);
-    // Trihedron
-    m_context->Display(m_originTrihedron, Standard_False);
-    m_context->SetDisplayPriority(m_originTrihedron, 2);
+    m_gizmos->install(m_context, m_originPlacement, Standard_True);
     // Display custom infinite grid and initialize (force immediate update so it becomes visible)
     m_grid = new InfiniteGrid();
     // Grid presentation; selection is disabled via empty ComputeSelection()
@@ -305,16 +273,12 @@ void OcctQOpenGLWidgetViewer::keyPressEvent(QKeyEvent* theEvent)
     case Aspect_VKey_Escape: QApplication::exit(); return;
     case Aspect_VKey_F: {
       // Fit-all while preserving axis visibility
-      const bool hadX = !m_axisX.IsNull() && m_context->IsDisplayed(m_axisX);
-      const bool hadY = !m_axisY.IsNull() && m_context->IsDisplayed(m_axisY);
-      const bool hadZ = !m_axisZ.IsNull() && m_context->IsDisplayed(m_axisZ);
-      if (hadX) m_context->Erase(m_axisX, false);
-      if (hadY) m_context->Erase(m_axisY, false);
-      if (hadZ) m_context->Erase(m_axisZ, false);
+      const bool hadX = !m_gizmos || !m_gizmos->axisX().IsNull();
+      const bool hadY = !m_gizmos || !m_gizmos->axisY().IsNull();
+      const bool hadZ = !m_gizmos || !m_gizmos->axisZ().IsNull();
+      if (m_gizmos) m_gizmos->erase(m_context);
       m_view->FitAll(0.01, false);
-      if (hadX) { m_context->Display(m_axisX, Standard_False); m_context->SetDisplayPriority(m_axisX, 1); }
-      if (hadY) { m_context->Display(m_axisY, Standard_False); m_context->SetDisplayPriority(m_axisY, 1); }
-      if (hadZ) { m_context->Display(m_axisZ, Standard_False); m_context->SetDisplayPriority(m_axisZ, 1); }
+      if (m_gizmos && (hadX || hadY || hadZ)) m_gizmos->reinstall(m_context);
       update();
       return;
     }
