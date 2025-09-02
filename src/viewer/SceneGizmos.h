@@ -4,6 +4,8 @@
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Line.hxx>
+#include <AIS_Plane.hxx>
+#include <Geom_Plane.hxx>
 #include <AIS_Trihedron.hxx>
 #include <Geom_Axis2Placement.hxx>
 #include <Prs3d_DatumAspect.hxx>
@@ -43,7 +45,7 @@ public:
     m_trihedron = new AIS_Trihedron(originA2);
     Handle(Prs3d_Drawer) trD = m_trihedron->Attributes(); if (trD.IsNull()) trD = new Prs3d_Drawer();
     Handle(Prs3d_DatumAspect) dAsp = trD->DatumAspect(); if (dAsp.IsNull()) dAsp = new Prs3d_DatumAspect();
-    dAsp->SetAxisLength(24.0, 24.0, 24.0);
+    dAsp->SetAxisLength(300.0, 300.0, 300.0);
     trD->SetDatumAspect(dAsp);
     m_trihedron->SetAttributes(trD);
     m_trihedron->SetDatumPartColor(Prs3d_DatumParts_XAxis, colX);
@@ -52,6 +54,7 @@ public:
     m_trihedron->SetArrowColor(Prs3d_DatumParts_XAxis, colX);
     m_trihedron->SetArrowColor(Prs3d_DatumParts_YAxis, colY);
     m_trihedron->SetArrowColor(Prs3d_DatumParts_ZAxis, colZ);
+    m_trihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
 
     ctx->Display(m_axisX, Standard_False);
     ctx->Display(m_axisY, Standard_False);
@@ -67,6 +70,12 @@ public:
       ctx->SetZLayer(m_axisZ, Graphic3d_ZLayerId_Top);
       ctx->SetZLayer(m_trihedron, Graphic3d_ZLayerId_Top);
     }
+
+    m_planeZ = new AIS_Plane(new Geom_Plane(gp_Ax3(gp::Origin(), gp::DZ(), gp::DX())));
+    //m_planeZ->SetSize(120.0);
+    m_planeZ->SetTransformPersistence(
+      new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+    ctx->Display(m_planeZ, Standard_False);
   }
 
   void reinstall(const Handle(AIS_InteractiveContext)& ctx)
@@ -97,6 +106,8 @@ private:
   Handle(AIS_Line)      m_axisY;
   Handle(AIS_Line)      m_axisZ;
   Handle(AIS_Trihedron) m_trihedron;
+
+  Handle(AIS_Plane)      m_planeZ;
 };
 
 #endif
