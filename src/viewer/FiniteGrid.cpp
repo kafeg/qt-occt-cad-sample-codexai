@@ -34,9 +34,9 @@ void FiniteGrid::updateFromView(const Handle(V3d_View)& theView)
     vpW = 800; vpH = 600;
   }
 
-  // Sample world distance corresponding to deltaX pixels (use 32px target for stability)
+  // Sample world distance corresponding to deltaX pixels using center and near-center (robust to precision)
   const int cx = vpW / 2; const int cy = vpH / 2; gp_Pnt p0, p1;
-  const int sampleDx = 32; // 32 px sample baseline
+  int sampleDx = std::max(8, vpW / 20); // adaptive pixel baseline to reduce numeric issues at extreme zoom
   if (!rayHitZ0(theView, cx, cy, p0) || !rayHitZ0(theView, cx + sampleDx, cy, p1))
   {
     // If projection is parallel to XY, fallback to default step/extents
@@ -140,8 +140,8 @@ void FiniteGrid::computeExtentsFromView(const Handle(V3d_View)& theView, Standar
   Standard_Real ymin = p00.Y(), ymax = p00.Y();
   auto grow = [&](const gp_Pnt& p){ xmin = Min(xmin, p.X()); xmax = Max(xmax, p.X()); ymin = Min(ymin, p.Y()); ymax = Max(ymax, p.Y()); };
   grow(p10); grow(p11); grow(p01);
-  // Add a margin of 3 steps beyond viewport on all sides to avoid popping
-  const Standard_Real m = 3.0 * m_Step;
+  // Add a margin beyond viewport; clamp later to finite bounds
+  const Standard_Real m = 1.5 * m_Step;
   m_XMin = floor((xmin - m) / m_Step) * m_Step;
   m_XMax = ceil ((xmax + m) / m_Step) * m_Step;
   m_YMin = floor((ymin - m) / m_Step) * m_Step;
@@ -181,9 +181,10 @@ void FiniteGrid::Compute(const Handle(PrsMgr_PresentationManager)&,
   thePrs->Clear();
   if (!m_Initialized || m_Step <= 0.0) return;
 
-  // Apply subtle transparency to entire grid (higher = more transparent)
+  // Apply subtle transparency and ensure depth test is enabled (world anchored)
   Handle(Prs3d_Drawer) aDr = Attributes(); if (aDr.IsNull()) aDr = new Prs3d_Drawer();
   aDr->SetTransparency(0.80f); // 0=opaque, 1=fully transparent
+  aDr->SetZLayer(Graphic3d_ZLayerId_Default);
   SetAttributes(aDr);
 
   // Build grid segments
@@ -256,14 +257,14 @@ void FiniteGrid::Compute(const Handle(PrsMgr_PresentationManager)&,
   gBorder->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(Quantity_Color(Quantity_NOC_GRAY60), Aspect_TOL_SOLID, 2.0f));
   gBorder->AddPrimitiveArray(border);
 
-  // Draw simple major ticks every 10th step to indicate scale
+  // Draw simple major ticks every 10th step to indicate scale (ensure visible over grid)
   {
     const Standard_Integer ix0 = (Standard_Integer)Ceiling(-m_HalfSizeX / m_Step);
     const Standard_Integer ix1 = (Standard_Integer)Floor  ( m_HalfSizeX / m_Step);
     const Standard_Integer iy0 = (Standard_Integer)Ceiling(-m_HalfSizeY / m_Step);
     const Standard_Integer iy1 = (Standard_Integer)Floor  ( m_HalfSizeY / m_Step);
     auto isMajor = [](Standard_Integer i) { Standard_Integer m = i % 10; if (m < 0) m += 10; return m == 0; };
-    const Standard_Real zBiasTicks = -1.1e-3 * Max(m_Step, 1.0);
+    const Standard_Real zBiasTicks = -1.5e-3 * Max(m_Step, 1.0);
     const Standard_Real tickLen = 0.50 * m_Step;
     Handle(Graphic3d_ArrayOfSegments) ticks = new Graphic3d_ArrayOfSegments(4 * ((ix1 - ix0 + 1) + (iy1 - iy0 + 1)));
     for (Standard_Integer ix = ix0; ix <= ix1; ++ix)
