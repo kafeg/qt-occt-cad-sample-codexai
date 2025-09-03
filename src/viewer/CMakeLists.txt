@@ -5,8 +5,8 @@ add_library(viewer STATIC
     OcctGlTools.cpp
     OcctGlTools.h
     OcctQtTools.h
-    InfiniteGrid.cpp
-    InfiniteGrid.h
+    FiniteGrid.cpp
+    FiniteGrid.h
     SceneGizmos.h
 )
 target_link_libraries(viewer PUBLIC Qt6::Widgets Qt6::OpenGLWidgets ${OpenCASCADE_LIBRARIES} sketch)

@@ -1,17 +1,17 @@
-// Adaptive infinite grid displayed in the XY plane (Z=0)
-#ifndef _InfiniteGrid_HeaderFile
-#define _InfiniteGrid_HeaderFile
+// Adaptive finite grid displayed in the XY plane (Z=0)
+#ifndef _FiniteGrid_HeaderFile
+#define _FiniteGrid_HeaderFile
 
 #include <AIS_InteractiveObject.hxx>
 #include <V3d_View.hxx>
 
 // Draws view-filling grid segments with adaptive step and extents.
 // - Call updateFromView() when the camera moves to recompute step/extents.
-class InfiniteGrid : public AIS_InteractiveObject
+class FiniteGrid : public AIS_InteractiveObject
 {
-  DEFINE_STANDARD_RTTIEXT(InfiniteGrid, AIS_InteractiveObject)
+  DEFINE_STANDARD_RTTIEXT(FiniteGrid, AIS_InteractiveObject)
 public:
-  InfiniteGrid() = default;
+  FiniteGrid() = default;
 
   // Update grid step and extents from the current view.
   void updateFromView(const Handle(V3d_View)& theView);
@@ -65,6 +65,6 @@ private:
   Standard_Real    m_HalfSizeY = 500.0;        // half-size (world units) along Y
 };
 
-DEFINE_STANDARD_HANDLE(InfiniteGrid, AIS_InteractiveObject)
+DEFINE_STANDARD_HANDLE(FiniteGrid, AIS_InteractiveObject)
 
 #endif

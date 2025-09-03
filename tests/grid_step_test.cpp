@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
 
-#include <InfiniteGrid.h>
+#include <FiniteGrid.h>
 
 // Unit test the adaptive grid step snapping and extent recomputation logic
-TEST(InfiniteGrid, StepAndExtentsRespondToZoom)
+TEST(FiniteGrid, StepAndExtentsRespondToZoom)
 {
-  Handle(InfiniteGrid) grid = new InfiniteGrid();
+  Handle(FiniteGrid) grid = new FiniteGrid();
 
   // Simulate a viewport and a coarse scale (zoomed out): large world per 20px
   grid->updateFromViewportSample(800, 600, /*worldPer20px*/ 200.0);

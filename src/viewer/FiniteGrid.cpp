@@ -1,4 +1,4 @@
-#include "InfiniteGrid.h"
+#include "FiniteGrid.h"
 
 #include <Prs3d_Root.hxx>
 #include <Prs3d_Presentation.hxx>
@@ -11,7 +11,7 @@
 #include <Quantity_Color.hxx>
 #include <gp_Pnt.hxx>
 
-IMPLEMENT_STANDARD_RTTIEXT(InfiniteGrid, AIS_InteractiveObject)
+IMPLEMENT_STANDARD_RTTIEXT(FiniteGrid, AIS_InteractiveObject)
 
 namespace {
 // Softer, less intrusive tones
@@ -19,7 +19,7 @@ static inline Quantity_Color kGridMinorColor() { return Quantity_Color(Quantity_
 static inline Quantity_Color kGridMajorColor() { return Quantity_Color(Quantity_NOC_GRAY70); }
 }
 
-void InfiniteGrid::updateFromView(const Handle(V3d_View)& theView)
+void FiniteGrid::updateFromView(const Handle(V3d_View)& theView)
 {
   if (theView.IsNull()) return;
   Handle(Aspect_NeutralWindow) aWnd = Handle(Aspect_NeutralWindow)::DownCast(theView->Window());
@@ -58,7 +58,7 @@ void InfiniteGrid::updateFromView(const Handle(V3d_View)& theView)
   SetToUpdate();
 }
 
-void InfiniteGrid::updateFromViewportSample(Standard_Integer theVpW, Standard_Integer theVpH, Standard_Real theWorldPer20px)
+void FiniteGrid::updateFromViewportSample(Standard_Integer theVpW, Standard_Integer theVpH, Standard_Real theWorldPer20px)
 {
   // Convert legacy 20px sample into target pixel sample
   const Standard_Real worldPerPx = theWorldPer20px / 20.0;
@@ -73,7 +73,7 @@ void InfiniteGrid::updateFromViewportSample(Standard_Integer theVpW, Standard_In
   SetToUpdate();
 }
 
-void InfiniteGrid::computeStepFromWorldPer20px(Standard_Integer, Standard_Integer, Standard_Real theWorldPerTargetPx)
+void FiniteGrid::computeStepFromWorldPer20px(Standard_Integer, Standard_Integer, Standard_Real theWorldPerTargetPx)
 {
   // Derive minor grid step from a 20px sample using a 1–2–5*10^n series.
   // Aim ~m_TargetPixels per cell: snap to nearest {1,2,5,10}*10^n with hysteresis.
@@ -120,7 +120,7 @@ void InfiniteGrid::computeStepFromWorldPer20px(Standard_Integer, Standard_Intege
   }
 }
 
-void InfiniteGrid::computeExtentsFromView(const Handle(V3d_View)& theView, Standard_Integer theVpW, Standard_Integer theVpH)
+void FiniteGrid::computeExtentsFromView(const Handle(V3d_View)& theView, Standard_Integer theVpW, Standard_Integer theVpH)
 {
   if (theView.IsNull()) return;
   // Project viewport corners to Z=0
@@ -149,7 +149,7 @@ void InfiniteGrid::computeExtentsFromView(const Handle(V3d_View)& theView, Stand
   m_Initialized = Standard_True;
 }
 
-void InfiniteGrid::clampExtentsToFinite()
+void FiniteGrid::clampExtentsToFinite()
 {
   const Standard_Real xMinFinite = -m_HalfSizeX;
   const Standard_Real xMaxFinite =  m_HalfSizeX;
@@ -162,7 +162,7 @@ void InfiniteGrid::clampExtentsToFinite()
   m_YMax = Min(m_YMax, yMaxFinite);
 }
 
-Standard_Boolean InfiniteGrid::rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit)
+Standard_Boolean FiniteGrid::rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit)
 {
   if (theView.IsNull()) return Standard_False;
   Standard_Real X = 0.0, Y = 0.0, Z = 0.0;
@@ -174,7 +174,7 @@ Standard_Boolean InfiniteGrid::rayHitZ0(const Handle(V3d_View)& theView, int the
   return Standard_True;
 }
 
-void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager)&,
+void FiniteGrid::Compute(const Handle(PrsMgr_PresentationManager)&,
                            const Handle(Prs3d_Presentation)&         thePrs,
                            const Standard_Integer)
 {

@@ -54,10 +54,8 @@ public:
     // Create finite axes as edges (limited to current extents; defaults until grid is known)
     const Standard_Real halfX = 500.0;
     const Standard_Real halfY = 500.0;
-    const Standard_Real halfZ = 300.0;
     m_axisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
     m_axisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
-    m_axisZ = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, 0.0, halfZ)));
 
     Handle(Prs3d_Drawer) dx = m_axisX->Attributes(); if (dx.IsNull()) dx = new Prs3d_Drawer();
     dx->SetLineAspect(new Prs3d_LineAspect(colX, Aspect_TOL_SOLID, 3.0f));
@@ -69,11 +67,7 @@ public:
     m_axisY->SetAttributes(dy);
     m_axisY->SetColor(colY);
     m_axisY->SetDisplayMode(AIS_WireFrame);
-    Handle(Prs3d_Drawer) dz = m_axisZ->Attributes(); if (dz.IsNull()) dz = new Prs3d_Drawer();
-    dz->SetLineAspect(new Prs3d_LineAspect(colZ, Aspect_TOL_SOLID, 3.0f));
-    m_axisZ->SetAttributes(dz);
-    m_axisZ->SetColor(colZ);
-    m_axisZ->SetDisplayMode(AIS_WireFrame);
+    // No long Z axis
 
     m_trihedron = new AIS_Trihedron(originA2);
     Handle(Prs3d_Drawer) trD = m_trihedron->Attributes(); if (trD.IsNull()) trD = new Prs3d_Drawer();
@@ -179,7 +173,7 @@ public:
 
     ctx->Display(m_axisX, Standard_False);
     ctx->Display(m_axisY, Standard_False);
-    ctx->Display(m_axisZ, Standard_False);
+    // no Z axis
     ctx->Display(m_trihedron, Standard_False);
 
     if (topmostOverlay)
@@ -188,12 +182,24 @@ public:
       // sketches and other 3D overlays go into Topmost (set elsewhere)
       ctx->SetZLayer(m_axisX, Graphic3d_ZLayerId_Top);
       ctx->SetZLayer(m_axisY, Graphic3d_ZLayerId_Top);
-      ctx->SetZLayer(m_axisZ, Graphic3d_ZLayerId_Top);
+      // no Z axis
       ctx->SetZLayer(m_trihedron, Graphic3d_ZLayerId_Top);
       if (!m_planeYZ.IsNull()) ctx->SetZLayer(m_planeYZ, Graphic3d_ZLayerId_Top);
       if (!m_planeXZ.IsNull()) ctx->SetZLayer(m_planeXZ, Graphic3d_ZLayerId_Top);
       if (!m_planeXY.IsNull()) ctx->SetZLayer(m_planeXY, Graphic3d_ZLayerId_Top);
     }
+
+    // Origin marker: small crosshair in XY plane around (0,0,0)
+    const Standard_Real mark = 8.0;
+    Handle(AIS_Shape) crossH = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-mark, 0, 0), gp_Pnt(mark, 0, 0)));
+    Handle(AIS_Shape) crossV = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0, -mark, 0), gp_Pnt(0, mark, 0)));
+    Handle(Prs3d_Drawer) dCross = new Prs3d_Drawer(); dCross->SetLineAspect(new Prs3d_LineAspect(Quantity_Color(Quantity_NOC_GRAY30), Aspect_TOL_SOLID, 2.0f));
+    crossH->SetAttributes(dCross); crossV->SetAttributes(dCross);
+    crossH->SetDisplayMode(AIS_WireFrame); crossV->SetDisplayMode(AIS_WireFrame);
+    ctx->Display(crossH, Standard_False);
+    ctx->Display(crossV, Standard_False);
+    ctx->SetZLayer(crossH, Graphic3d_ZLayerId_Top);
+    ctx->SetZLayer(crossV, Graphic3d_ZLayerId_Top);
   }
 
   void reinstall(const Handle(AIS_InteractiveContext)& ctx)
@@ -201,7 +207,7 @@ public:
     if (ctx.IsNull()) return;
     if (!m_axisX.IsNull()) ctx->Display(m_axisX, Standard_False);
     if (!m_axisY.IsNull()) ctx->Display(m_axisY, Standard_False);
-    if (!m_axisZ.IsNull()) ctx->Display(m_axisZ, Standard_False);
+    // no Z axis
     if (!m_trihedron.IsNull()) ctx->Display(m_trihedron, Standard_False);
     if (!m_planeYZ.IsNull()) ctx->Display(m_planeYZ, Standard_False);
     if (!m_planeXZ.IsNull()) ctx->Display(m_planeXZ, Standard_False);
@@ -213,7 +219,7 @@ public:
     if (ctx.IsNull()) return;
     if (!m_axisX.IsNull()) ctx->Erase(m_axisX, Standard_False);
     if (!m_axisY.IsNull()) ctx->Erase(m_axisY, Standard_False);
-    if (!m_axisZ.IsNull()) ctx->Erase(m_axisZ, Standard_False);
+    // no Z axis
     if (!m_trihedron.IsNull()) ctx->Erase(m_trihedron, Standard_False);
     if (!m_planeYZ.IsNull()) ctx->Erase(m_planeYZ, Standard_False);
     if (!m_planeXZ.IsNull()) ctx->Erase(m_planeXZ, Standard_False);
@@ -222,40 +228,33 @@ public:
 
   Handle(AIS_InteractiveObject) axisX() const { return m_axisX; }
   Handle(AIS_InteractiveObject) axisY() const { return m_axisY; }
-  Handle(AIS_InteractiveObject) axisZ() const { return m_axisZ; }
+  Handle(AIS_InteractiveObject) axisZ() const { return Handle(AIS_InteractiveObject)(); }
   Handle(AIS_Trihedron) trihedron() const { return m_trihedron; }
 
-  void setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Standard_Real halfX, Standard_Real halfY, Standard_Real halfZ = 300.0)
+  void setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Standard_Real halfX, Standard_Real halfY)
   {
     if (ctx.IsNull()) return;
     if (!m_axisX.IsNull()) ctx->Erase(m_axisX, Standard_False);
     if (!m_axisY.IsNull()) ctx->Erase(m_axisY, Standard_False);
-    if (!m_axisZ.IsNull()) ctx->Erase(m_axisZ, Standard_False);
     m_axisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt( halfX, 0.0, 0.0)));
     m_axisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0,  halfY, 0.0)));
-    m_axisZ = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, 0.0),   gp_Pnt(0.0,  0.0, halfZ)));
     // Reapply styles
     const Quantity_Color colX(1.00, 0.20, 0.20, Quantity_TOC_sRGB);
     const Quantity_Color colY(0.25, 0.90, 0.25, Quantity_TOC_sRGB);
-    const Quantity_Color colZ(0.25, 0.45, 1.00, Quantity_TOC_sRGB);
     Handle(Prs3d_Drawer) dx = new Prs3d_Drawer(); dx->SetLineAspect(new Prs3d_LineAspect(colX, Aspect_TOL_SOLID, 3.0f));
     m_axisX->SetAttributes(dx); m_axisX->SetColor(colX); m_axisX->SetDisplayMode(AIS_WireFrame);
     Handle(Prs3d_Drawer) dy = new Prs3d_Drawer(); dy->SetLineAspect(new Prs3d_LineAspect(colY, Aspect_TOL_SOLID, 3.0f));
     m_axisY->SetAttributes(dy); m_axisY->SetColor(colY); m_axisY->SetDisplayMode(AIS_WireFrame);
-    Handle(Prs3d_Drawer) dz = new Prs3d_Drawer(); dz->SetLineAspect(new Prs3d_LineAspect(colZ, Aspect_TOL_SOLID, 3.0f));
-    m_axisZ->SetAttributes(dz); m_axisZ->SetColor(colZ); m_axisZ->SetDisplayMode(AIS_WireFrame);
     ctx->Display(m_axisX, Standard_False);
     ctx->Display(m_axisY, Standard_False);
-    ctx->Display(m_axisZ, Standard_False);
     ctx->SetZLayer(m_axisX, Graphic3d_ZLayerId_Top);
     ctx->SetZLayer(m_axisY, Graphic3d_ZLayerId_Top);
-    ctx->SetZLayer(m_axisZ, Graphic3d_ZLayerId_Top);
   }
 
 private:
   Handle(AIS_InteractiveObject) m_axisX;
   Handle(AIS_InteractiveObject) m_axisY;
-  Handle(AIS_InteractiveObject) m_axisZ;
+  Handle(AIS_InteractiveObject) m_axisZ; // unused
   Handle(AIS_Trihedron) m_trihedron;
 
   Handle(AIS_Shape)     m_planeYZ;

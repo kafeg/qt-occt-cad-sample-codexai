@@ -31,7 +31,7 @@
 #include <Standard_Version.hxx>
 #include <PrsMgr_DisplayStatus.hxx>
 #include <Graphic3d_ZLayerSettings.hxx>
-#include "InfiniteGrid.h"
+#include "FiniteGrid.h"
 #include <gp_Pnt.hxx>
 #include "SceneGizmos.h"
 #include "CustomManipulator.h"
@@ -183,7 +183,7 @@ void OcctQOpenGLWidgetViewer::resetViewToOrigin(Standard_Real distance)
   m_view->Invalidate();
   if (!m_grid.IsNull())
   {
-    Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
+    Handle(FiniteGrid) grid = Handle(FiniteGrid)::DownCast(m_grid);
     if (!grid.IsNull()) { grid->updateFromView(m_view); m_context->Redisplay(grid, Standard_False); }
   }
   update();
@@ -296,12 +296,12 @@ void OcctQOpenGLWidgetViewer::initializeGL()
       if (!m_gizmos->trihedron().IsNull()) m_context->SetZLayer(m_gizmos->trihedron(), m_layerAxes);
     }
     // Display custom infinite grid and initialize (force immediate update so it becomes visible)
-    m_grid = new InfiniteGrid();
+    m_grid = new FiniteGrid();
     // Grid presentation; selection is disabled via empty ComputeSelection()
     m_context->Display(m_grid, 0, 0, true, PrsMgr_DisplayStatus_Displayed);
     // Keep grid in Default layer explicitly (depth-aware, behind overlays)
     m_context->SetZLayer(m_grid, Graphic3d_ZLayerId_Default);
-    Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
+    Handle(FiniteGrid) grid = Handle(FiniteGrid)::DownCast(m_grid);
     if (!grid.IsNull()) {
       grid->updateFromView(m_view);
       m_context->Redisplay(grid, Standard_False);
@@ -549,7 +549,7 @@ void OcctQOpenGLWidgetViewer::handleViewRedraw(const Handle(AIS_InteractiveConte
 {
   AIS_ViewController::handleViewRedraw(theCtx, theView);
   // Keep custom grid in sync with current view
-  Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
+  Handle(FiniteGrid) grid = Handle(FiniteGrid)::DownCast(m_grid);
   if (!grid.IsNull()) {
     grid->updateFromView(theView);
     theCtx->Redisplay(grid, Standard_False);
