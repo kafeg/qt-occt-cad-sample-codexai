@@ -302,7 +302,15 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     // Keep grid in Default layer explicitly (depth-aware, behind overlays)
     m_context->SetZLayer(m_grid, Graphic3d_ZLayerId_Default);
     Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
-    if (!grid.IsNull()) { grid->updateFromView(m_view); m_context->Redisplay(grid, Standard_False); }
+    if (!grid.IsNull()) {
+      grid->updateFromView(m_view);
+      m_context->Redisplay(grid, Standard_False);
+      // Clamp axes to grid bounds
+      if (m_gizmos)
+      {
+        m_gizmos->setAxisExtents(m_context, grid->halfSizeX(), grid->halfSizeY());
+      }
+    }
   }
 
   // Position camera towards origin after grid and axes are displayed
@@ -542,7 +550,11 @@ void OcctQOpenGLWidgetViewer::handleViewRedraw(const Handle(AIS_InteractiveConte
   AIS_ViewController::handleViewRedraw(theCtx, theView);
   // Keep custom grid in sync with current view
   Handle(InfiniteGrid) grid = Handle(InfiniteGrid)::DownCast(m_grid);
-  if (!grid.IsNull()) { grid->updateFromView(theView); theCtx->Redisplay(grid, Standard_False); }
+  if (!grid.IsNull()) {
+    grid->updateFromView(theView);
+    theCtx->Redisplay(grid, Standard_False);
+    if (m_gizmos) { m_gizmos->setAxisExtents(theCtx, grid->halfSizeX(), grid->halfSizeY()); }
+  }
   if (myToAskNextFrame) updateView();
 }
 

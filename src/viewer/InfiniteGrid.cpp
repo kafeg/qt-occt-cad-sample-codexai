@@ -2,6 +2,9 @@
 
 #include <Prs3d_Root.hxx>
 #include <Prs3d_Presentation.hxx>
+#include <Prs3d_Text.hxx>
+#include <Prs3d_TextAspect.hxx>
+#include <TCollection_ExtendedString.hxx>
 #include <Graphic3d_ArrayOfSegments.hxx>
 #include <Graphic3d_AspectLine3d.hxx>
 #include <Aspect_NeutralWindow.hxx>
@@ -51,6 +54,7 @@ void InfiniteGrid::updateFromView(const Handle(V3d_View)& theView)
     computeStepFromWorldPer20px(vpW, vpH, worldPerTarget);
   }
   computeExtentsFromView(theView, vpW, vpH);
+  clampExtentsToFinite();
   SetToUpdate();
 }
 
@@ -145,6 +149,19 @@ void InfiniteGrid::computeExtentsFromView(const Handle(V3d_View)& theView, Stand
   m_Initialized = Standard_True;
 }
 
+void InfiniteGrid::clampExtentsToFinite()
+{
+  const Standard_Real xMinFinite = -m_HalfSizeX;
+  const Standard_Real xMaxFinite =  m_HalfSizeX;
+  const Standard_Real yMinFinite = -m_HalfSizeY;
+  const Standard_Real yMaxFinite =  m_HalfSizeY;
+
+  m_XMin = Max(m_XMin, xMinFinite);
+  m_XMax = Min(m_XMax, xMaxFinite);
+  m_YMin = Max(m_YMin, yMinFinite);
+  m_YMax = Min(m_YMax, yMaxFinite);
+}
+
 Standard_Boolean InfiniteGrid::rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit)
 {
   if (theView.IsNull()) return Standard_False;
@@ -157,8 +174,8 @@ Standard_Boolean InfiniteGrid::rayHitZ0(const Handle(V3d_View)& theView, int the
   return Standard_True;
 }
 
-void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
-                           const Handle(Prs3d_Presentation)&            thePrs,
+void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager)&,
+                           const Handle(Prs3d_Presentation)&         thePrs,
                            const Standard_Integer)
 {
   thePrs->Clear();
@@ -221,5 +238,60 @@ void InfiniteGrid::Compute(const Handle(PrsMgr_PresentationManager3d)&,
       gMajor->AddPrimitiveArray(segMajor);
     }
   }
+  // Border rectangle and simple edge ticks (no numbers)
+  // Border rectangle
+  Handle(Graphic3d_ArrayOfSegments) border = new Graphic3d_ArrayOfSegments(8);
+  const Standard_Real zBiasBorder = -1.0e-3 * Max(m_Step, 1.0);
+  const Standard_Real x0b = -m_HalfSizeX, x1b =  m_HalfSizeX;
+  const Standard_Real y0b = -m_HalfSizeY, y1b =  m_HalfSizeY;
+  border->AddVertex((Standard_ShortReal)x0b, (Standard_ShortReal)y0b, (Standard_ShortReal)zBiasBorder);
+  border->AddVertex((Standard_ShortReal)x1b, (Standard_ShortReal)y0b, (Standard_ShortReal)zBiasBorder);
+  border->AddVertex((Standard_ShortReal)x1b, (Standard_ShortReal)y0b, (Standard_ShortReal)zBiasBorder);
+  border->AddVertex((Standard_ShortReal)x1b, (Standard_ShortReal)y1b, (Standard_ShortReal)zBiasBorder);
+  border->AddVertex((Standard_ShortReal)x1b, (Standard_ShortReal)y1b, (Standard_ShortReal)zBiasBorder);
+  border->AddVertex((Standard_ShortReal)x0b, (Standard_ShortReal)y1b, (Standard_ShortReal)zBiasBorder);
+  border->AddVertex((Standard_ShortReal)x0b, (Standard_ShortReal)y1b, (Standard_ShortReal)zBiasBorder);
+  border->AddVertex((Standard_ShortReal)x0b, (Standard_ShortReal)y0b, (Standard_ShortReal)zBiasBorder);
+  Handle(Graphic3d_Group) gBorder = thePrs->NewGroup();
+  gBorder->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(Quantity_Color(Quantity_NOC_GRAY60), Aspect_TOL_SOLID, 2.0f));
+  gBorder->AddPrimitiveArray(border);
+
+  // Draw simple major ticks every 10th step to indicate scale
+  {
+    const Standard_Integer ix0 = (Standard_Integer)Ceiling(-m_HalfSizeX / m_Step);
+    const Standard_Integer ix1 = (Standard_Integer)Floor  ( m_HalfSizeX / m_Step);
+    const Standard_Integer iy0 = (Standard_Integer)Ceiling(-m_HalfSizeY / m_Step);
+    const Standard_Integer iy1 = (Standard_Integer)Floor  ( m_HalfSizeY / m_Step);
+    auto isMajor = [](Standard_Integer i) { Standard_Integer m = i % 10; if (m < 0) m += 10; return m == 0; };
+    const Standard_Real zBiasTicks = -1.1e-3 * Max(m_Step, 1.0);
+    const Standard_Real tickLen = 0.50 * m_Step;
+    Handle(Graphic3d_ArrayOfSegments) ticks = new Graphic3d_ArrayOfSegments(4 * ((ix1 - ix0 + 1) + (iy1 - iy0 + 1)));
+    for (Standard_Integer ix = ix0; ix <= ix1; ++ix)
+    {
+      if (!isMajor(ix)) continue;
+      const Standard_Real x = ix * m_Step;
+      // bottom
+      ticks->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)(-m_HalfSizeY), (Standard_ShortReal)zBiasTicks);
+      ticks->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)(-m_HalfSizeY + tickLen), (Standard_ShortReal)zBiasTicks);
+      // top
+      ticks->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)( m_HalfSizeY), (Standard_ShortReal)zBiasTicks);
+      ticks->AddVertex((Standard_ShortReal)x, (Standard_ShortReal)( m_HalfSizeY - tickLen), (Standard_ShortReal)zBiasTicks);
+    }
+    for (Standard_Integer iy = iy0; iy <= iy1; ++iy)
+    {
+      if (!isMajor(iy)) continue;
+      const Standard_Real y = iy * m_Step;
+      // left
+      ticks->AddVertex((Standard_ShortReal)(-m_HalfSizeX), (Standard_ShortReal)y, (Standard_ShortReal)zBiasTicks);
+      ticks->AddVertex((Standard_ShortReal)(-m_HalfSizeX + tickLen), (Standard_ShortReal)y, (Standard_ShortReal)zBiasTicks);
+      // right
+      ticks->AddVertex((Standard_ShortReal)( m_HalfSizeX), (Standard_ShortReal)y, (Standard_ShortReal)zBiasTicks);
+      ticks->AddVertex((Standard_ShortReal)( m_HalfSizeX - tickLen), (Standard_ShortReal)y, (Standard_ShortReal)zBiasTicks);
+    }
+    Handle(Graphic3d_Group) gTicks = thePrs->NewGroup();
+    gTicks->SetGroupPrimitivesAspect(new Graphic3d_AspectLine3d(Quantity_Color(Quantity_NOC_GRAY50), Aspect_TOL_SOLID, 1.0f));
+    gTicks->AddPrimitiveArray(ticks);
+  }
   // Axes/origin are drawn separately in viewer; grid renders only grid lines
 }
+// Edge scale/labels removed

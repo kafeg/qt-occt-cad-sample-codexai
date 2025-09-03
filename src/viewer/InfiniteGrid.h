@@ -26,16 +26,28 @@ public:
   Standard_Real ymin() const { return m_YMin; }
   Standard_Real ymax() const { return m_YMax; }
 
+  // Set half-sizes of finite plane in world units (applies when finite mode is on)
+  void setHalfSize(Standard_Real theHalfSizeX, Standard_Real theHalfSizeY)
+  {
+    m_HalfSizeX = Max(0.0, theHalfSizeX);
+    m_HalfSizeY = Max(0.0, theHalfSizeY);
+    SetToUpdate();
+  }
+  Standard_Real halfSizeX() const { return m_HalfSizeX; }
+  Standard_Real halfSizeY() const { return m_HalfSizeY; }
+
 public: // AIS_InteractiveObject
-  virtual void Compute(const Handle(PrsMgr_PresentationManager3d)& thePrsMgr,
-                       const Handle(Prs3d_Presentation)&            thePrs,
-                       const Standard_Integer                       theMode) override;
+  virtual void Compute(const Handle(PrsMgr_PresentationManager)& thePrsMgr,
+                       const Handle(Prs3d_Presentation)&         thePrs,
+                       const Standard_Integer                    theMode) override;
   virtual void ComputeSelection(const Handle(SelectMgr_Selection)&, const Standard_Integer) override {}
 
 private:
   static Standard_Boolean rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit);
   void                    computeStepFromWorldPer20px(Standard_Integer theVpW, Standard_Integer theVpH, Standard_Real theWorldPer20px);
   void                    computeExtentsFromView(const Handle(V3d_View)& theView, Standard_Integer theVpW, Standard_Integer theVpH);
+  void                    clampExtentsToFinite();
+  // Edge scale/labels removed per design
 
 private:
   // Minor grid step (base). Adaptive via 1–2–5*10^n; major lines every 10th.
@@ -47,6 +59,10 @@ private:
   // Tuning to reduce flicker and density; try to mimic Fusion-like feel
   Standard_Real m_TargetPixels = 48.0;   // desired pixels per minor cell (sparser)
   Standard_Real m_Hysteresis   = 0.25;   // 25% hysteresis before switching step tier
+
+  // Finite-plane settings (always enabled)
+  Standard_Real    m_HalfSizeX = 500.0;        // half-size (world units) along X (total size 1000)
+  Standard_Real    m_HalfSizeY = 500.0;        // half-size (world units) along Y
 };
 
 DEFINE_STANDARD_HANDLE(InfiniteGrid, AIS_InteractiveObject)

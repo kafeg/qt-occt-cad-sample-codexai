@@ -17,6 +17,16 @@
       }
     },
     {
+      "name": "macos-debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
       "name": "linux",
       "inherits": "default",
       "binaryDir": "${sourceDir}/build/linux",
