@@ -16,8 +16,8 @@ public:
     , m_dirY(0.0, 1.0, 0.0)
     , m_dirZ(0.0, 0.0, 1.0)
     , m_axisLength(300.0)      // analogous to previous trihedron axis length
-    , m_planeSize(150.0)       // default plane size used by gizmos
-    , m_planeOffset(30.0)      // default offset from origin along axes for planes
+    , m_planeSize(40.0)       // default plane size used by gizmos
+    , m_planeOffset(10.0)      // default offset from origin along axes for planes
     , m_showTrihedronAxes(true)
     , m_showOriginPoint(true)
     , m_showPlaneXY(true)

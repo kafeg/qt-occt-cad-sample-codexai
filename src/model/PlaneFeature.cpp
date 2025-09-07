@@ -39,6 +39,12 @@ double PlaneFeature::size() const
   return Feature::paramAsDouble(params(), Feature::ParamKey::Size, 100.0);
 }
 
+double PlaneFeature::transparency() const
+{
+  // Default semi-transparent as before (0.3)
+  return Feature::paramAsDouble(params(), Feature::ParamKey::Transparency, 0.3);
+}
+
 void PlaneFeature::execute()
 {
   const gp_Pnt o = origin();
@@ -55,4 +61,3 @@ void PlaneFeature::execute()
   // Make rectangular face in plane UV: [-s, s] x [-s, s]
   m_shape = BRepBuilderAPI_MakeFace(Handle(Geom_Surface)(plane), -s, s, -s, s, 1.0e-7);
 }
-

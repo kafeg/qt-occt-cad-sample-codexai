@@ -47,10 +47,15 @@ public:
   gp_Dir normal() const;
   double size() const;
 
+  // Modifiers
+  void  setFixed(bool on) { params()[Feature::ParamKey::Fixed] = on ? 1 : 0; }
+  bool  isFixed() const { return Feature::paramAsDouble(params(), Feature::ParamKey::Fixed, 0.0) != 0.0; }
+  void  setTransparency(double t) { params()[Feature::ParamKey::Transparency] = t; }
+  double transparency() const;
+
   // Feature API
   void execute() override;
 
   // DocumentItem
   Kind kind() const override { return Kind::PlaneFeature; }
 };
-

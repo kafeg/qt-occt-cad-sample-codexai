@@ -17,6 +17,8 @@
 #include <Datum.h>
 #include <gp_Quaternion.hxx>
 #include <gp_EulerSequence.hxx>
+#include <Graphic3d_TransformPers.hxx>
+#include <Graphic3d_ZLayerId.hxx>
 #include <cmath>
 #include <algorithm>
 #include <vector>
@@ -58,6 +60,7 @@ TabPage::TabPage(QWidget* parent)
     const gp_Dir dz  = d->dirZ();
     const Standard_Real planeSize = d->planeSize();
     const Standard_Real offset    = d->planeOffset();
+    // Half-size derived from Datum settings to match previous gizmo appearance
     const Standard_Real half = 0.5 * (planeSize - offset);
     const Standard_Real centerOff = 0.5 * (planeSize + offset);
     auto mkPt = [&](const gp_Dir& a, const gp_Dir& b) {
@@ -66,11 +69,11 @@ TabPage::TabPage(QWidget* parent)
       return ori.Translated(va + vb);
     };
     Handle(PlaneFeature) pXY = new PlaneFeature();
-    pXY->setOrigin(mkPt(dx, dy)); pXY->setNormal(dz); pXY->setSize(half); pXY->setName(TCollection_AsciiString("Plane XY")); m_doc->addPlane(pXY);
+    pXY->setOrigin(mkPt(dx, dy)); pXY->setNormal(dz); pXY->setSize(half); pXY->setFixed(true); pXY->setTransparency(0.3); pXY->setName(TCollection_AsciiString("Plane XY")); m_doc->addPlane(pXY);
     Handle(PlaneFeature) pXZ = new PlaneFeature();
-    pXZ->setOrigin(mkPt(dx, dz)); pXZ->setNormal(dy); pXZ->setSize(half); pXZ->setName(TCollection_AsciiString("Plane XZ")); m_doc->addPlane(pXZ);
+    pXZ->setOrigin(mkPt(dx, dz)); pXZ->setNormal(dy); pXZ->setSize(half); pXZ->setFixed(true); pXZ->setTransparency(0.3); pXZ->setName(TCollection_AsciiString("Plane XZ")); m_doc->addPlane(pXZ);
     Handle(PlaneFeature) pYZ = new PlaneFeature();
-    pYZ->setOrigin(mkPt(dy, dz)); pYZ->setNormal(dx); pYZ->setSize(half); pYZ->setName(TCollection_AsciiString("Plane YZ")); m_doc->addPlane(pYZ);
+    pYZ->setOrigin(mkPt(dy, dz)); pYZ->setNormal(dx); pYZ->setSize(half); pYZ->setFixed(true); pYZ->setTransparency(0.3); pYZ->setName(TCollection_AsciiString("Plane YZ")); m_doc->addPlane(pYZ);
     m_doc->recompute();
   }
 
@@ -181,6 +184,10 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
     Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(it.Value());
     if (pf.IsNull() || pf->isSuppressed()) continue;
     Handle(AIS_Shape) body = m_viewer->addShape(pf->shape(), AIS_Shaded, 0, false);
+    // Style: semi-transparent plane as before; apply per-feature transparency
+    const Standard_ShortReal tr = static_cast<Standard_ShortReal>(std::clamp(pf->transparency(), 0.0, 1.0));
+    body->SetTransparency(tr);
+    // Do not use TransformPersistence on planes to keep them pickable/seleсtable
     m_featureToBody.Add(pf, body);
     m_bodyToFeature.Add(body, pf);
   }
@@ -231,6 +238,11 @@ void TabPage::activateMove()
   if (!m_bodyToFeature.Contains(sel)) return;
   Handle(Feature) src = Handle(Feature)::DownCast(m_bodyToFeature.FindFromKey(sel));
   if (src.IsNull()) return;
+  // Prevent moving fixed planes
+  if (Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(src); !pf.IsNull() && pf->isFixed())
+  {
+    return;
+  }
 
   // Show manipulator and connect finish signal to add MoveFeature
   m_viewer->showManipulator(sel);
