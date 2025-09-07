@@ -33,12 +33,14 @@
 #include <PrsMgr_DisplayStatus.hxx>
 #include <Graphic3d_ZLayerSettings.hxx>
 #include <Graphic3d_DisplayPriority.hxx>
+#include <Graphic3d_NameOfMaterial.hxx>
 #include "FiniteGrid.h"
 #include <gp_Pnt.hxx>
 #include "SceneGizmos.h"
 #include "CustomManipulator.h"
 
 #include <BRep_Builder.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
 #include <TopoDS_Compound.hxx>
 #include <TopoDS_Wire.hxx>
 
@@ -739,42 +741,54 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketc
   BRep_Builder builder;
   TopoDS_Compound comp;
   builder.MakeCompound(comp);
-  for (const auto& w : wires) builder.Add(comp, w);
+  // For each wire: try to build a planar face (closed contour) for filled display.
+  // If face creation fails (open contour), keep the wire as-is for line rendering.
+  int numFaces = 0;
+  for (const auto& w : wires)
+  {
+    BRepBuilderAPI_MakeFace mf(w, Standard_True);
+    if (mf.IsDone())
+    {
+      builder.Add(comp, mf.Face());
+      ++numFaces;
+    }
+    else
+    {
+      builder.Add(comp, w);
+    }
+  }
 
   Handle(AIS_Shape) ais = new AIS_Shape(comp);
-  // Assign a distinct, deterministic color per sketch id using simple hashing to hue
-  const unsigned long sid = static_cast<unsigned long>(sketch->id());
-  const double hue = (sid % 360ul) / 360.0; // [0,1)
-  const double sat = 0.85;
-  const double val = 0.95;
-  // Convert HSV->RGB manually for compatibility with OCCT 7.9 (no SetHsv)
-  const double h = hue * 6.0;
-  const int    i = int(floor(h)) % 6;
-  const double f = h - floor(h);
-  const double p = val * (1.0 - sat);
-  const double q = val * (1.0 - sat * f);
-  const double t = val * (1.0 - sat * (1.0 - f));
-  double r=val, g=val, b=val;
-  switch (i)
-  {
-    case 0: r = val; g = t;   b = p;   break;
-    case 1: r = q;   g = val; b = p;   break;
-    case 2: r = p;   g = val; b = t;   break;
-    case 3: r = p;   g = q;   b = val; break;
-    case 4: r = t;   g = p;   b = val; break;
-    case 5: r = val; g = p;   b = q;   break;
-  }
-  Quantity_Color col(r, g, b, Quantity_TOC_sRGB);
+  // Fixed sketch colors: semi-transparent light blue fill, saturated blue contours
+  const Quantity_Color kFillCol(0.55, 0.80, 1.0, Quantity_TOC_sRGB);   // light blue
+  const Quantity_Color kEdgeCol(0.00, 0.45, 1.0, Quantity_TOC_sRGB);   // saturated blue
+  const Standard_ShortReal kAlpha = 0.55f; // 0..1, higher = more transparent
+
   Handle(Prs3d_Drawer) drw = ais->Attributes(); if (drw.IsNull()) drw = new Prs3d_Drawer();
-  drw->SetColor(col);
-  drw->SetTransparency(0.0f);
-  drw->SetDisplayMode(AIS_WireFrame);
-  drw->SetLineAspect(new Prs3d_LineAspect(col, Aspect_TOL_SOLID, 2.0f));
+  // Shaded mode for filled faces; explicit shading aspect to control interior color and blending
+  drw->SetDisplayMode(AIS_Shaded);
+  Handle(Prs3d_ShadingAspect) shade = drw->ShadingAspect(); if (shade.IsNull()) shade = new Prs3d_ShadingAspect();
+  shade->SetMaterial(Graphic3d_NOM_PLASTIC);
+  shade->SetColor(kFillCol);
+  shade->SetTransparency(kAlpha);
+  // Ensure alpha blending is enabled for faces
+  Handle(Graphic3d_AspectFillArea3d) fillAsp = shade->Aspect();
+  fillAsp->SetAlphaMode(Graphic3d_AlphaMode_Blend);
+  // Pull faces slightly forward to ensure boundary lines draw cleanly
+  fillAsp->SetPolygonOffsets(Aspect_POM_Fill, 1.0f, 1.0f);
+  drw->SetShadingAspect(shade);
+  Handle(Prs3d_LineAspect) edgeAspect = new Prs3d_LineAspect(kEdgeCol, Aspect_TOL_SOLID, 2.0f);
+  drw->SetLineAspect(edgeAspect);
+  drw->SetWireAspect(edgeAspect);
+  drw->SetFaceBoundaryDraw(Standard_True);
+  drw->SetFaceBoundaryAspect(edgeAspect);
   ais->SetAttributes(drw);
+  // Apply transparency at AIS level as well
+  ais->SetTransparency(kAlpha);
 
   m_sketches.Append(ais);
-  ais->SetDisplayMode(AIS_WireFrame);
-  m_context->Display(ais, AIS_WireFrame, 0, false, PrsMgr_DisplayStatus_Displayed);
+  ais->SetDisplayMode(AIS_Shaded);
+  m_context->Display(ais, AIS_Shaded, 0, false, PrsMgr_DisplayStatus_Displayed);
   // Default: depth-aware sketches in dedicated Sketch layer (above axes, below bodies)
   m_context->SetZLayer(ais, m_layerSketch);
   // Keep mapping id -> AIS for edit overlay toggling
@@ -814,9 +828,10 @@ bool OcctQOpenGLWidgetViewer::setSketchEditMode(std::uint64_t sketchId, bool ena
       Handle(AIS_Shape) prev = itPrev->second;
       m_context->SetZLayer(prev, m_layerSketch);
       Handle(Prs3d_Drawer) drwPrev = prev->Attributes(); if (drwPrev.IsNull()) drwPrev = new Prs3d_Drawer();
-      Handle(Prs3d_LineAspect) laPrev = new Prs3d_LineAspect(drwPrev->Color(), Aspect_TOL_SOLID, 2.0f);
-      drwPrev->SetLineAspect(laPrev);
-      drwPrev->SetTransparency(0.0f);
+      if (!drwPrev->LineAspect().IsNull()) { drwPrev->LineAspect()->SetWidth(2.0f); }
+      if (!drwPrev->WireAspect().IsNull()) { drwPrev->WireAspect()->SetWidth(2.0f); }
+      if (!drwPrev->FaceBoundaryAspect().IsNull()) { drwPrev->FaceBoundaryAspect()->SetWidth(2.0f); }
+      // Preserve sketch fill transparency when leaving edit mode
       prev->SetAttributes(drwPrev);
       m_context->Redisplay(prev, Standard_False);
     }
@@ -837,9 +852,10 @@ bool OcctQOpenGLWidgetViewer::setSketchEditMode(std::uint64_t sketchId, bool ena
   m_context->SetZLayer(ais, Graphic3d_ZLayerId_Topmost);
   // Emphasize style a bit in edit mode
   Handle(Prs3d_Drawer) drw = ais->Attributes(); if (drw.IsNull()) drw = new Prs3d_Drawer();
-  Handle(Prs3d_LineAspect) la = new Prs3d_LineAspect(drw->Color(), Aspect_TOL_SOLID, 3.0f);
-  drw->SetLineAspect(la);
-  drw->SetTransparency(0.0f);
+  if (!drw->LineAspect().IsNull()) { drw->LineAspect()->SetWidth(3.0f); }
+  if (!drw->WireAspect().IsNull()) { drw->WireAspect()->SetWidth(3.0f); }
+  if (!drw->FaceBoundaryAspect().IsNull()) { drw->FaceBoundaryAspect()->SetWidth(3.0f); }
+  // Keep semi-transparent fill in edit mode
   ais->SetAttributes(drw);
   m_context->Redisplay(ais, Standard_False);
   m_activeSketchId = sketchId;
