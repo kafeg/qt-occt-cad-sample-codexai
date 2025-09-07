@@ -14,10 +14,13 @@
 #include <TopoDS_Shape.hxx>
 #include <Graphic3d_ZLayerId.hxx>
 #include <gp_Trsf.hxx>
+#include <gp_Ax2.hxx>
+#include <gp_Pnt2d.hxx>
 #include <cstdint>
 #include <unordered_map>
 #include <cstdint>
 #include <unordered_map>
+#include <memory>
 
 class SceneGizmos;
 class AIS_ViewCube;
@@ -119,10 +122,15 @@ public: // runtime statistics
   // Current view scale (zoom factor)
   double currentScale() const;
 
+public: // sketch edit state
+  bool hasActiveSketchEdit() const { return m_activeSketchId != 0; }
+  std::uint64_t activeSketchId() const { return m_activeSketchId; }
+
 
 signals:
   void selectionChanged();
   void manipulatorFinished(const gp_Trsf& trsf);
+  void sketchEditModeChanged(bool active);
 
 private:
   void dumpGlInfo(bool theIsBasic, bool theToPrint); // collect GL info string
@@ -131,6 +139,13 @@ private:
                                 const Handle(V3d_View)&               theView) override;
 
   bool rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit) const; // project to Z=0
+  // Ray-plane intersection in world, hit on a given gp_Ax2 plane
+  bool rayHitPlane(const Handle(V3d_View)& theView, int thePx, int thePy, const gp_Ax2& theAx2, gp_Pnt& theHit) const;
+  // Helpers to convert between world and sketch 2D coordinates using stored plane
+  bool worldToSketch2d(std::uint64_t sketchId, const gp_Pnt& P, gp_Pnt2d& uv) const;
+  bool sketch2dToWorld(std::uint64_t sketchId, const gp_Pnt2d& uv, gp_Pnt& P) const;
+  bool worldToScreen(const gp_Pnt& P, int& px, int& py) const;
+  void animateViewToPlane(const gp_Ax2& theAx2, Standard_Real theDurationSec = 0.35);
 
 private:
   Handle(V3d_Viewer)             m_viewer;           // core OCCT viewer
@@ -150,6 +165,8 @@ private:
   NCollection_Sequence<Handle(AIS_Shape)> m_bodies;  // tracked displayed bodies
   NCollection_Sequence<Handle(AIS_Shape)> m_sketches; // tracked displayed sketches
   std::unordered_map<std::uint64_t, Handle(AIS_Shape)> m_sketchById; // id -> AIS mapping
+  std::unordered_map<std::uint64_t, std::weak_ptr<Sketch>> m_sketchPtrById; // id -> weak sketch
+  std::unordered_map<std::uint64_t, gp_Ax2> m_sketchPlaneById; // id -> plane (for projection)
   std::uint64_t m_activeSketchId = 0; // 0 = none
 
   // Custom Z-layers to ensure desired order: Default < Axes < Sketch < Top < Topmost < TopOSD
@@ -162,6 +179,11 @@ private:
   bool                    m_isManipDragging = false;
   gp_Trsf                 m_manipAccumTrsf;
 
-};
+  // Sketch input (rubber-band) state
+  bool        m_isSketchSegmentActive = false;
+  gp_Pnt2d    m_segStart2d;
+  gp_Pnt2d    m_segCurr2d;
+
+}; 
 
 #endif

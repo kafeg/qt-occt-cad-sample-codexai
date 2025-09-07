@@ -47,6 +47,10 @@ MainWindow::MainWindow()
   addNewTab();
   createMenuBar();
   createToolBar();
+  // React to tab switches to update action states and reconnect viewer signals
+  connect(m_tabs, &QTabWidget::currentChanged, [this](int){ connectViewerSignals(); updateActionStates(); });
+  connectViewerSignals();
+  updateActionStates();
 }
 
 MainWindow::~MainWindow() = default;
@@ -129,6 +133,16 @@ void MainWindow::createMenuBar()
     actNewSketch->setText("New Sketch");
     file->addAction(actNewSketch);
     connect(actNewSketch, &QAction::triggered, [this]() { addSketch(); });
+    // Complete Sketch action right next to New Sketch
+    m_actCompleteSketch = new QAction(file);
+    m_actCompleteSketch->setText("Complete Sketch");
+    m_actCompleteSketch->setEnabled(false);
+    file->addAction(m_actCompleteSketch);
+    connect(m_actCompleteSketch, &QAction::triggered, [this]() {
+      TabPage* p = currentPage(); if (!p) return; auto* v = p->viewer(); if (!v) return;
+      if (v->hasActiveSketchEdit()) v->clearSketchEditMode(true);
+      updateActionStates();
+    });
   }
   {
     QAction* actMove = new QAction(file);
@@ -138,11 +152,13 @@ void MainWindow::createMenuBar()
       TabPage* p = currentPage(); if (!p) return;
       auto* v = p->viewer();
       if (v && v->isManipulatorActive()) p->confirmMove(); else p->activateMove();
+      updateActionStates();
     });
-    QAction* actCancelMove = new QAction(file);
-    actCancelMove->setText("Cancel Move");
-    file->addAction(actCancelMove);
-    connect(actCancelMove, &QAction::triggered, [this]() { TabPage* p = currentPage(); if (p) p->cancelMove(); });
+    m_actCancelMove = new QAction(file);
+    m_actCancelMove->setText("Cancel Move");
+    m_actCancelMove->setEnabled(false);
+    file->addAction(m_actCancelMove);
+    connect(m_actCancelMove, &QAction::triggered, [this]() { TabPage* p = currentPage(); if (p) p->cancelMove(); updateActionStates(); });
   }
   {
     QAction* quit = new QAction(file);
@@ -185,16 +201,33 @@ void MainWindow::createToolBar()
   QAction* actNewSketch = new QAction("New Sketch", tb);
   connect(actNewSketch, &QAction::triggered, [this]() { addSketch(); });
   tb->addAction(actNewSketch);
+  // Complete Sketch next to New Sketch (reuse same QAction in menu and toolbar)
+  if (!m_actCompleteSketch)
+  {
+    m_actCompleteSketch = new QAction("Complete Sketch", tb);
+    m_actCompleteSketch->setEnabled(false);
+    connect(m_actCompleteSketch, &QAction::triggered, [this]() {
+      TabPage* p = currentPage(); if (!p) return; auto* v = p->viewer(); if (!v) return;
+      if (v->hasActiveSketchEdit()) v->clearSketchEditMode(true);
+      updateActionStates();
+    });
+  }
+  tb->addAction(m_actCompleteSketch);
 
   QAction* actMove = new QAction("Move", tb);
   connect(actMove, &QAction::triggered, [this]() {
     TabPage* p = currentPage(); if (!p) return; auto* v = p->viewer();
     if (v && v->isManipulatorActive()) p->confirmMove(); else p->activateMove();
+    updateActionStates();
   });
   tb->addAction(actMove);
-  QAction* actCancelMove = new QAction("Cancel Move", tb);
-  connect(actCancelMove, &QAction::triggered, [this]() { TabPage* p = currentPage(); if (p) p->cancelMove(); });
-  tb->addAction(actCancelMove);
+  if (!m_actCancelMove)
+  {
+    m_actCancelMove = new QAction("Cancel Move", tb);
+    m_actCancelMove->setEnabled(false);
+    connect(m_actCancelMove, &QAction::triggered, [this]() { TabPage* p = currentPage(); if (p) p->cancelMove(); updateActionStates(); });
+  }
+  tb->addAction(m_actCancelMove);
 
   QAction* actAbout = new QAction("About", tb);
   connect(actAbout, &QAction::triggered, [this]() {
@@ -208,6 +241,27 @@ void MainWindow::createToolBar()
   });
   tb->addAction(actAbout);
   addToolBar(Qt::TopToolBarArea, tb);
+}
+
+void MainWindow::updateActionStates()
+{
+  TabPage* p = currentPage();
+  OcctQOpenGLWidgetViewer* v = p ? p->viewer() : nullptr;
+  const bool sketchActive = v && v->hasActiveSketchEdit();
+  const bool moveActive   = v && v->isManipulatorActive();
+  if (m_actCompleteSketch) m_actCompleteSketch->setEnabled(sketchActive);
+  if (m_actCancelMove)     m_actCancelMove->setEnabled(moveActive);
+}
+
+void MainWindow::connectViewerSignals()
+{
+  TabPage* p = currentPage(); if (!p) return;
+  OcctQOpenGLWidgetViewer* v = p->viewer(); if (!v) return;
+  // Disconnect previous connections by using QObject::connect with context 'this' and auto disconnection is fine on viewer destruction; no stored handles used here
+  // Update on manipulator finish and sketch edit mode changes
+  connect(v, &OcctQOpenGLWidgetViewer::manipulatorFinished, this, [this](const gp_Trsf&){ updateActionStates(); });
+  connect(v, &OcctQOpenGLWidgetViewer::selectionChanged, this, [this](){ updateActionStates(); });
+  connect(v, &OcctQOpenGLWidgetViewer::sketchEditModeChanged, this, [this](bool){ updateActionStates(); });
 }
 
 void MainWindow::addBox()
@@ -311,6 +365,7 @@ void MainWindow::addSketch()
     page->viewer()->setSketchEditMode(sk->id(), true, true);
   }
   page->refreshFeatureList();
+  updateActionStates();
 }
 
 

@@ -22,6 +22,9 @@
 #include <Geom_Axis2Placement.hxx>
 #include <Geom_Line.hxx>
 #include <gp_Ax2.hxx>
+#include <gp_Ax3.hxx>
+#include <gp_Dir.hxx>
+#include <gp_Vec.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_DatumAspect.hxx>
 #include <Prs3d_LineAspect.hxx>
@@ -33,6 +36,7 @@
 #include <Graphic3d_ZLayerSettings.hxx>
 #include <Graphic3d_DisplayPriority.hxx>
 #include <Graphic3d_NameOfMaterial.hxx>
+#include <Graphic3d_Camera.hxx>
 #include "FiniteGrid.h"
 #include <gp_Pnt.hxx>
 #include "SceneGizmos.h"
@@ -47,6 +51,7 @@
 #include <Datum.h>
 #include <TColStd_IndexedDataMapOfStringString.hxx>
 #include <TCollection_AsciiString.hxx>
+#include <AIS_AnimationCamera.hxx>
 
 class OcctQtFrameBuffer : public OpenGl_FrameBuffer
 {
@@ -359,6 +364,71 @@ void OcctQOpenGLWidgetViewer::mousePressEvent(QMouseEvent* theEvent)
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aPnt(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
   const Aspect_VKeyFlags aFlags = OcctQtTools::qtMouseModifiers2VKeys(theEvent->modifiers());
+  // Intercept left-clicks for sketch editing (click-click to make a segment)
+  if (m_activeSketchId != 0 && theEvent->button() == Qt::LeftButton)
+  {
+    Handle(V3d_View) aView = !m_focusView.IsNull() ? m_focusView : m_view;
+    gp_Pnt  hit;
+    auto itPl = m_sketchPlaneById.find(m_activeSketchId);
+    if (itPl != m_sketchPlaneById.end() && rayHitPlane(aView, aPnt.x(), aPnt.y(), itPl->second, hit))
+    {
+      gp_Pnt2d uv;
+      if (worldToSketch2d(m_activeSketchId, hit, uv))
+      {
+        if (!m_isSketchSegmentActive)
+        {
+          m_segStart2d = uv;
+          m_segCurr2d  = uv;
+          m_isSketchSegmentActive = true;
+          update();
+        }
+        else
+        {
+          // Finish segment: add to Sketch and refresh AIS presentation
+          auto itSk = m_sketchPtrById.find(m_activeSketchId);
+          if (itSk != m_sketchPtrById.end())
+          {
+            if (auto sk = itSk->second.lock())
+            {
+              sk->addLine(m_segStart2d, uv);
+            }
+          }
+          // Reset rubber and rebuild AIS for this sketch
+          m_isSketchSegmentActive = false;
+          // Recreate AIS for this sketch: erase old + add again
+          auto itAis = m_sketchById.find(m_activeSketchId);
+          if (itAis != m_sketchById.end() && !itAis->second.IsNull())
+          {
+            Handle(AIS_Shape) oldH = itAis->second;
+            if (m_context->IsDisplayed(oldH))
+              m_context->Erase(oldH, Standard_False);
+            // Remove old handle from tracked list
+            for (int i = 1; i <= m_sketches.Size(); ++i)
+            {
+              if (m_sketches.Value(i) == oldH) { m_sketches.Remove(i); break; }
+            }
+          }
+          // Re-add from stored Sketch pointer
+          auto itSk2 = m_sketchPtrById.find(m_activeSketchId);
+          if (itSk2 != m_sketchPtrById.end())
+          {
+            if (auto sk2 = itSk2->second.lock())
+            {
+              Handle(AIS_Shape) h = addSketch(sk2);
+              if (!h.IsNull())
+              {
+                // Keep it in overlay if still editing
+                m_context->SetZLayer(h, Graphic3d_ZLayerId_Topmost);
+              }
+            }
+          }
+          if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
+          update();
+        }
+        return; // consume press
+      }
+    }
+  }
   // Only start manipulator transform on explicit left-button press while gizmo is detected under cursor
   // Activate the mode by selecting the detected gizmo part, then start transforming
   if (!m_manip.IsNull() && theEvent->button() == Qt::LeftButton
@@ -383,6 +453,8 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
 {
   QOpenGLWidget::mouseReleaseEvent(theEvent);
   if (m_view.IsNull()) return;
+  // When sketch editing is active, do not perform selection on left click release
+  // (we use press events to drive sketch input). Still allow manipulator logic below.
   // If manipulator was dragging, finish manipulation and consume release
   if (!m_manip.IsNull() && m_isManipDragging)
   {
@@ -405,6 +477,12 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
   if (UpdateMouseButtons(aPnt, OcctQtTools::qtMouseButtons2VKeys(theEvent->buttons()), aFlags, false))
     updateView();
   // Selection: ensure exactly one is selected on click, no toggling/accumulation
+  if (m_activeSketchId != 0 && theEvent->button() == Qt::LeftButton)
+  {
+    // Suppress selection changes while sketch editing with left button
+    emit selectionChanged();
+    return;
+  }
   if (!m_context.IsNull() && m_context->HasDetected())
   {
     Handle(AIS_Shape) det = Handle(AIS_Shape)::DownCast(m_context->DetectedInteractive());
@@ -459,6 +537,26 @@ void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)
   if (m_view.IsNull()) return;
   const qreal aPixelRatio = devicePixelRatioF();
   const Graphic3d_Vec2i aNewPos(theEvent->pos().x() * aPixelRatio, theEvent->pos().y() * aPixelRatio);
+  // Update rubber-band while editing a segment
+  if (m_activeSketchId != 0 && m_isSketchSegmentActive)
+  {
+    Handle(V3d_View) aView = !m_focusView.IsNull() ? m_focusView : m_view;
+    auto itPl = m_sketchPlaneById.find(m_activeSketchId);
+    if (itPl != m_sketchPlaneById.end())
+    {
+      gp_Pnt hit;
+      if (rayHitPlane(aView, aNewPos.x(), aNewPos.y(), itPl->second, hit))
+      {
+        gp_Pnt2d uv;
+        if (worldToSketch2d(m_activeSketchId, hit, uv))
+        {
+          m_segCurr2d = uv;
+          update();
+          return; // consume move
+        }
+      }
+    }
+  }
   if (!m_manip.IsNull() && m_isManipDragging)
   {
     // Drag manipulator only; block camera motions
@@ -578,6 +676,25 @@ void OcctQOpenGLWidgetViewer::paintGL()
       painter.drawRoundedRect(QRect(6, 6, boxW, boxH), 6, 6);
     }
   }
+
+  // Draw rubber-band for sketch segment in overlay using QPainter (screen space)
+  if (m_activeSketchId != 0 && m_isSketchSegmentActive)
+  {
+    gp_Pnt A3, B3;
+    if (sketch2dToWorld(m_activeSketchId, m_segStart2d, A3)
+        && sketch2dToWorld(m_activeSketchId, m_segCurr2d, B3))
+    {
+      int x1=0,y1=0,x2=0,y2=0;
+      if (worldToScreen(A3, x1, y1) && worldToScreen(B3, x2, y2))
+      {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        QPen pen(QColor(0, 120, 255, 220)); pen.setWidth(2); pen.setStyle(Qt::DashLine);
+        painter.setPen(pen);
+        painter.drawLine(x1, y1, x2, y2);
+      }
+    }
+  }
 }
 
 void OcctQOpenGLWidgetViewer::handleViewRedraw(const Handle(AIS_InteractiveContext)& theCtx,
@@ -642,6 +759,90 @@ bool OcctQOpenGLWidgetViewer::rayHitZ0(const Handle(V3d_View)& theView, int theP
   const Standard_Real t = -Z / Vz;
   theHit.SetCoord(X + t * Vx, Y + t * Vy, 0.0);
   return Standard_True;
+}
+
+bool OcctQOpenGLWidgetViewer::rayHitPlane(const Handle(V3d_View)& theView, int thePx, int thePy, const gp_Ax2& theAx2, gp_Pnt& theHit) const
+{
+  if (theView.IsNull()) return false;
+  Standard_Real X = 0.0, Y = 0.0, Z = 0.0;
+  Standard_Real Vx = 0.0, Vy = 0.0, Vz = 0.0;
+  theView->ConvertWithProj(thePx, thePy, X, Y, Z, Vx, Vy, Vz);
+  const gp_Pnt P0(X, Y, Z);
+  const gp_Vec V(Vx, Vy, Vz);
+  const gp_Pnt O = theAx2.Location();
+  const gp_Dir N = theAx2.Direction();
+  const gp_Vec ON(O, P0);
+  const Standard_Real denom = V.Dot(gp_Vec(N.XYZ()));
+  if (Abs(denom) < 1.0e-12) return false; // ray parallel to plane
+  const Standard_Real t = -ON.Dot(gp_Vec(N.XYZ())) / denom;
+  gp_Vec step = V; step.Multiply(t);
+  theHit = P0.Translated(step);
+  return true;
+}
+
+bool OcctQOpenGLWidgetViewer::worldToSketch2d(std::uint64_t sketchId, const gp_Pnt& P, gp_Pnt2d& uv) const
+{
+  auto itPl = m_sketchPlaneById.find(sketchId);
+  if (itPl == m_sketchPlaneById.end()) return false;
+  const gp_Ax2& ax = itPl->second;
+  const gp_Pnt O = ax.Location();
+  const gp_Dir Xd = ax.XDirection();
+  const gp_Dir Yd = ax.YDirection();
+  gp_Vec r(O, P);
+  uv.SetCoord(r.Dot(gp_Vec(Xd.XYZ())), r.Dot(gp_Vec(Yd.XYZ())));
+  return true;
+}
+
+bool OcctQOpenGLWidgetViewer::sketch2dToWorld(std::uint64_t sketchId, const gp_Pnt2d& uv, gp_Pnt& P) const
+{
+  auto itPl = m_sketchPlaneById.find(sketchId);
+  if (itPl == m_sketchPlaneById.end()) return false;
+  const gp_Ax2& ax = itPl->second;
+  const gp_Pnt O = ax.Location();
+  const gp_Dir Xd = ax.XDirection();
+  const gp_Dir Yd = ax.YDirection();
+  gp_Vec vx(Xd.XYZ()); vx.Multiply(uv.X());
+  gp_Vec vy(Yd.XYZ()); vy.Multiply(uv.Y());
+  P = O.Translated(vx + vy);
+  return true;
+}
+
+bool OcctQOpenGLWidgetViewer::worldToScreen(const gp_Pnt& P, int& px, int& py) const
+{
+  if (m_view.IsNull()) return false;
+  Handle(V3d_View) aView = !m_focusView.IsNull() ? m_focusView : m_view;
+  Standard_Integer Xs=0, Ys=0;
+  aView->Convert(P.X(), P.Y(), P.Z(), Xs, Ys);
+  const qreal r = devicePixelRatioF();
+  px = int(double(Xs) / r);
+  py = int(double(Ys) / r);
+  return true;
+}
+
+void OcctQOpenGLWidgetViewer::animateViewToPlane(const gp_Ax2& theAx2, Standard_Real theDurationSec)
+{
+  if (m_view.IsNull()) return;
+  Handle(V3d_View) aView = !m_focusView.IsNull() ? m_focusView : m_view;
+  Handle(Graphic3d_Camera) camStart = new Graphic3d_Camera(aView->Camera());
+  Handle(Graphic3d_Camera) camEnd   = new Graphic3d_Camera(aView->Camera());
+  const gp_Pnt O  = theAx2.Location();
+  const gp_Dir Zd = theAx2.Direction();
+  const gp_Dir Yd = theAx2.YDirection();
+  camEnd->SetUp(Yd);
+  camEnd->SetCenter(O);
+  camEnd->SetDirection(-Zd); // look towards plane along -normal
+  camEnd->SetDistance(camStart->Distance());
+
+  Handle(AIS_AnimationCamera) anim = ViewAnimation();
+  if (anim.IsNull()) return;
+  anim->SetView(aView);
+  anim->SetCameraStart(camStart);
+  anim->SetCameraEnd(camEnd);
+  anim->SetOwnDuration(Max(0.05, theDurationSec));
+  anim->StartTimer(0.0, 1.0, Standard_True, Standard_False);
+  anim->Start(Standard_True);
+  SetContinuousRedraw(true);
+  updateView();
 }
 
 // updateGridStepForView removed: now handled by InfiniteGrid
@@ -833,6 +1034,9 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketc
   m_context->SetZLayer(ais, m_layerSketch);
   // Keep mapping id -> AIS for edit overlay toggling
   m_sketchById[sketch->id()] = ais;
+  // Keep auxiliary data for edit mode
+  m_sketchPtrById[sketch->id()] = sketch;
+  m_sketchPlaneById[sketch->id()] = sketch->plane();
   return ais;
 }
 
@@ -848,6 +1052,8 @@ void OcctQOpenGLWidgetViewer::clearSketches(bool theToUpdate)
   }
   m_sketches.Clear();
   m_sketchById.clear();
+  m_sketchPtrById.clear();
+  m_sketchPlaneById.clear();
   m_activeSketchId = 0;
   if (theToUpdate)
   {
@@ -875,11 +1081,16 @@ bool OcctQOpenGLWidgetViewer::setSketchEditMode(std::uint64_t sketchId, bool ena
       prev->SetAttributes(drwPrev);
       m_context->Redisplay(prev, Standard_False);
     }
+    const bool wasActive = (m_activeSketchId != 0);
     m_activeSketchId = 0;
+    m_isSketchSegmentActive = false;
+    if (wasActive)
+      emit sketchEditModeChanged(false);
   }
 
   if (!enabled)
   {
+    m_isSketchSegmentActive = false;
     if (theToUpdate && !m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); update(); }
     return true;
   }
@@ -899,6 +1110,14 @@ bool OcctQOpenGLWidgetViewer::setSketchEditMode(std::uint64_t sketchId, bool ena
   ais->SetAttributes(drw);
   m_context->Redisplay(ais, Standard_False);
   m_activeSketchId = sketchId;
+  m_isSketchSegmentActive = false;
+  emit sketchEditModeChanged(true);
+  // Smoothly align camera to sketch plane
+  auto itPlane = m_sketchPlaneById.find(sketchId);
+  if (itPlane != m_sketchPlaneById.end())
+  {
+    animateViewToPlane(itPlane->second, 0.35);
+  }
   if (theToUpdate && !m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); update(); }
   return true;
 }
