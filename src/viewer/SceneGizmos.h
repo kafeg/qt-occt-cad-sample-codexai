@@ -33,6 +33,12 @@
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Graphic3d_NameOfMaterial.hxx>
 #include <Aspect_InteriorStyle.hxx>
+#include <Graphic3d_Texture2D.hxx>
+#include <Prs3d_ShadingAspect.hxx>
+#include <TCollection_AsciiString.hxx>
+#include <Image_PixMap.hxx>
+#include <QImage>
+#include <cstring>
 #include <memory>
 
 #include <Datum.h>
@@ -232,6 +238,50 @@ public:
     ctx->Display(m_originMark, Standard_False);
     ctx->Deactivate(m_originMark);
     if (topmostOverlay) { ctx->SetZLayer(m_originMark, Graphic3d_ZLayerId_Top); }
+
+    // Background origin image on world XY plane (non-selectable), textured with images/circle.png
+    {
+      const Standard_Real sImg = 32.0;
+      // Build a parametric plane face in world XY with bounds so UV map is well-defined
+      TopoDS_Face fImg = BRepBuilderAPI_MakeFace(gp_Pln(gp::XOY()), -sImg, sImg, -sImg, sImg);
+      m_originBgImage = new AIS_Shape(fImg);
+      if (!m_originBgImage.IsNull())
+      {
+        Handle(Prs3d_Drawer) dI = m_originBgImage->Attributes(); if (dI.IsNull()) dI = new Prs3d_Drawer();
+        if (dI->ShadingAspect().IsNull()) dI->SetShadingAspect(new Prs3d_ShadingAspect());
+        Handle(Prs3d_ShadingAspect) sh = dI->ShadingAspect();
+        Handle(Graphic3d_AspectFillArea3d) fa = sh->Aspect();
+        if (fa.IsNull()) { fa = new Graphic3d_AspectFillArea3d(); sh->SetAspect(fa); }
+        // Load texture from Qt resource
+        QImage qimg(":/images/circle.png");
+        if (!qimg.isNull())
+        {
+          QImage rgba = qimg.convertToFormat(QImage::Format_RGBA8888);
+          const int w = rgba.width();
+          const int h = rgba.height();
+          Handle(Image_PixMap) ip = new Image_PixMap();
+          if (ip->InitTrash(Image_Format_RGBA, w, h))
+          {
+            const int rowLen = w * 4;
+            for (int y = 0; y < h; ++y)
+            {
+              // OCCT expects bottom-up; copy flipped
+              const uchar* src = rgba.constScanLine(h - 1 - y);
+              std::memcpy(ip->ChangeRow(y), src, size_t(rowLen));
+            }
+            Handle(Graphic3d_Texture2D) tex = new Graphic3d_Texture2D(ip);
+            fa->SetTextureMap(tex);
+            fa->SetTextureMapOn();
+          }
+        }
+        m_originBgImage->SetAttributes(dI);
+        m_originBgImage->SetDisplayMode(AIS_Shaded);
+        m_originBgImage->SetAutoHilight(false);
+        ctx->Display(m_originBgImage, Standard_False);
+        ctx->Deactivate(m_originBgImage);
+        ctx->SetZLayer(m_originBgImage, Graphic3d_ZLayerId_Default);
+      }
+    }
   }
 
   void reinstall(const Handle(AIS_InteractiveContext)& ctx)
@@ -244,6 +294,7 @@ public:
     if (!m_planeXZ.IsNull()) ctx->Display(m_planeXZ, Standard_False);
     if (!m_planeXY.IsNull()) ctx->Display(m_planeXY, Standard_False);
     if (!m_originMark.IsNull()) ctx->Display(m_originMark, Standard_False);
+    if (!m_originBgImage.IsNull()) ctx->Display(m_originBgImage, Standard_False);
     // Origin circle quadrants are managed separately
   }
 
@@ -257,6 +308,7 @@ public:
     if (!m_planeXZ.IsNull()) ctx->Erase(m_planeXZ, Standard_False);
     if (!m_planeXY.IsNull()) ctx->Erase(m_planeXY, Standard_False);
     if (!m_originMark.IsNull()) ctx->Erase(m_originMark, Standard_False);
+    if (!m_originBgImage.IsNull()) ctx->Erase(m_originBgImage, Standard_False);
     // Origin circle quadrants are managed separately
   }
 
@@ -294,6 +346,8 @@ private:
   Handle(AIS_Shape)     m_planeXZ;
   Handle(AIS_Shape)     m_planeXY;
   Handle(AIS_Shape)     m_originMark;
+  Handle(AIS_Shape)     m_originBgImage;
 };
 
 #endif
+ 
