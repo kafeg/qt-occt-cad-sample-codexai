@@ -246,8 +246,12 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
     // Thicker, dash-dot line style for better visibility
     Handle(Prs3d_Drawer) dr = body->Attributes();
     if (dr.IsNull()) dr = new Prs3d_Drawer();
-    dr->SetLineAspect(new Prs3d_LineAspect(col, Aspect_TOL_DOTDASH, 3.0f));
+    dr->SetWireAspect(new Prs3d_LineAspect(col, Aspect_TOL_DOTDASH, 3.0f));
     body->SetAttributes(dr);
+    if (!m_viewer->Context().IsNull())
+    {
+      m_viewer->Context()->Redisplay(body, Standard_False);
+    }
     // Keep axes on top layer and zoom persistent like other fixed geometry helpers
     if (!m_viewer->Context().IsNull())
     {
