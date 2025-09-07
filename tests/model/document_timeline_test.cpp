@@ -7,7 +7,8 @@
 TEST(DocumentTimeline, AddInsertAndIterateItems)
 {
   Document doc;
-  EXPECT_EQ(doc.items().Size(), 0);
+  const int initialItems = doc.items().Size();
+  // Default helpers may be present (planes/origin); features() should be empty initially
   EXPECT_EQ(doc.features().Size(), 0);
 
   Handle(BoxFeature) a = new BoxFeature();
@@ -20,7 +21,7 @@ TEST(DocumentTimeline, AddInsertAndIterateItems)
   doc.addItem(Handle(DocumentItem)::DownCast(a));
   doc.insertItem(1, Handle(DocumentItem)::DownCast(b));
 
-  ASSERT_EQ(doc.items().Size(), 2);
+  ASSERT_EQ(doc.items().Size(), initialItems + 2);
   // Items are in order: B, A
   {
     auto first = doc.items().Value(1);
@@ -35,13 +36,12 @@ TEST(DocumentTimeline, AddInsertAndIterateItems)
 
   // Remove last (A)
   doc.removeLast();
-  ASSERT_EQ(doc.items().Size(), 1);
+  ASSERT_EQ(doc.items().Size(), initialItems + 1);
   ASSERT_EQ(doc.features().Size(), 1);
   EXPECT_TRUE(Handle(CylinderFeature)::DownCast(doc.features().Value(1)) == b);
 
   // Remove specific feature (B)
   doc.removeFeature(b);
-  EXPECT_EQ(doc.items().Size(), 0);
+  EXPECT_EQ(doc.items().Size(), initialItems);
   EXPECT_EQ(doc.features().Size(), 0);
 }
-

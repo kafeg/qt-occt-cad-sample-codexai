@@ -23,6 +23,7 @@ add_executable(occt-qopenglwidget-tests
   sketch_render_test.cpp
   view_reset_test.cpp
   serialization/serialization_test.cpp
+  document_initializer_test.cpp
   ui/command_integration_test.cpp
   ui/document_test.cpp
 )

@@ -51,49 +51,6 @@ TabPage::TabPage(QWidget* parent)
   // Initialize viewer with document's Datum so gizmos render from it
   if (m_viewer && m_doc) { m_viewer->setDatum(m_doc->datum()); }
 
-  // Add default XY/XZ/YZ planes into the new document using Datum extents
-  if (m_doc && m_doc->datum())
-  {
-    auto d = m_doc->datum();
-    const gp_Pnt ori = d->origin();
-    const gp_Dir dx  = d->dirX();
-    const gp_Dir dy  = d->dirY();
-    const gp_Dir dz  = d->dirZ();
-    const Standard_Real planeSize = d->planeSize();
-    const Standard_Real offset    = d->planeOffset();
-    // Half-size derived from Datum settings to match previous gizmo appearance
-    const Standard_Real half = 0.5 * (planeSize - offset);
-    const Standard_Real centerOff = 0.5 * (planeSize + offset);
-    auto mkPt = [&](const gp_Dir& a, const gp_Dir& b) {
-      gp_Vec va(a.XYZ()); va.Multiply(centerOff);
-      gp_Vec vb(b.XYZ()); vb.Multiply(centerOff);
-      return ori.Translated(va + vb);
-    };
-    Handle(PlaneFeature) pXY = new PlaneFeature();
-    pXY->setOrigin(mkPt(dx, dy)); pXY->setNormal(dz); pXY->setSize(half); pXY->setFixedGeometry(true); pXY->setTransparency(0.3); pXY->setName(TCollection_AsciiString("Plane XY"));
-    pXY->setSuppressed(!d->showPlaneXY());
-    m_doc->addPlane(pXY);
-    Handle(PlaneFeature) pXZ = new PlaneFeature();
-    pXZ->setOrigin(mkPt(dx, dz)); pXZ->setNormal(dy); pXZ->setSize(half); pXZ->setFixedGeometry(true); pXZ->setTransparency(0.3); pXZ->setName(TCollection_AsciiString("Plane XZ"));
-    pXZ->setSuppressed(!d->showPlaneXZ());
-    m_doc->addPlane(pXZ);
-    Handle(PlaneFeature) pYZ = new PlaneFeature();
-    pYZ->setOrigin(mkPt(dy, dz)); pYZ->setNormal(dx); pYZ->setSize(half); pYZ->setFixedGeometry(true); pYZ->setTransparency(0.3); pYZ->setName(TCollection_AsciiString("Plane YZ"));
-    pYZ->setSuppressed(!d->showPlaneYZ());
-    m_doc->addPlane(pYZ);
-    // Add origin point as a fixed geometry feature (replaces SceneGizmos::m_originMark)
-    if (d->showOriginPoint())
-    {
-      Handle(PointFeature) pt = new PointFeature();
-      pt->setOrigin(d->origin());
-      pt->setRadius(10.0);
-      pt->setFixedGeometry(true);
-      pt->setName(TCollection_AsciiString("Origin"));
-      m_doc->addFeature(pt);
-    }
-    m_doc->recompute();
-  }
-
   // Connect panel actions
   connect(m_history, &FeatureHistoryPanel::requestRemoveSelected, [this]() {
     // Remove selected items; currently only Feature removal is supported
@@ -232,6 +189,26 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
     }
     m_featureToBody.Add(pf, body);
     m_bodyToFeature.Add(body, pf);
+  }
+  // Display point features representing origin (excluded from features())
+  for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_doc->items()); it.More(); it.Next())
+  {
+    Handle(PointFeature) pft = Handle(PointFeature)::DownCast(it.Value());
+    if (pft.IsNull() || pft->isSuppressed()) continue;
+    Handle(AIS_Shape) body = m_viewer->addShape(pft->shape(), AIS_Shaded, 0, false);
+    if (pft->isFixedGeometry())
+    {
+      body->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+      if (m_viewer && !m_viewer->Context().IsNull())
+      {
+        m_viewer->Context()->SetZLayer(body, Graphic3d_ZLayerId_Top);
+      }
+      body->SetAutoHilight(true);
+    }
+    const Standard_ShortReal tr = static_cast<Standard_ShortReal>(std::clamp(pft->transparency(), 0.0, 1.0));
+    if (tr > 0.0f) body->SetTransparency(tr);
+    m_featureToBody.Add(pft, body);
+    m_bodyToFeature.Add(body, pft);
   }
   // Display registered sketches after features
   for (const auto& sk : m_doc->sketches())

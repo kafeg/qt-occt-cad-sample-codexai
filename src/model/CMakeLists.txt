@@ -16,6 +16,8 @@ add_library(model STATIC
     PlaneFeature.h
     PointFeature.cpp
     PointFeature.h
+    DocumentInitializer.cpp
+    DocumentInitializer.h
 )
 target_link_libraries(model PUBLIC core sketch doc)
 target_include_directories(model PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

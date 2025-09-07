@@ -3,14 +3,17 @@
 #include <MoveFeature.h>
 #include <Sketch.h>
 #include <PlaneFeature.h>
+#include <PointFeature.h>
 #include <Datum.h>
+#include "DocumentInitializer.h"
 #include <algorithm>
 
 Document::Document()
 {
   // Initialize a default Datum at creation time
   m_datum = std::make_shared<Datum>();
-  // Default planes are added by the UI layer (TabPage) to keep core tests unaffected.
+  // Populate default geometry (planes and optional origin point)
+  DocumentInitializer::initialize(*this);
 }
 
 void Document::clear()
@@ -24,7 +27,8 @@ void Document::clear()
   if (!m_datum) m_datum = std::make_shared<Datum>();
   // Clear planes container
   m_planes.Clear();
-  // UI layer (TabPage) is responsible for adding default planes on new/cleared document.
+  // Recreate default geometry using current Datum settings
+  DocumentInitializer::initialize(*this);
 }
 
 void Document::addItem(const Handle(DocumentItem)& item)
@@ -62,9 +66,8 @@ const NCollection_Sequence<Handle(Feature)>& Document::features() const
     {
       const Handle(DocumentItem)& di = it.Value();
       if (Handle(Feature) f = Handle(Feature)::DownCast(di); !f.IsNull()) {
-        // Exclude PlaneFeature from the generic features list to keep external expectations
-        // of empty initial Document features() and render planes separately.
-        if (Handle(PlaneFeature)::DownCast(f).IsNull())
+        // Exclude fixed-geometry helpers (planes and origin point) from generic features
+        if (Handle(PlaneFeature)::DownCast(f).IsNull() && Handle(PointFeature)::DownCast(f).IsNull())
           m_featuresCache.Append(f);
       }
     }
