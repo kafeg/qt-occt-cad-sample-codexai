@@ -47,8 +47,8 @@ void DocumentTreePanel::refreshFromDocument()
   QTreeWidgetItem* root = new QTreeWidgetItem(QStringList() << QStringLiteral("Document"));
   m_tree->addTopLevelItem(root);
 
-  // Datum section
-  QTreeWidgetItem* datum = new QTreeWidgetItem(root, QStringList() << QStringLiteral("Datum"));
+  // Origin section (datum controls)
+  QTreeWidgetItem* datum = new QTreeWidgetItem(root, QStringList() << QStringLiteral("Origin"));
   if (auto d = m_page->doc().datum())
   {
     // Checkable visibility toggles
@@ -62,15 +62,39 @@ void DocumentTreePanel::refreshFromDocument()
     enum ToggleTag { TagTrihedron = 1, TagOrigin = 2,
                      TagPlaneXY = 3, TagPlaneXZ = 4, TagPlaneYZ = 5,
                      TagTriX = 6, TagTriY = 7, TagTriZ = 8 };
-    // Removed overall trihedron toggle from UI; keep per-axis only
-    // Per-axis visibility controls (now stored in Datum)
-    makeToggle(QStringLiteral("  Plane XY"), d->showPlaneXY(), TagPlaneXY);
-    makeToggle(QStringLiteral("  Plane XZ"), d->showPlaneXZ(), TagPlaneXZ);
-    makeToggle(QStringLiteral("  Plane YZ"), d->showPlaneYZ(), TagPlaneYZ);
-    makeToggle(QStringLiteral("  X axis"), d->showTrihedronAxisX(), TagTriX);
-    makeToggle(QStringLiteral("  Y axis"), d->showTrihedronAxisY(), TagTriY);
-    makeToggle(QStringLiteral("  Z axis"), d->showTrihedronAxisZ(), TagTriZ);
-    makeToggle(QStringLiteral("Origin Point"),     d->showOriginPoint(),   TagOrigin);
+    // Helper to attach feature id by name for selection behavior
+    auto setFeatureIdByName = [&](QTreeWidgetItem* node, const char* targetName) {
+      auto& doc = m_page->doc();
+      const auto& items = doc.items();
+      for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(items); it.More(); it.Next())
+      {
+        Handle(Feature) f = Handle(Feature)::DownCast(it.Value());
+        if (f.IsNull()) continue;
+        if (f->name().IsEmpty()) continue;
+        const QString fname = QString::fromLatin1(f->name().ToCString());
+        if (fname == QString::fromLatin1(targetName))
+        {
+          node->setData(0, Qt::UserRole, QVariant::fromValue<qulonglong>(static_cast<qulonglong>(f->id())));
+          break;
+        }
+      }
+    };
+    // Removed overall trihedron toggle from UI; keep per-axis only.
+    // Order: point, axes, planes
+    QTreeWidgetItem* itOrigin = makeToggle(QStringLiteral("Origin Point"), d->showOriginPoint(), TagOrigin);
+    setFeatureIdByName(itOrigin, "Origin");
+    QTreeWidgetItem* itAxX = makeToggle(QStringLiteral("  X axis"), d->showTrihedronAxisX(), TagTriX);
+    setFeatureIdByName(itAxX, "Axis X");
+    QTreeWidgetItem* itAxY = makeToggle(QStringLiteral("  Y axis"), d->showTrihedronAxisY(), TagTriY);
+    setFeatureIdByName(itAxY, "Axis Y");
+    QTreeWidgetItem* itAxZ = makeToggle(QStringLiteral("  Z axis"), d->showTrihedronAxisZ(), TagTriZ);
+    setFeatureIdByName(itAxZ, "Axis Z");
+    QTreeWidgetItem* itPlXY = makeToggle(QStringLiteral("  Plane XY"), d->showPlaneXY(), TagPlaneXY);
+    setFeatureIdByName(itPlXY, "Plane XY");
+    QTreeWidgetItem* itPlXZ = makeToggle(QStringLiteral("  Plane XZ"), d->showPlaneXZ(), TagPlaneXZ);
+    setFeatureIdByName(itPlXZ, "Plane XZ");
+    QTreeWidgetItem* itPlYZ = makeToggle(QStringLiteral("  Plane YZ"), d->showPlaneYZ(), TagPlaneYZ);
+    setFeatureIdByName(itPlYZ, "Plane YZ");
   }
 
   // Bodies (features)
