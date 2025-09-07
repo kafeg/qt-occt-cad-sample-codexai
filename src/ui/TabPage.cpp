@@ -70,11 +70,17 @@ TabPage::TabPage(QWidget* parent)
       return ori.Translated(va + vb);
     };
     Handle(PlaneFeature) pXY = new PlaneFeature();
-    pXY->setOrigin(mkPt(dx, dy)); pXY->setNormal(dz); pXY->setSize(half); pXY->setFixedGeometry(true); pXY->setTransparency(0.3); pXY->setName(TCollection_AsciiString("Plane XY")); m_doc->addPlane(pXY);
+    pXY->setOrigin(mkPt(dx, dy)); pXY->setNormal(dz); pXY->setSize(half); pXY->setFixedGeometry(true); pXY->setTransparency(0.3); pXY->setName(TCollection_AsciiString("Plane XY"));
+    pXY->setSuppressed(!d->showPlaneXY());
+    m_doc->addPlane(pXY);
     Handle(PlaneFeature) pXZ = new PlaneFeature();
-    pXZ->setOrigin(mkPt(dx, dz)); pXZ->setNormal(dy); pXZ->setSize(half); pXZ->setFixedGeometry(true); pXZ->setTransparency(0.3); pXZ->setName(TCollection_AsciiString("Plane XZ")); m_doc->addPlane(pXZ);
+    pXZ->setOrigin(mkPt(dx, dz)); pXZ->setNormal(dy); pXZ->setSize(half); pXZ->setFixedGeometry(true); pXZ->setTransparency(0.3); pXZ->setName(TCollection_AsciiString("Plane XZ"));
+    pXZ->setSuppressed(!d->showPlaneXZ());
+    m_doc->addPlane(pXZ);
     Handle(PlaneFeature) pYZ = new PlaneFeature();
-    pYZ->setOrigin(mkPt(dy, dz)); pYZ->setNormal(dx); pYZ->setSize(half); pYZ->setFixedGeometry(true); pYZ->setTransparency(0.3); pYZ->setName(TCollection_AsciiString("Plane YZ")); m_doc->addPlane(pYZ);
+    pYZ->setOrigin(mkPt(dy, dz)); pYZ->setNormal(dx); pYZ->setSize(half); pYZ->setFixedGeometry(true); pYZ->setTransparency(0.3); pYZ->setName(TCollection_AsciiString("Plane YZ"));
+    pYZ->setSuppressed(!d->showPlaneYZ());
+    m_doc->addPlane(pYZ);
     // Add origin point as a fixed geometry feature (replaces SceneGizmos::m_originMark)
     if (d->showOriginPoint())
     {

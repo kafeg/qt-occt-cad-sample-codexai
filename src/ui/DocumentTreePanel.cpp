@@ -58,9 +58,13 @@ void DocumentTreePanel::refreshFromDocument()
       return it;
     };
     enum ToggleTag { TagTrihedron = 1, TagOrigin = 2,
+                     TagPlaneXY = 3, TagPlaneXZ = 4, TagPlaneYZ = 5,
                      TagTriX = 6, TagTriY = 7, TagTriZ = 8 };
     // Removed overall trihedron toggle from UI; keep per-axis only
     // Per-axis visibility controls (now stored in Datum)
+    makeToggle(QStringLiteral("  Plane XY"), d->showPlaneXY(), TagPlaneXY);
+    makeToggle(QStringLiteral("  Plane XZ"), d->showPlaneXZ(), TagPlaneXZ);
+    makeToggle(QStringLiteral("  Plane YZ"), d->showPlaneYZ(), TagPlaneYZ);
     makeToggle(QStringLiteral("  X axis"), d->showTrihedronAxisX(), TagTriX);
     makeToggle(QStringLiteral("  Y axis"), d->showTrihedronAxisY(), TagTriY);
     makeToggle(QStringLiteral("  Z axis"), d->showTrihedronAxisZ(), TagTriZ);
@@ -170,6 +174,31 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
           m_page->syncViewerFromDoc(true);
         }
       }
+      break;
+    }
+    case 3: // Plane XY
+    case 4: // Plane XZ
+    case 5: // Plane YZ
+    {
+      // Update Datum flags
+      if (tag == 3) d->setShowPlaneXY(on);
+      if (tag == 4) d->setShowPlaneXZ(on);
+      if (tag == 5) d->setShowPlaneYZ(on);
+      // Suppress/unsuppress matching plane features by name
+      auto& doc = m_page->doc();
+      const char* targetName = (tag == 3 ? "Plane XY" : (tag == 4 ? "Plane XZ" : "Plane YZ"));
+      for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(doc.items()); it.More(); it.Next())
+      {
+        Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(it.Value());
+        if (pf.IsNull()) continue;
+        if (!pf->name().IsEmpty() && TCollection_AsciiString(targetName).IsEqual(pf->name()))
+        {
+          pf->setSuppressed(!on);
+          break;
+        }
+      }
+      doc.recompute();
+      m_page->syncViewerFromDoc(true);
       break;
     }
     case 6: d->setShowTrihedronAxisX(on); break;
