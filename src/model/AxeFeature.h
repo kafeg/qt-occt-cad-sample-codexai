@@ -49,8 +49,6 @@ public:
   double length() const;
 
   // Modifiers
-  void setFixedGeometry(bool on) { params()[Feature::ParamKey::FixedGeometry] = on ? 1 : 0; }
-  bool isFixedGeometry() const { return Feature::paramAsDouble(params(), Feature::ParamKey::FixedGeometry, 0.0) != 0.0; }
 
   // Feature API
   void execute() override;
@@ -58,4 +56,3 @@ public:
   // DocumentItem
   Kind kind() const override { return Kind::AxeFeature; }
 };
-

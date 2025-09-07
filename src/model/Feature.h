@@ -77,6 +77,10 @@ public:
   bool isSuppressed() const { return m_suppressed; }
   void setSuppressed(bool on) { m_suppressed = on; }
 
+  // Fixed-geometry flag: common helper for datum-like immutable features
+  void setFixedGeometry(bool on) { m_params[ParamKey::FixedGeometry] = on ? 1 : 0; }
+  bool isFixedGeometry() const { return paramAsDouble(m_params, ParamKey::FixedGeometry, 0.0) != 0.0; }
+
   // Datum-related flag: marks helper items created from DocumentInitializer (planes, axes, origin point)
   bool isDatumRelated() const { return m_isDatumRelated; }
   void setDatumRelated(bool on) { m_isDatumRelated = on; }

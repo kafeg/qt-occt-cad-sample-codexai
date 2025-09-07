@@ -52,7 +52,7 @@ void AxeFeature::execute()
   // a dash-dot line: [dash]-gap-[dot]-gap-...
   // Geometry thickness now comes from cylinder radius.
   // Visual pattern tuning
-  const Standard_Real kDashLen = 22.0; // longer dashes
+  const Standard_Real kDashLen = 30.0; // longer dashes
   const Standard_Real kDotLen  = 5.0;  // longer dots
   const Standard_Real kBaseGap = 8.0;  // slightly larger base gap
   const Standard_Real kRadius  = 3.0; // thicker for better visibility

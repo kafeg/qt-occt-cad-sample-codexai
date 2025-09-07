@@ -10,7 +10,6 @@
 class Datum;
 class AIS_InteractiveContext;
 class AIS_InteractiveObject;
-class AIS_Trihedron;
 class AIS_Shape;
 class AIS_TexturedShape;
 
@@ -32,22 +31,16 @@ public:
 
   Handle(AIS_InteractiveObject) bgAxisX() const { return m_bgAxisX; }
   Handle(AIS_InteractiveObject) bgAxisY() const { return m_bgAxisY; }
-  Handle(AIS_Trihedron)         trihedron() const { return m_trihedron; }
 
   // Update background axis extents (if enabled); hides them when disabled.
   void setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Standard_Real halfX, Standard_Real halfY);
 
-  // Control visibility of each trihedron axis independently (requires trihedron created/displayed).
-  void setTrihedronAxesVisibility(const Handle(AIS_InteractiveContext)& ctx,
-                                  bool showX, bool showY, bool showZ);
 
 private:
   // Cached handles
   Handle(AIS_InteractiveObject) m_bgAxisX;
   Handle(AIS_InteractiveObject) m_bgAxisY;
-  Handle(AIS_Trihedron)         m_trihedron;
   Handle(AIS_TexturedShape)     m_bgOriginSprite;
-  bool                          m_showBgAxes = false;
 };
 
 #endif

@@ -17,7 +17,6 @@
 #include <AIS_Shape.hxx>
 #include <AIS_ViewCube.hxx>
 #include <AIS_Line.hxx>
-#include <AIS_Trihedron.hxx>
 #include <Aspect_DisplayConnection.hxx>
 #include <Aspect_NeutralWindow.hxx>
 #include <Geom_Axis2Placement.hxx>
@@ -306,13 +305,7 @@ void OcctQOpenGLWidgetViewer::initializeGL()
       {
         if (!m_gizmos->bgAxisX().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisX(), Graphic3d_ZLayerId_Default);
         if (!m_gizmos->bgAxisY().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisY(), Graphic3d_ZLayerId_Default);
-        if (!m_gizmos->trihedron().IsNull()) m_context->SetZLayer(m_gizmos->trihedron(), m_layerAxes);
-        // Apply per-axis visibility from Datum
-        if (m_datum)
-          m_gizmos->setTrihedronAxesVisibility(m_context,
-                                               m_datum->showTrihedronAxisX(),
-                                               m_datum->showTrihedronAxisY(),
-                                               m_datum->showTrihedronAxisZ());
+        // Trihedron removed
       }
     }
     // Display custom infinite grid and initialize (force immediate update so it becomes visible)
@@ -347,11 +340,10 @@ void OcctQOpenGLWidgetViewer::keyPressEvent(QKeyEvent* theEvent)
   {
     case Aspect_VKey_Escape: QApplication::exit(); return;
     case Aspect_VKey_F: {
-      // Fit-all while preserving axis visibility
-      const bool hadTri = !m_gizmos || !m_gizmos->trihedron().IsNull();
+      // Fit-all; temporarily erase gizmos to avoid overdraw artifacts
       if (m_gizmos) m_gizmos->erase(m_context);
       m_view->FitAll(0.01, false);
-      if (m_gizmos && hadTri) m_gizmos->reinstall(m_context);
+      if (m_gizmos) m_gizmos->reinstall(m_context);
       update();
       return;
     }
@@ -444,12 +436,7 @@ void OcctQOpenGLWidgetViewer::setDatum(const std::shared_ptr<Datum>& d)
       m_gizmos->install(m_context, m_datum, Standard_True);
       if (!m_gizmos->bgAxisX().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisX(), Graphic3d_ZLayerId_Default);
       if (!m_gizmos->bgAxisY().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisY(), Graphic3d_ZLayerId_Default);
-      if (!m_gizmos->trihedron().IsNull()) m_context->SetZLayer(m_gizmos->trihedron(), m_layerAxes);
-      // Apply per-axis visibility from Datum
-      m_gizmos->setTrihedronAxesVisibility(m_context,
-                                           m_datum->showTrihedronAxisX(),
-                                           m_datum->showTrihedronAxisY(),
-                                           m_datum->showTrihedronAxisZ());
+      // Trihedron removed
       if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
       update();
     }
