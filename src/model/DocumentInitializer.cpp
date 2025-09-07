@@ -8,6 +8,20 @@
 
 #include <gp_Vec.hxx>
 
+namespace {
+// Centralized initializer tuning to avoid magic numbers in code
+static constexpr Standard_Real K_PLANE_TRANSPARENCY         = 0.3;  // default plane transparency
+static constexpr Standard_Real K_POINT_RADIUS               = 10.0; // default origin sphere radius
+static constexpr Standard_Real K_AXIS_ORIGIN_OFFSET         = 30.0; // shift axes start from world origin
+static constexpr Standard_Real K_PLANE_EDGE_OFFSET_DEFAULT  = 30.0; // fallback edge offset for planes if Datum not set
+
+static inline gp_Pnt offsetAlong(const gp_Pnt& p, const gp_Dir& d, Standard_Real dist)
+{
+  gp_Vec v(d.XYZ()); v.Multiply(dist);
+  return p.Translated(v);
+}
+}
+
 namespace DocumentInitializer {
 
 void initialize(Document& doc)
@@ -20,10 +34,14 @@ void initialize(Document& doc)
   const gp_Dir dy  = d->dirY();
   const gp_Dir dz  = d->dirZ();
   const Standard_Real planeSize = d->planeSize();
-  const Standard_Real offset    = d->planeOffset();
+  // Prefer value supplied by Datum, but keep a clear named default
+  const Standard_Real offset    = (d->planeOffset() > 0.0 ? d->planeOffset() : K_PLANE_EDGE_OFFSET_DEFAULT);
 
   // Match previous UI-created geometry extents
-  const Standard_Real half = 0.5 * (planeSize - offset);
+  // Compute a plane centered at distance `centerOff` along two axes so that
+  // the nearest edge to origin is exactly at `offset` from origin:
+  // nearest = (planeSize + offset)/2 - (planeSize - offset)/2 = offset
+  const Standard_Real half      = 0.5 * (planeSize - offset);
   const Standard_Real centerOff = 0.5 * (planeSize + offset);
 
   auto mkPt = [&](const gp_Dir& a, const gp_Dir& b) {
@@ -40,7 +58,7 @@ void initialize(Document& doc)
     pXY->setNormal(dz);
     pXY->setSize(half);
     pXY->setFixedGeometry(true);
-    pXY->setTransparency(0.3);
+    pXY->setTransparency(K_PLANE_TRANSPARENCY);
     pXY->setName(TCollection_AsciiString("Plane XY"));
     pXY->setDatumRelated(true);
     pXY->setSuppressed(!d->showPlaneXY());
@@ -53,7 +71,7 @@ void initialize(Document& doc)
     pXY->setNormal(dz);
     pXY->setSize(half);
     pXY->setFixedGeometry(true);
-    pXY->setTransparency(0.3);
+    pXY->setTransparency(K_PLANE_TRANSPARENCY);
     pXY->setName(TCollection_AsciiString("Plane XY"));
     pXY->setDatumRelated(true);
     pXY->setSuppressed(true);
@@ -68,7 +86,7 @@ void initialize(Document& doc)
     pXZ->setNormal(dy);
     pXZ->setSize(half);
     pXZ->setFixedGeometry(true);
-    pXZ->setTransparency(0.3);
+    pXZ->setTransparency(K_PLANE_TRANSPARENCY);
     pXZ->setName(TCollection_AsciiString("Plane XZ"));
     pXZ->setDatumRelated(true);
     pXZ->setSuppressed(!d->showPlaneXZ());
@@ -81,7 +99,7 @@ void initialize(Document& doc)
     pXZ->setNormal(dy);
     pXZ->setSize(half);
     pXZ->setFixedGeometry(true);
-    pXZ->setTransparency(0.3);
+    pXZ->setTransparency(K_PLANE_TRANSPARENCY);
     pXZ->setName(TCollection_AsciiString("Plane XZ"));
     pXZ->setDatumRelated(true);
     pXZ->setSuppressed(true);
@@ -96,7 +114,7 @@ void initialize(Document& doc)
     pYZ->setNormal(dx);
     pYZ->setSize(half);
     pYZ->setFixedGeometry(true);
-    pYZ->setTransparency(0.3);
+    pYZ->setTransparency(K_PLANE_TRANSPARENCY);
     pYZ->setName(TCollection_AsciiString("Plane YZ"));
     pYZ->setDatumRelated(true);
     pYZ->setSuppressed(!d->showPlaneYZ());
@@ -109,7 +127,7 @@ void initialize(Document& doc)
     pYZ->setNormal(dx);
     pYZ->setSize(half);
     pYZ->setFixedGeometry(true);
-    pYZ->setTransparency(0.3);
+    pYZ->setTransparency(K_PLANE_TRANSPARENCY);
     pYZ->setName(TCollection_AsciiString("Plane YZ"));
     pYZ->setDatumRelated(true);
     pYZ->setSuppressed(true);
@@ -121,7 +139,7 @@ void initialize(Document& doc)
   {
     Handle(PointFeature) pt = new PointFeature();
     pt->setOrigin(d->origin());
-    pt->setRadius(10.0);
+    pt->setRadius(K_POINT_RADIUS);
     pt->setFixedGeometry(true);
     pt->setName(TCollection_AsciiString("Origin"));
     pt->setDatumRelated(true);
@@ -133,7 +151,7 @@ void initialize(Document& doc)
     const double axLen = d->axisLength();
     // X axis
     Handle(AxeFeature) axX = new AxeFeature();
-    axX->setOrigin(ori);
+    axX->setOrigin(offsetAlong(ori, dx, K_AXIS_ORIGIN_OFFSET));
     axX->setDirection(dx);
     axX->setLength(axLen);
     axX->setFixedGeometry(true);
@@ -144,7 +162,7 @@ void initialize(Document& doc)
 
     // Y axis
     Handle(AxeFeature) axY = new AxeFeature();
-    axY->setOrigin(ori);
+    axY->setOrigin(offsetAlong(ori, dy, K_AXIS_ORIGIN_OFFSET));
     axY->setDirection(dy);
     axY->setLength(axLen);
     axY->setFixedGeometry(true);
@@ -155,7 +173,7 @@ void initialize(Document& doc)
 
     // Z axis
     Handle(AxeFeature) axZ = new AxeFeature();
-    axZ->setOrigin(ori);
+    axZ->setOrigin(offsetAlong(ori, dz, K_AXIS_ORIGIN_OFFSET));
     axZ->setDirection(dz);
     axZ->setLength(axLen);
     axZ->setFixedGeometry(true);

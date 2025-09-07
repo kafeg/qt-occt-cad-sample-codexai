@@ -55,17 +55,15 @@ void AxeFeature::execute()
   const Standard_Real kDashLen = 30.0; // longer dashes
   const Standard_Real kDotLen  = 5.0;  // longer dots
   const Standard_Real kBaseGap = 8.0;  // slightly larger base gap
-  const Standard_Real kRadius  = 3.0; // thicker for better visibility
-  const Standard_Real kOriginOffsetMin = 30.0; // leave a small blank near the origin
+  const Standard_Real kRadius  = 3.0;  // thickness for visibility
 
   BRep_Builder builder;
   TopoDS_Compound comp;
   builder.MakeCompound(comp);
 
   gp_Vec vDir(d.XYZ()); // unit-length vector in axis direction
-  // Add an initial offset from origin to avoid segments touching the origin
-  const Standard_Real originOffset = std::max(kOriginOffsetMin, 2.0 * kRadius);
-  Standard_Real pos = originOffset;
+  // Start from the provided origin; any offset must be applied by caller
+  Standard_Real pos = 0.0;
   bool placeDash = true; // alternate dash and dot segments
 
   while (pos < l - gp::Resolution())
