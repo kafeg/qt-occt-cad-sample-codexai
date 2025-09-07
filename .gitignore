@@ -3,3 +3,4 @@ custom.pri
 CMakeLists.txt.user
 build/
 .vscode/
+.DS_Store
