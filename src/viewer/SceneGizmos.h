@@ -74,27 +74,32 @@ public:
     const bool showXZ  = datum->showPlaneXZ();
     const bool showYZ  = datum->showPlaneYZ();
 
-    // Create background long X/Y axes (world-space, non-selectable, thin)
-    const Standard_Real halfX = 500.0;
-    const Standard_Real halfY = 500.0;
-    m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
-    m_bgAxisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
-    Handle(Prs3d_Drawer) bgDx = m_bgAxisX->Attributes(); if (bgDx.IsNull()) bgDx = new Prs3d_Drawer();
-    bgDx->SetLineAspect(new Prs3d_LineAspect(colX, Aspect_TOL_SOLID, 2.0f));
-    m_bgAxisX->SetAttributes(bgDx);
-    m_bgAxisX->SetColor(colX);
-    m_bgAxisX->SetDisplayMode(AIS_WireFrame);
-    m_bgAxisX->SetAutoHilight(false);
-    Handle(Prs3d_Drawer) bgDy = m_bgAxisY->Attributes(); if (bgDy.IsNull()) bgDy = new Prs3d_Drawer();
-    bgDy->SetLineAspect(new Prs3d_LineAspect(colY, Aspect_TOL_SOLID, 2.0f));
-    m_bgAxisY->SetAttributes(bgDy);
-    m_bgAxisY->SetColor(colY);
-    m_bgAxisY->SetDisplayMode(AIS_WireFrame);
-    m_bgAxisY->SetAutoHilight(false);
-    ctx->Display(m_bgAxisX, Standard_False);
-    ctx->Display(m_bgAxisY, Standard_False);
-    ctx->Deactivate(m_bgAxisX);
-    ctx->Deactivate(m_bgAxisY);
+    // Background long X/Y axes (world-space, non-selectable, thin)
+    // Tie their visibility to the trihedron axes toggle for now.
+    m_showBgAxes = showTri;
+    if (m_showBgAxes)
+    {
+      const Standard_Real halfX = 500.0;
+      const Standard_Real halfY = 500.0;
+      m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
+      m_bgAxisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
+      Handle(Prs3d_Drawer) bgDx = m_bgAxisX->Attributes(); if (bgDx.IsNull()) bgDx = new Prs3d_Drawer();
+      bgDx->SetLineAspect(new Prs3d_LineAspect(colX, Aspect_TOL_SOLID, 2.0f));
+      m_bgAxisX->SetAttributes(bgDx);
+      m_bgAxisX->SetColor(colX);
+      m_bgAxisX->SetDisplayMode(AIS_WireFrame);
+      m_bgAxisX->SetAutoHilight(false);
+      Handle(Prs3d_Drawer) bgDy = m_bgAxisY->Attributes(); if (bgDy.IsNull()) bgDy = new Prs3d_Drawer();
+      bgDy->SetLineAspect(new Prs3d_LineAspect(colY, Aspect_TOL_SOLID, 2.0f));
+      m_bgAxisY->SetAttributes(bgDy);
+      m_bgAxisY->SetColor(colY);
+      m_bgAxisY->SetDisplayMode(AIS_WireFrame);
+      m_bgAxisY->SetAutoHilight(false);
+      ctx->Display(m_bgAxisX, Standard_False);
+      ctx->Display(m_bgAxisY, Standard_False);
+      ctx->Deactivate(m_bgAxisX);
+      ctx->Deactivate(m_bgAxisY);
+    }
 
     // Create trihedron from Datum (fixed on-screen size)
     const gp_Pnt ori = datum->origin();
@@ -360,6 +365,13 @@ public:
   void setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Standard_Real halfX, Standard_Real halfY)
   {
     if (ctx.IsNull()) return;
+    // Respect visibility; if hidden, ensure erased and keep handles null
+    if (!m_showBgAxes)
+    {
+      if (!m_bgAxisX.IsNull()) { ctx->Erase(m_bgAxisX, Standard_False); m_bgAxisX.Nullify(); }
+      if (!m_bgAxisY.IsNull()) { ctx->Erase(m_bgAxisY, Standard_False); m_bgAxisY.Nullify(); }
+      return;
+    }
     if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
     if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
     m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
@@ -388,6 +400,7 @@ private:
   Handle(AIS_Shape)     m_planeXY;
   Handle(AIS_Shape)          m_originMark;
   Handle(AIS_TexturedShape)  m_bgOriginSprite;
+  bool                       m_showBgAxes = false;
 };
 
 #endif

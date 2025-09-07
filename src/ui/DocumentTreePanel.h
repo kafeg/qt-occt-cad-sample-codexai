@@ -1,0 +1,38 @@
+// Document tree panel: shows Datum, Bodies, Sketches in a tree
+#pragma once
+
+#include <Standard_WarningsDisable.hxx>
+#include <QWidget>
+#include <Standard_WarningsRestore.hxx>
+
+#include <NCollection_Sequence.hxx>
+#include <DocumentItem.h>
+
+class QTreeWidget;
+class QTreeWidgetItem;
+class TabPage;
+
+class DocumentTreePanel : public QWidget
+{
+  Q_OBJECT
+public:
+  explicit DocumentTreePanel(TabPage* page, QWidget* parent = nullptr);
+
+  // Rebuild the tree from the current Document state
+  void refreshFromDocument();
+
+signals:
+  void requestSelectItem(const Handle(DocumentItem)& it);
+
+private slots:
+  void onSelectionChanged();
+  void onItemChanged(QTreeWidgetItem* item, int column);
+
+private:
+  // Build label for a given item (features mainly)
+  QString itemDisplayText(const Handle(DocumentItem)& it) const;
+
+private:
+  TabPage*     m_page = nullptr;
+  QTreeWidget* m_tree = nullptr;
+};
