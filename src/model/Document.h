@@ -42,6 +42,7 @@ public:
   // Planes: convenience APIs and container for plane features
   void addPlane(const Handle(PlaneFeature)& p);                // append plane to timeline and container
   Handle(PlaneFeature) findPlane(DocumentItem::Id id) const;   // find plane by id
+  const NCollection_Sequence<Handle(PlaneFeature)>& planes() const { return m_planes; }
 
   // Global Datum of the document
   std::shared_ptr<Datum> datum() const { return m_datum; }

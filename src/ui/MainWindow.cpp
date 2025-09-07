@@ -12,6 +12,7 @@
 
 #include <Quantity_Color.hxx>
 #include <Standard_Version.hxx>
+#include <NCollection_Sequence.hxx>
 
 #include <Document.h>
 #include <command/CreateBoxCommand.h>
@@ -19,12 +20,15 @@
 #include <command/CreateCylinderCommand.h>
 #include <dialog/CreateCylinderDialog.h>
 #include <command/CreateExtrudeCommand.h>
+#include <command/CreateSketchCommand.h>
 #include <dialog/CreateExtrudeDialog.h>
+#include <dialog/CreateSketchDialog.h>
 #include <dialog/SettingsDialog.h>
 // sketch for extrusion
 #include <Sketch.h>
 // model/viewer headers for sync helpers
 #include <Feature.h>
+#include <PlaneFeature.h>
 #include "TabPage.h"
 
 MainWindow::MainWindow()
@@ -121,6 +125,12 @@ void MainWindow::createMenuBar()
     connect(actAddExtrude, &QAction::triggered, [this]() { addExtrude(); });
   }
   {
+    QAction* actNewSketch = new QAction(file);
+    actNewSketch->setText("New Sketch");
+    file->addAction(actNewSketch);
+    connect(actNewSketch, &QAction::triggered, [this]() { addSketch(); });
+  }
+  {
     QAction* actMove = new QAction(file);
     actMove->setText("Move");
     file->addAction(actMove);
@@ -171,6 +181,10 @@ void MainWindow::createToolBar()
   QAction* actAddExtrude = new QAction("Add Extrude", tb);
   connect(actAddExtrude, &QAction::triggered, [this]() { addExtrude(); });
   tb->addAction(actAddExtrude);
+
+  QAction* actNewSketch = new QAction("New Sketch", tb);
+  connect(actNewSketch, &QAction::triggered, [this]() { addSketch(); });
+  tb->addAction(actNewSketch);
 
   QAction* actMove = new QAction("Move", tb);
   connect(actMove, &QAction::triggered, [this]() {
@@ -258,6 +272,44 @@ void MainWindow::addExtrude()
   CreateExtrudeCommand cmd(sketch, dlg.distance());
   cmd.execute(page->doc());
   page->syncViewerFromDoc(true);
+  page->refreshFeatureList();
+}
+
+void MainWindow::addSketch()
+{
+  TabPage* page = currentPage(); if (!page) return;
+  auto& doc = page->doc();
+
+  // Build plane names from document planes
+  const auto& planes = doc.planes();
+  if (planes.IsEmpty()) return;
+
+  QStringList names;
+  for (NCollection_Sequence<Handle(PlaneFeature)>::Iterator it(planes); it.More(); it.Next())
+  {
+    const Handle(PlaneFeature)& pf = it.Value();
+    if (!pf.IsNull() && !pf->name().IsEmpty())
+      names << QString::fromLatin1(pf->name().ToCString());
+    else
+      names << QStringLiteral("Plane");
+  }
+
+  CreateSketchDialog dlg(this);
+  dlg.setPlaneNames(names);
+  if (dlg.exec() != QDialog::Accepted) return;
+
+  const int idx = dlg.selectedPlaneIndex();
+  if (idx < 0 || idx >= planes.Size()) return;
+
+  Handle(PlaneFeature) plane = planes.Value(idx + 1); // NCollection_Sequence is 1-based
+  CreateSketchCommand cmd(plane);
+  cmd.execute(doc);
+  // Sync viewer and set overlay edit mode for the created sketch
+  page->syncViewerFromDoc(true);
+  if (auto sk = cmd.createdSketch())
+  {
+    page->viewer()->setSketchEditMode(sk->id(), true, true);
+  }
   page->refreshFeatureList();
 }
 

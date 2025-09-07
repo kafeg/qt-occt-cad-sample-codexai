@@ -777,7 +777,6 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketc
   if (!sketch) return Handle(AIS_Shape)();
   // Convert sketch wires and build a compound for a single AIS handle
   const std::vector<TopoDS_Wire> wires = sketch->toOcctWires(1.0e-7);
-  if (wires.empty()) return Handle(AIS_Shape)();
 
   BRep_Builder builder;
   TopoDS_Compound comp;

@@ -29,6 +29,7 @@ private:
   void addBox();                    // Open dialog and add BoxFeature
   void addCylinder();               // Open dialog and add CylinderFeature
   void addExtrude();                // Open dialog, select sketch, add ExtrudeFeature
+  void addSketch();                 // Open dialog to select plane and create Sketch
   void syncViewerFromDoc(bool toUpdate = true); // Rebuild AIS bodies from Document
   void addNewTab();                 // Add a new tab page
 

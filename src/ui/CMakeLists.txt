@@ -17,6 +17,8 @@ add_library(ui STATIC
     command/CreateCylinderCommand.h
     command/CreateExtrudeCommand.cpp
     command/CreateExtrudeCommand.h
+    command/CreateSketchCommand.cpp
+    command/CreateSketchCommand.h
     command/MoveCommand.cpp
     command/MoveCommand.h
     dialog/CreateBoxDialog.cpp
@@ -25,6 +27,8 @@ add_library(ui STATIC
     dialog/CreateCylinderDialog.h
     dialog/CreateExtrudeDialog.cpp
     dialog/CreateExtrudeDialog.h
+    dialog/CreateSketchDialog.cpp
+    dialog/CreateSketchDialog.h
     dialog/SettingsDialog.cpp
     dialog/SettingsDialog.h
 )
