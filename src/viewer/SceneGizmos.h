@@ -16,10 +16,6 @@
 #include <Quantity_Color.hxx>
 #include <Geom_Line.hxx>
 #include <Geom_CartesianPoint.hxx>
-#include <AIS_Point.hxx>
-#include <Prs3d_PointAspect.hxx>
-#include <Graphic3d_AspectMarker3d.hxx>
-#include <Graphic3d_MarkerImage.hxx>
 #include <Image_AlienPixMap.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Dir.hxx>
@@ -246,86 +242,47 @@ public:
     ctx->Deactivate(m_originMark);
     if (topmostOverlay) { ctx->SetZLayer(m_originMark, Graphic3d_ZLayerId_Top); }
 
-    // Origin image sprite (Qt resource images/circle.png), anchored at origin, constant on-screen size
+    // Origin image overlay: small textured quad at Datum origin
     {
-      // Always create point object; try to apply image, else fallback to visible standard marker.
-      m_originImage = new AIS_Point(new Geom_CartesianPoint(ori));
-      Handle(Prs3d_Drawer) dr = m_originImage->Attributes(); if (dr.IsNull()) dr = new Prs3d_Drawer();
-      bool hasImage = false;
-      Handle(Image_PixMap) spriteImg; // keep loaded image for textured quad
+      Handle(Image_PixMap) spriteImg; // image with RGBA
       QResource res(":/images/circle.png");
       if (res.isValid() && res.size() > 0) {
-        // First, try OCCT's own PNG loader from memory
         Handle(Image_AlienPixMap) imgMem = new Image_AlienPixMap();
         if (imgMem->Load(reinterpret_cast<const Standard_Byte*>(res.data()),
                          static_cast<Standard_Size>(res.size()),
                          TCollection_AsciiString("circle.png"))) {
-          Handle(Graphic3d_AspectMarker3d) mAsp = new Graphic3d_AspectMarker3d(imgMem);
-          mAsp->SetScale(24.0f);
-          dr->SetPointAspect(new Prs3d_PointAspect(mAsp));
-          hasImage = true;
           spriteImg = imgMem;
         } else {
-          // Fallback: decode with Qt and copy pixels into Image_PixMap
-          QImage qimg;
-          qimg.loadFromData(reinterpret_cast<const uchar*>(res.data()), static_cast<int>(res.size()), "PNG");
+          QImage qimg; qimg.loadFromData(reinterpret_cast<const uchar*>(res.data()), static_cast<int>(res.size()), "PNG");
           if (!qimg.isNull()) {
             QImage rgba = qimg.convertToFormat(QImage::Format_RGBA8888);
             Handle(Image_PixMap) imgPix = new Image_PixMap();
             if (imgPix->InitZero(Image_Format_RGBA, rgba.width(), rgba.height(), rgba.bytesPerLine())) {
-              imgPix->SetTopDown(true); // QImage is top-down
+              imgPix->SetTopDown(true);
               const int h = rgba.height();
-              for (int y = 0; y < h; ++y) {
-                std::memcpy(imgPix->ChangeRow(y), rgba.constScanLine(y), size_t(rgba.bytesPerLine()));
-              }
-              Handle(Graphic3d_AspectMarker3d) mAsp = new Graphic3d_AspectMarker3d(imgPix);
-              mAsp->SetScale(24.0f);
-              dr->SetPointAspect(new Prs3d_PointAspect(mAsp));
-              hasImage = true;
+              for (int y = 0; y < h; ++y) { std::memcpy(imgPix->ChangeRow(y), rgba.constScanLine(y), size_t(rgba.bytesPerLine())); }
               spriteImg = imgPix;
             }
           }
         }
       }
-      // if (!hasImage) {
-      //   dr->SetPointAspect(new Prs3d_PointAspect(Aspect_TOM_O_POINT, Quantity_Color(Quantity_NOC_RED), 8.0));
-      // }
-      // m_originImage->SetAttributes(dr);
-      // m_originImage->SetDisplayMode(AIS_WireFrame);
-      // m_originImage->SetAutoHilight(false);
-      // // Keep constant pixel size while staying anchored at Datum origin
-      // m_originImage->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, ori));
-      // ctx->Display(m_originImage, Standard_False);
-      // if (topmostOverlay) { ctx->SetZLayer(m_originImage, Graphic3d_ZLayerId_Topmost); }
-      // ctx->Deactivate(m_originImage);
-
-      // Additionally, display a small textured quad at the origin as a robust image overlay
-      if (hasImage)
-      {
-        const Standard_Real s = 48.0; // target on-screen size (approx.)
+      if (!spriteImg.IsNull()) {
+        const Standard_Real s = 48.0;
         Handle(Geom_Plane) plane = new Geom_Plane(gp_Ax3(ori, dz, dx));
-        TopoDS_Face f = BRepBuilderAPI_MakeFace(Handle(Geom_Surface)(plane),
-                                                -s * 0.5, s * 0.5,
-                                                -s * 0.5, s * 0.5,
-                                                1.0e-7);
+        TopoDS_Face f = BRepBuilderAPI_MakeFace(Handle(Geom_Surface)(plane), -s * 0.5, s * 0.5, -s * 0.5, s * 0.5, 1.0e-7);
         m_originSprite = new AIS_TexturedShape(f);
         m_originSprite->SetTexturePixMap(spriteImg);
         m_originSprite->SetTextureMapOn();
         m_originSprite->SetTextureRepeat(Standard_False, 1.0, 1.0);
         m_originSprite->DisableTextureModulate();
-        // Ensure per-pixel alpha in texture is blended (not treated as opaque)
-        {
-          Handle(Prs3d_Drawer) sprDr = m_originSprite->Attributes();
-          if (sprDr.IsNull()) sprDr = new Prs3d_Drawer();
-          Handle(Prs3d_ShadingAspect) sprShade = sprDr->ShadingAspect();
-          if (sprShade.IsNull()) { sprShade = new Prs3d_ShadingAspect(); sprDr->SetShadingAspect(sprShade); }
-          Handle(Graphic3d_AspectFillArea3d) fillAsp = sprShade->Aspect();
-          if (fillAsp.IsNull()) fillAsp = new Graphic3d_AspectFillArea3d();
-          fillAsp->SetAlphaMode(Graphic3d_AlphaMode_Blend);
-          sprShade->SetAspect(fillAsp);
-          m_originSprite->SetAttributes(sprDr);
-        }
-        m_originSprite->SetDisplayMode(3); // textured mode
+        // Enable per-pixel alpha blending
+        Handle(Prs3d_Drawer) sprDr = m_originSprite->Attributes(); if (sprDr.IsNull()) sprDr = new Prs3d_Drawer();
+        Handle(Prs3d_ShadingAspect) sprShade = sprDr->ShadingAspect(); if (sprShade.IsNull()) { sprShade = new Prs3d_ShadingAspect(); sprDr->SetShadingAspect(sprShade); }
+        Handle(Graphic3d_AspectFillArea3d) fillAsp = sprShade->Aspect(); if (fillAsp.IsNull()) fillAsp = new Graphic3d_AspectFillArea3d();
+        fillAsp->SetAlphaMode(Graphic3d_AlphaMode_Blend);
+        sprShade->SetAspect(fillAsp);
+        m_originSprite->SetAttributes(sprDr);
+        m_originSprite->SetDisplayMode(3);
         m_originSprite->SetAutoHilight(false);
         m_originSprite->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, ori));
         ctx->Display(m_originSprite, Standard_False);
@@ -345,7 +302,6 @@ public:
     if (!m_planeXZ.IsNull()) ctx->Display(m_planeXZ, Standard_False);
     if (!m_planeXY.IsNull()) ctx->Display(m_planeXY, Standard_False);
     if (!m_originMark.IsNull()) ctx->Display(m_originMark, Standard_False);
-    if (!m_originImage.IsNull()) ctx->Display(m_originImage, Standard_False);
     if (!m_originSprite.IsNull()) ctx->Display(m_originSprite, Standard_False);
     // Origin circle quadrants are managed separately
   }
@@ -360,7 +316,6 @@ public:
     if (!m_planeXZ.IsNull()) ctx->Erase(m_planeXZ, Standard_False);
     if (!m_planeXY.IsNull()) ctx->Erase(m_planeXY, Standard_False);
     if (!m_originMark.IsNull()) ctx->Erase(m_originMark, Standard_False);
-    if (!m_originImage.IsNull()) ctx->Erase(m_originImage, Standard_False);
     if (!m_originSprite.IsNull()) ctx->Erase(m_originSprite, Standard_False);
     // Origin circle quadrants are managed separately
   }
@@ -398,9 +353,8 @@ private:
   Handle(AIS_Shape)     m_planeYZ;
   Handle(AIS_Shape)     m_planeXZ;
   Handle(AIS_Shape)     m_planeXY;
-  Handle(AIS_Shape)     m_originMark;
-  Handle(AIS_Point)     m_originImage;
-  Handle(AIS_TexturedShape) m_originSprite;
+  Handle(AIS_Shape)          m_originMark;
+  Handle(AIS_TexturedShape)  m_originSprite;
 };
 
 #endif
