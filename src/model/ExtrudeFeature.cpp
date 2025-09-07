@@ -28,7 +28,10 @@ void ExtrudeFeature::execute()
     return;
   }
   const auto wires = m_sketch->toOcctWires();
-  m_shape = KernelAPI::extrude(wires, distance());
+  // Extrude along sketch plane normal scaled by distance
+  gp_Vec dir(m_sketch->plane().Direction().XYZ());
+  dir.Multiply(distance());
+  m_shape = KernelAPI::extrude(wires, dir);
 }
 
 // Append base Feature encoding + extrude-specific fields

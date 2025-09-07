@@ -2,6 +2,7 @@
 
 #include <gp_Pnt2d.hxx>
 #include <TopoDS_Wire.hxx>
+#include <gp_Ax2.hxx>
 
 #include <cstddef>
 #include <optional>
@@ -113,6 +114,13 @@ public:
   // Export ordered paths as OCCT wires in XY plane (Z=0)
   std::vector<TopoDS_Wire> toOcctWires(double tol = 1.0e-9) const;
 
+  // Plane binding
+  void setPlane(const gp_Ax2& ax) { m_ax2 = ax; }
+  const gp_Ax2& plane() const { return m_ax2; }
+
+  void setPlaneId(DocumentItem::Id pid) { m_planeId = pid; }
+  DocumentItem::Id planeId() const { return m_planeId; }
+
   // Access
   const std::vector<Curve>& curves() const { return curves_; }
   const std::vector<Constraint>& constraints() const { return constraints_; }
@@ -134,6 +142,11 @@ private:
 
   // mutable because computeWires groups by endpoint clusters without mutating geometry
   mutable std::vector<std::size_t> uf_parent_{};
+
+  // Sketch reference plane (Ax2): origin + X/Y directions (Z is normal)
+  gp_Ax2 m_ax2{gp_Pnt(0,0,0), gp::DZ(), gp::DX()};
+  // Optional link to a PlaneFeature in the document (0 if unbound)
+  DocumentItem::Id m_planeId{0};
 };
 
 // Enable OCCT handle for Sketch

@@ -29,16 +29,21 @@ TopoDS_Shape fuse(const TopoDS_Shape& a, const TopoDS_Shape& b)
   return BRepAlgoAPI_Fuse(a, b).Shape();
 }
 
-// Extrude a set of wires along +Z by a given distance
+// Extrude a set of wires along +Z by a given distance (compat wrapper)
 TopoDS_Shape extrude(const std::vector<TopoDS_Wire>& wires, double distance)
 {
-  if (wires.empty() || distance == 0.0)
+  return extrude(wires, gp_Vec(0.0, 0.0, distance));
+}
+
+// Extrude a set of wires along arbitrary vector direction
+TopoDS_Shape extrude(const std::vector<TopoDS_Wire>& wires, const gp_Vec& dir)
+{
+  if (wires.empty() || dir.SquareMagnitude() <= gp::Resolution())
   {
     return TopoDS_Shape();
   }
 
   TopoDS_Shape result;
-  const gp_Vec dir(0.0, 0.0, distance);
 
   for (const TopoDS_Wire& w : wires)
   {

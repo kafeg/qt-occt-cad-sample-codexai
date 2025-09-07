@@ -4,6 +4,7 @@
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Wire.hxx>
 #include <vector>
+#include <gp_Vec.hxx>
 
 namespace KernelAPI
 {
@@ -19,4 +20,7 @@ namespace KernelAPI
   // - Each wire is treated independently and the resulting prisms are fused
   // - Input wires are assumed to lie in the XY plane (Z=0)
   TopoDS_Shape extrude(const std::vector<TopoDS_Wire>& wires, double distance);
+
+  // Linear extrusion along an arbitrary vector direction (magnitude = length)
+  TopoDS_Shape extrude(const std::vector<TopoDS_Wire>& wires, const gp_Vec& dir);
 }

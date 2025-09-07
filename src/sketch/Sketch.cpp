@@ -15,6 +15,7 @@ const bool kSketchReg = [](){
 #include <deque>
 #include <unordered_set>
 #include <algorithm>
+#include <limits>
 
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
@@ -509,11 +510,25 @@ std::vector<TopoDS_Wire> Sketch::toOcctWires(double tol) const
   std::vector<TopoDS_Wire> wires;
   wires.reserve(paths.size());
 
-  auto toPnt = [](const gp_Pnt2d& p) { return gp_Pnt(p.X(), p.Y(), 0.0); };
+  // Map 2D sketch coordinates (u,v) into 3D by Ax2: P = O + u*X + v*Y
+  const gp_Pnt  O  = m_ax2.Location();
+  const gp_Dir  Xd = m_ax2.XDirection();
+  const gp_Dir  Yd = m_ax2.YDirection();
+
+  auto toPnt = [&](const gp_Pnt2d& p) {
+    const double u = p.X();
+    const double v = p.Y();
+    gp_Vec vx(Xd.XYZ()); vx.Multiply(u);
+    gp_Vec vy(Yd.XYZ()); vy.Multiply(v);
+    return O.Translated(vx + vy);
+  };
   const double PI2 = 2.0 * M_PI;
 
-  auto angleOf = [](const gp_Pnt2d& c, const gp_Pnt2d& p) {
-    return std::atan2(p.Y() - c.Y(), p.X() - c.X());
+  // Angle of vector CP in the sketch's local X/Y basis
+  auto angleOf = [&](const gp_Pnt2d& c, const gp_Pnt2d& p) {
+    const double ux = p.X() - c.X();
+    const double uy = p.Y() - c.Y();
+    return std::atan2(uy, ux);
   };
 
   for (const auto& path : paths)
@@ -531,9 +546,11 @@ std::vector<TopoDS_Wire> Sketch::toOcctWires(double tol) const
       }
       else
       {
-        // Build 3D circle in XY plane
+        // Build 3D circle in sketch plane (Ax2)
         const gp_Pnt2d& center = c.arc.center;
-        gp_Ax2 ax2(gp_Pnt(center.X(), center.Y(), 0.0), gp::DZ());
+        // Circle center in 3D by mapping (cx,cy)
+        gp_Pnt c3 = toPnt(center);
+        gp_Ax2 ax2(c3, m_ax2.Direction(), m_ax2.XDirection());
         double r = center.Distance(c.arc.p1);
         gp_Circ circ(ax2, r);
 
@@ -565,6 +582,8 @@ std::vector<TopoDS_Wire> Sketch::toOcctWires(double tol) const
 //  A cx cy x1 y1 x2 y2 cw(0|1)
 // constraints M
 //  C aCurve aEnd bCurve bEnd
+// plane ox oy oz zx zy zz xx xy xz
+// planeId <id>        (optional)
 std::string Sketch::serialize() const
 {
   std::ostringstream os;
@@ -592,6 +611,18 @@ std::string Sketch::serialize() const
       os << "C " << k.a.curve << ' ' << k.a.endIndex << ' ' << k.b.curve << ' ' << k.b.endIndex << "\n";
     }
   }
+  // Plane binding
+  const gp_Pnt loc = m_ax2.Location();
+  const gp_Dir Z   = m_ax2.Direction();
+  const gp_Dir X   = m_ax2.XDirection();
+  os << "plane "
+     << loc.X() << ' ' << loc.Y() << ' ' << loc.Z() << ' '
+     << Z.X()   << ' ' << Z.Y()   << ' ' << Z.Z()   << ' '
+     << X.X()   << ' ' << X.Y()   << ' ' << X.Z()   << "\n";
+  if (m_planeId != 0)
+  {
+    os << "planeId " << m_planeId << "\n";
+  }
   return os.str();
 }
 
@@ -599,6 +630,9 @@ void Sketch::deserialize(const std::string& data)
 {
   curves_.clear();
   constraints_.clear();
+  // Defaults: XY plane at origin
+  m_ax2 = gp_Ax2(gp_Pnt(0,0,0), gp::DZ(), gp::DX());
+  m_planeId = 0;
   std::istringstream is(data);
   std::string head;
   std::size_t n = 0;
@@ -629,6 +663,36 @@ void Sketch::deserialize(const std::string& data)
         int ac, ae, bc, be; is >> ac >> ae >> bc >> be;
         addCoincident(EndpointRef{ac, ae}, EndpointRef{bc, be});
       }
+    }
+  }
+
+  // Optional trailing sections (order independent after the two blocks)
+  // Parse until EOF: recognize "plane" and "planeId" tokens
+  while (is >> head)
+  {
+    if (head == "plane")
+    {
+      double ox,oy,oz, zx,zy,zz, xx,xy,xz;
+      if (is >> ox >> oy >> oz >> zx >> zy >> zz >> xx >> xy >> xz)
+      {
+        gp_Pnt o(ox,oy,oz);
+        gp_Dir Z(zx,zy,zz);
+        gp_Dir X(xx,xy,xz);
+        m_ax2 = gp_Ax2(o, Z, X);
+      }
+    }
+    else if (head == "planeId")
+    {
+      unsigned long long pid = 0ULL;
+      if (is >> pid)
+      {
+        m_planeId = static_cast<DocumentItem::Id>(pid);
+      }
+    }
+    else
+    {
+      // Unknown token: skip rest of line
+      is.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
   }
 }
