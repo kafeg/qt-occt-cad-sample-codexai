@@ -14,6 +14,7 @@
 #include <AIS_Shape.hxx>
 #include <MoveFeature.h>
 #include <PlaneFeature.h>
+#include <PointFeature.h>
 #include <Datum.h>
 #include <gp_Quaternion.hxx>
 #include <gp_EulerSequence.hxx>
@@ -74,6 +75,16 @@ TabPage::TabPage(QWidget* parent)
     pXZ->setOrigin(mkPt(dx, dz)); pXZ->setNormal(dy); pXZ->setSize(half); pXZ->setFixedGeometry(true); pXZ->setTransparency(0.3); pXZ->setName(TCollection_AsciiString("Plane XZ")); m_doc->addPlane(pXZ);
     Handle(PlaneFeature) pYZ = new PlaneFeature();
     pYZ->setOrigin(mkPt(dy, dz)); pYZ->setNormal(dx); pYZ->setSize(half); pYZ->setFixedGeometry(true); pYZ->setTransparency(0.3); pYZ->setName(TCollection_AsciiString("Plane YZ")); m_doc->addPlane(pYZ);
+    // Add origin point as a fixed geometry feature (replaces SceneGizmos::m_originMark)
+    if (d->showOriginPoint())
+    {
+      Handle(PointFeature) pt = new PointFeature();
+      pt->setOrigin(d->origin());
+      pt->setRadius(10.0);
+      pt->setFixedGeometry(true);
+      pt->setName(TCollection_AsciiString("Origin"));
+      m_doc->addFeature(pt);
+    }
     m_doc->recompute();
   }
 
@@ -175,6 +186,21 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
     const Handle(Feature)& f = it.Value(); if (f.IsNull()) continue;
     if (f->isSuppressed()) continue; // do not display suppressed features
     Handle(AIS_Shape) body = m_viewer->addShape(f->shape(), AIS_Shaded, 0, false);
+    // Apply fixed-geometry handling for PointFeature (zoom persistence + top layer)
+    if (Handle(PointFeature) pft = Handle(PointFeature)::DownCast(f); !pft.IsNull())
+    {
+      if (pft->isFixedGeometry())
+      {
+        body->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+        if (m_viewer && !m_viewer->Context().IsNull())
+        {
+          m_viewer->Context()->SetZLayer(body, Graphic3d_ZLayerId_Top);
+        }
+        body->SetAutoHilight(true);
+      }
+      const Standard_ShortReal tr = static_cast<Standard_ShortReal>(std::clamp(pft->transparency(), 0.0, 1.0));
+      if (tr > 0.0f) body->SetTransparency(tr);
+    }
     m_featureToBody.Add(f, body);
     m_bodyToFeature.Add(body, f);
   }
@@ -250,6 +276,11 @@ void TabPage::activateMove()
   if (src.IsNull()) return;
   // Prevent moving fixed planes
   if (Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(src); !pf.IsNull() && pf->isFixedGeometry())
+  {
+    return;
+  }
+  // Prevent moving fixed point feature (origin)
+  if (Handle(PointFeature) pt = Handle(PointFeature)::DownCast(src); !pt.IsNull() && pt->isFixedGeometry())
   {
     return;
   }

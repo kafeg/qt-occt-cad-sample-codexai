@@ -7,6 +7,7 @@
 #include <CylinderFeature.h>
 #include <MoveFeature.h>
 #include <PlaneFeature.h>
+#include <PointFeature.h>
 #include <Sketch.h>
 #include <Document.h>
 #include <Datum.h>
@@ -131,7 +132,46 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
   switch (tag)
   {
     case 1: d->setShowTrihedronAxes(on); break;
-    case 2: d->setShowOriginPoint(on);   break;
+    case 2:
+    {
+      d->setShowOriginPoint(on);
+      // Mirror origin visibility into the document by adding/suppressing PointFeature
+      auto& doc = m_page->doc();
+      Handle(PointFeature) pf;
+      for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(doc.items()); it.More(); it.Next())
+      {
+        Handle(PointFeature) tmp = Handle(PointFeature)::DownCast(it.Value());
+        if (!tmp.IsNull()) { pf = tmp; break; }
+      }
+      if (on)
+      {
+        if (pf.IsNull())
+        {
+          Handle(PointFeature) pt = new PointFeature();
+          pt->setOrigin(d->origin());
+          pt->setRadius(10.0);
+          pt->setFixedGeometry(true);
+          pt->setName(TCollection_AsciiString("Origin"));
+          doc.addFeature(pt);
+        }
+        else
+        {
+          pf->setSuppressed(false);
+        }
+        doc.recompute();
+        m_page->syncViewerFromDoc(true);
+      }
+      else
+      {
+        if (!pf.IsNull())
+        {
+          pf->setSuppressed(true);
+          doc.recompute();
+          m_page->syncViewerFromDoc(true);
+        }
+      }
+      break;
+    }
     case 6: d->setShowTrihedronAxisX(on); break;
     case 7: d->setShowTrihedronAxisY(on); break;
     case 8: d->setShowTrihedronAxisZ(on); break;
@@ -165,6 +205,13 @@ QString DocumentTreePanel::itemDisplayText(const Handle(DocumentItem)& it) const
                 .arg(o.X()).arg(o.Y()).arg(o.Z())
                 .arg(n.X()).arg(n.Y()).arg(n.Z())
                 .arg(pf->size());
+    }
+    else if (Handle(PointFeature) pt = Handle(PointFeature)::DownCast(f); !pt.IsNull())
+    {
+      const gp_Pnt o = pt->origin();
+      label = QString("Point [O=(%1,%2,%3), R=%4]")
+                .arg(o.X()).arg(o.Y()).arg(o.Z())
+                .arg(pt->radius());
     }
     if (label.isEmpty()) label = QString::fromLatin1(f->DynamicType()->Name());
     if (f->isSuppressed()) label += QStringLiteral(" [Suppressed]");

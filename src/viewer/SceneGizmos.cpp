@@ -164,28 +164,8 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
   // Helper to build a rectangular plane aligned by two directions
   // No overlay planes; planes should be explicit document items
 
-  // Origin mark (circle)
-  if (showOri)
-  {
-    if (m_originMark.IsNull())
-    {
-      Handle(Geom_Circle) gC = new Geom_Circle(gp_Ax2(ori, dz, dx), kOriginMarkRadius);
-      TopoDS_Edge e = BRepBuilderAPI_MakeEdge(gC);
-      TopoDS_Wire w = BRepBuilderAPI_MakeWire(e);
-      m_originMark = new AIS_Shape(BRepBuilderAPI_MakeFace(w));
-      Handle(Prs3d_Drawer) dO = new Prs3d_Drawer();
-      dO->SetColor(Quantity_Color(Quantity_NOC_WHITE));
-      dO->SetFaceBoundaryDraw(Standard_True);
-      dO->SetWireAspect(new Prs3d_LineAspect(Quantity_Color(Quantity_NOC_BLACK), Aspect_TOL_SOLID, 1.5f));
-      m_originMark->SetAttributes(dO);
-      m_originMark->SetDisplayMode(AIS_Shaded);
-      m_originMark->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-      m_originMark->SetAutoHilight(true);
-    }
-    ctx->Display(m_originMark, Standard_False);
-    if (topmostOverlay) ctx->SetZLayer(m_originMark, Graphic3d_ZLayerId_Top);
-  }
-  else if (!m_originMark.IsNull())
+  // Origin mark is now a PointFeature in the Document; erase any legacy overlay
+  if (!m_originMark.IsNull())
   {
     ctx->Erase(m_originMark, Standard_False);
   }

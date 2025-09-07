@@ -23,6 +23,7 @@ public:
     ExtrudeFeature = 102,
     MoveFeature = 103,
     PlaneFeature = 104,
+    PointFeature = 105,
   };
 
   virtual ~DocumentItem() = default;
