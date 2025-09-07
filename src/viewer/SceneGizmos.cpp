@@ -87,9 +87,6 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
   const bool showXZ  = datum->showPlaneXZ();
   const bool showYZ  = datum->showPlaneYZ();
 
-  // Background axes are tied to trihedron visibility
-  m_showBgAxes = showTri;
-
   // Trihedron (zoom persistent)
   if (showTri)
   {
@@ -135,42 +132,31 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
     ctx->Erase(m_trihedron, Standard_False);
   }
 
-  // Background axes (world-space lines, non-selectable)
-  if (m_showBgAxes)
+  // Background axes (world-space lines, non-selectable) - always visible, global scene
+  if (m_bgAxisX.IsNull() || m_bgAxisY.IsNull())
   {
-    // Default extents (viewer can override via setAxisExtents)
-    if (m_bgAxisX.IsNull() || m_bgAxisY.IsNull())
-    {
-      const Standard_Real halfX = 500.0;
-      const Standard_Real halfY = 500.0;
-      m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
-      m_bgAxisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
-      Handle(Prs3d_Drawer) dxAsp = new Prs3d_Drawer();
-      dxAsp->SetLineAspect(new Prs3d_LineAspect(kColX, Aspect_TOL_SOLID, 2.0f));
-      m_bgAxisX->SetAttributes(dxAsp);
-      m_bgAxisX->SetDisplayMode(AIS_WireFrame);
-      m_bgAxisX->SetAutoHilight(false);
-      Handle(Prs3d_Drawer) dyAsp = new Prs3d_Drawer();
-      dyAsp->SetLineAspect(new Prs3d_LineAspect(kColY, Aspect_TOL_SOLID, 2.0f));
-      m_bgAxisY->SetAttributes(dyAsp);
-      m_bgAxisY->SetDisplayMode(AIS_WireFrame);
-      m_bgAxisY->SetAutoHilight(false);
-      ctx->Display(m_bgAxisX, Standard_False);
-      ctx->Display(m_bgAxisY, Standard_False);
-      ctx->Deactivate(m_bgAxisX);
-      ctx->Deactivate(m_bgAxisY);
-    }
-    else
-    {
-      ctx->Display(m_bgAxisX, Standard_False);
-      ctx->Display(m_bgAxisY, Standard_False);
-    }
+    const Standard_Real halfX = 500.0;
+    const Standard_Real halfY = 500.0;
+    m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
+    m_bgAxisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
+    Handle(Prs3d_Drawer) dxAsp = new Prs3d_Drawer();
+    dxAsp->SetLineAspect(new Prs3d_LineAspect(kColX, Aspect_TOL_SOLID, 2.0f));
+    m_bgAxisX->SetAttributes(dxAsp);
+    m_bgAxisX->SetColor(kColX);
+    m_bgAxisX->SetDisplayMode(AIS_WireFrame);
+    m_bgAxisX->SetAutoHilight(false);
+    Handle(Prs3d_Drawer) dyAsp = new Prs3d_Drawer();
+    // Use blue for Y background axis as requested
+    dyAsp->SetLineAspect(new Prs3d_LineAspect(kColZ, Aspect_TOL_SOLID, 2.0f));
+    m_bgAxisY->SetAttributes(dyAsp);
+    m_bgAxisY->SetColor(kColZ);
+    m_bgAxisY->SetDisplayMode(AIS_WireFrame);
+    m_bgAxisY->SetAutoHilight(false);
   }
-  else
-  {
-    if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
-    if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
-  }
+  ctx->Display(m_bgAxisX, Standard_False);
+  ctx->Display(m_bgAxisY, Standard_False);
+  ctx->Deactivate(m_bgAxisX);
+  ctx->Deactivate(m_bgAxisY);
 
   // Helper to build a rectangular plane aligned by two directions
   auto makeRectPlane = [&](const gp_Dir& a, const gp_Dir& b) -> Handle(AIS_Shape)
@@ -257,44 +243,37 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
     ctx->Erase(m_originMark, Standard_False);
   }
 
-  // Origin sprite (textured quad)
-  if (showOri)
+  // Origin sprite (textured quad) - always visible, global scene at world origin
+  if (m_bgOriginSprite.IsNull())
   {
-    if (m_bgOriginSprite.IsNull())
+    const Standard_Real s = 48.0;
+    Handle(Geom_Plane) plane = new Geom_Plane(gp_Ax3(gp::Origin(), gp::DZ(), gp::DX()));
+    TopoDS_Face f = BRepBuilderAPI_MakeFace(Handle(Geom_Surface)(plane), -s * 0.5, s * 0.5, -s * 0.5, s * 0.5, 1.0e-7);
+    m_bgOriginSprite = new AIS_TexturedShape(f);
+    Handle(Image_PixMap) sprite = loadRgbaPixmap(":/images/circle.png");
+    if (!sprite.IsNull())
     {
-      const Standard_Real s = 48.0;
-      Handle(Geom_Plane) plane = new Geom_Plane(gp_Ax3(ori, dz, dx));
-      TopoDS_Face f = BRepBuilderAPI_MakeFace(Handle(Geom_Surface)(plane), -s * 0.5, s * 0.5, -s * 0.5, s * 0.5, 1.0e-7);
-      m_bgOriginSprite = new AIS_TexturedShape(f);
-      Handle(Image_PixMap) sprite = loadRgbaPixmap(":/images/circle.png");
-      if (!sprite.IsNull())
-      {
-        m_bgOriginSprite->SetTexturePixMap(sprite);
-        m_bgOriginSprite->SetTextureMapOn();
-        m_bgOriginSprite->SetTextureRepeat(Standard_False, 1.0, 1.0);
-        m_bgOriginSprite->DisableTextureModulate();
-        Handle(Prs3d_Drawer) sprDr = new Prs3d_Drawer();
-        Handle(Prs3d_ShadingAspect) sprShade = new Prs3d_ShadingAspect();
-        Handle(Graphic3d_AspectFillArea3d) fillAsp = sprShade->Aspect();
-        fillAsp->SetAlphaMode(Graphic3d_AlphaMode_Blend);
-        fillAsp->SetPolygonOffsets(Aspect_POM_Fill, 1.0f, 1.0f);
-        sprShade->SetTransparency(0.9f);
-        sprDr->SetShadingAspect(sprShade);
-        m_bgOriginSprite->SetAttributes(sprDr);
-        m_bgOriginSprite->SetDisplayMode(3);
-        m_bgOriginSprite->SetAutoHilight(false);
-        m_bgOriginSprite->SetTransparency(0.9f);
-        m_bgOriginSprite->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, ori));
-      }
+      m_bgOriginSprite->SetTexturePixMap(sprite);
+      m_bgOriginSprite->SetTextureMapOn();
+      m_bgOriginSprite->SetTextureRepeat(Standard_False, 1.0, 1.0);
+      m_bgOriginSprite->DisableTextureModulate();
+      Handle(Prs3d_Drawer) sprDr = new Prs3d_Drawer();
+      Handle(Prs3d_ShadingAspect) sprShade = new Prs3d_ShadingAspect();
+      Handle(Graphic3d_AspectFillArea3d) fillAsp = sprShade->Aspect();
+      fillAsp->SetAlphaMode(Graphic3d_AlphaMode_Blend);
+      fillAsp->SetPolygonOffsets(Aspect_POM_Fill, 1.0f, 1.0f);
+      sprShade->SetTransparency(0.9f);
+      sprDr->SetShadingAspect(sprShade);
+      m_bgOriginSprite->SetAttributes(sprDr);
+      m_bgOriginSprite->SetDisplayMode(3);
+      m_bgOriginSprite->SetAutoHilight(false);
+      m_bgOriginSprite->SetTransparency(0.9f);
+      m_bgOriginSprite->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
     }
-    ctx->Display(m_bgOriginSprite, Standard_False);
-    ctx->SetZLayer(m_bgOriginSprite, Graphic3d_ZLayerId_Default);
-    ctx->Deactivate(m_bgOriginSprite);
   }
-  else if (!m_bgOriginSprite.IsNull())
-  {
-    ctx->Erase(m_bgOriginSprite, Standard_False);
-  }
+  ctx->Display(m_bgOriginSprite, Standard_False);
+  ctx->SetZLayer(m_bgOriginSprite, Graphic3d_ZLayerId_Default);
+  ctx->Deactivate(m_bgOriginSprite);
 }
 
 void SceneGizmos::reinstall(const Handle(AIS_InteractiveContext)& ctx)
@@ -326,24 +305,49 @@ void SceneGizmos::erase(const Handle(AIS_InteractiveContext)& ctx)
 void SceneGizmos::setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Standard_Real halfX, Standard_Real halfY)
 {
   if (ctx.IsNull()) return;
-  if (!m_showBgAxes)
-  {
-    if (!m_bgAxisX.IsNull()) { ctx->Erase(m_bgAxisX, Standard_False); }
-    if (!m_bgAxisY.IsNull()) { ctx->Erase(m_bgAxisY, Standard_False); }
-    return;
-  }
+  // Always update global axes; they are part of global scene
   if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
   if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
   m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
   m_bgAxisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
   Handle(Prs3d_Drawer) dxAsp = new Prs3d_Drawer(); dxAsp->SetLineAspect(new Prs3d_LineAspect(kColX, Aspect_TOL_SOLID, 2.0f));
-  m_bgAxisX->SetAttributes(dxAsp); m_bgAxisX->SetDisplayMode(AIS_WireFrame); m_bgAxisX->SetAutoHilight(false);
-  Handle(Prs3d_Drawer) dyAsp = new Prs3d_Drawer(); dyAsp->SetLineAspect(new Prs3d_LineAspect(kColY, Aspect_TOL_SOLID, 2.0f));
-  m_bgAxisY->SetAttributes(dyAsp); m_bgAxisY->SetDisplayMode(AIS_WireFrame); m_bgAxisY->SetAutoHilight(false);
+  m_bgAxisX->SetAttributes(dxAsp); m_bgAxisX->SetColor(kColX); m_bgAxisX->SetDisplayMode(AIS_WireFrame); m_bgAxisX->SetAutoHilight(false);
+  Handle(Prs3d_Drawer) dyAsp = new Prs3d_Drawer(); dyAsp->SetLineAspect(new Prs3d_LineAspect(kColZ, Aspect_TOL_SOLID, 2.0f));
+  m_bgAxisY->SetAttributes(dyAsp); m_bgAxisY->SetColor(kColZ); m_bgAxisY->SetDisplayMode(AIS_WireFrame); m_bgAxisY->SetAutoHilight(false);
   ctx->Display(m_bgAxisX, Standard_False);
   ctx->Display(m_bgAxisY, Standard_False);
   ctx->Deactivate(m_bgAxisX);
   ctx->Deactivate(m_bgAxisY);
   ctx->SetZLayer(m_bgAxisX, Graphic3d_ZLayerId_Default);
   ctx->SetZLayer(m_bgAxisY, Graphic3d_ZLayerId_Default);
+}
+
+void SceneGizmos::setTrihedronAxesVisibility(const Handle(AIS_InteractiveContext)& ctx,
+                                             bool showX, bool showY, bool showZ)
+{
+  if (ctx.IsNull() || m_trihedron.IsNull()) return;
+  Handle(Prs3d_Drawer) trD = m_trihedron->Attributes();
+  if (trD.IsNull()) trD = new Prs3d_Drawer();
+  Handle(Prs3d_DatumAspect) dAsp = trD->DatumAspect();
+  if (dAsp.IsNull())
+  {
+    dAsp = new Prs3d_DatumAspect();
+    trD->SetDatumAspect(dAsp);
+    m_trihedron->SetAttributes(trD);
+  }
+  Standard_Integer mask = 0;
+  if (showX) mask |= Prs3d_DatumAxes_XAxis;
+  if (showY) mask |= Prs3d_DatumAxes_YAxis;
+  if (showZ) mask |= Prs3d_DatumAxes_ZAxis;
+  if (mask == 0)
+  {
+    // Keep object but hide all axes; Redisplay to update presentation
+    dAsp->SetDrawDatumAxes(Prs3d_DatumAxes(0));
+  }
+  else
+  {
+    dAsp->SetDrawDatumAxes(Prs3d_DatumAxes(mask));
+  }
+  ctx->Redisplay(m_trihedron, Standard_False);
+  ctx->Display(m_trihedron, Standard_False);
 }

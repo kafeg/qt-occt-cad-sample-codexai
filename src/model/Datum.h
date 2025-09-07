@@ -23,6 +23,9 @@ public:
     , m_showPlaneXY(true)
     , m_showPlaneXZ(true)
     , m_showPlaneYZ(true)
+    , m_showTriX(true)
+    , m_showTriY(true)
+    , m_showTriZ(true)
   {}
 
   // Origin
@@ -56,6 +59,14 @@ public:
   void setShowPlaneXZ(bool v)       { m_showPlaneXZ       = v; }
   void setShowPlaneYZ(bool v)       { m_showPlaneYZ       = v; }
 
+  // Per-axis trihedron visibility
+  bool showTrihedronAxisX() const { return m_showTriX; }
+  bool showTrihedronAxisY() const { return m_showTriY; }
+  bool showTrihedronAxisZ() const { return m_showTriZ; }
+  void setShowTrihedronAxisX(bool v) { m_showTriX = v; }
+  void setShowTrihedronAxisY(bool v) { m_showTriY = v; }
+  void setShowTrihedronAxisZ(bool v) { m_showTriZ = v; }
+
 private:
   gp_Pnt m_origin;
   gp_Dir m_dirX;
@@ -70,4 +81,7 @@ private:
   bool   m_showPlaneXY;
   bool   m_showPlaneXZ;
   bool   m_showPlaneYZ;
+  bool   m_showTriX;
+  bool   m_showTriY;
+  bool   m_showTriZ;
 };

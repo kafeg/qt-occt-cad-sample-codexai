@@ -37,6 +37,10 @@ public:
   // Update background axis extents (if enabled); hides them when disabled.
   void setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Standard_Real halfX, Standard_Real halfY);
 
+  // Control visibility of each trihedron axis independently (requires trihedron created/displayed).
+  void setTrihedronAxesVisibility(const Handle(AIS_InteractiveContext)& ctx,
+                                  bool showX, bool showY, bool showZ);
+
 private:
   // Cached handles
   Handle(AIS_InteractiveObject) m_bgAxisX;

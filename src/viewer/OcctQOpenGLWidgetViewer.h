@@ -111,6 +111,7 @@ public: // sketches management
 public: // datum management
   void setDatum(const std::shared_ptr<Datum>& d);
 
+
 signals:
   void selectionChanged();
   void manipulatorFinished(const gp_Trsf& trsf);
@@ -152,6 +153,7 @@ private:
   gp_Trsf                 m_lastManipDelta;
   bool                    m_isManipDragging = false;
   gp_Trsf                 m_manipAccumTrsf;
+
 };
 
 #endif

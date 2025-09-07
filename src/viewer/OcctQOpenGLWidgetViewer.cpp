@@ -43,6 +43,7 @@
 #include <TopoDS_Wire.hxx>
 
 #include <Sketch.h>
+#include <Datum.h>
 
 class OcctQtFrameBuffer : public OpenGl_FrameBuffer
 {
@@ -295,11 +296,15 @@ void OcctQOpenGLWidgetViewer::initializeGL()
       m_gizmos->install(m_context, m_datum, Standard_True);
       if (m_gizmos)
       {
-        // Background axes with grid (Default layer)
         if (!m_gizmos->bgAxisX().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisX(), Graphic3d_ZLayerId_Default);
         if (!m_gizmos->bgAxisY().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisY(), Graphic3d_ZLayerId_Default);
-        // Trihedron above grid but below sketches
         if (!m_gizmos->trihedron().IsNull()) m_context->SetZLayer(m_gizmos->trihedron(), m_layerAxes);
+        // Apply per-axis visibility from Datum
+        if (m_datum)
+          m_gizmos->setTrihedronAxesVisibility(m_context,
+                                               m_datum->showTrihedronAxisX(),
+                                               m_datum->showTrihedronAxisY(),
+                                               m_datum->showTrihedronAxisZ());
       }
     }
     // Display custom infinite grid and initialize (force immediate update so it becomes visible)
@@ -432,6 +437,11 @@ void OcctQOpenGLWidgetViewer::setDatum(const std::shared_ptr<Datum>& d)
       if (!m_gizmos->bgAxisX().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisX(), Graphic3d_ZLayerId_Default);
       if (!m_gizmos->bgAxisY().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisY(), Graphic3d_ZLayerId_Default);
       if (!m_gizmos->trihedron().IsNull()) m_context->SetZLayer(m_gizmos->trihedron(), m_layerAxes);
+      // Apply per-axis visibility from Datum
+      m_gizmos->setTrihedronAxesVisibility(m_context,
+                                           m_datum->showTrihedronAxisX(),
+                                           m_datum->showTrihedronAxisY(),
+                                           m_datum->showTrihedronAxisZ());
       if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
       update();
     }

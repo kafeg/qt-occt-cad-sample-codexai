@@ -47,12 +47,6 @@ void DocumentTreePanel::refreshFromDocument()
   QTreeWidgetItem* datum = new QTreeWidgetItem(root, QStringList() << QStringLiteral("Datum"));
   if (auto d = m_page->doc().datum())
   {
-    const gp_Pnt& o = d->origin();
-    (void)new QTreeWidgetItem(datum, QStringList() << QString("Origin (%1, %2, %3)").arg(o.X()).arg(o.Y()).arg(o.Z()));
-    (void)new QTreeWidgetItem(datum, QStringList() << QString("Axis Length %1").arg(d->axisLength()));
-    (void)new QTreeWidgetItem(datum, QStringList() << QString("Plane Size %1").arg(d->planeSize()));
-    (void)new QTreeWidgetItem(datum, QStringList() << QString("Plane Offset %1").arg(d->planeOffset()));
-
     // Checkable visibility toggles
     auto makeToggle = [&](const QString& label, bool checked, int tag) {
       QTreeWidgetItem* it = new QTreeWidgetItem(datum, QStringList() << label);
@@ -61,8 +55,13 @@ void DocumentTreePanel::refreshFromDocument()
       it->setData(0, Qt::UserRole + 1, tag);
       return it;
     };
-    enum ToggleTag { TagTrihedron = 1, TagOrigin = 2, TagPlaneXY = 3, TagPlaneXZ = 4, TagPlaneYZ = 5 };
-    makeToggle(QStringLiteral("Axes (Trihedron)"), d->showTrihedronAxes(), TagTrihedron);
+    enum ToggleTag { TagTrihedron = 1, TagOrigin = 2, TagPlaneXY = 3, TagPlaneXZ = 4, TagPlaneYZ = 5,
+                     TagTriX = 6, TagTriY = 7, TagTriZ = 8 };
+    // Removed overall trihedron toggle from UI; keep per-axis only
+    // Per-axis visibility controls (now stored in Datum)
+    makeToggle(QStringLiteral("  X axis"), d->showTrihedronAxisX(), TagTriX);
+    makeToggle(QStringLiteral("  Y axis"), d->showTrihedronAxisY(), TagTriY);
+    makeToggle(QStringLiteral("  Z axis"), d->showTrihedronAxisZ(), TagTriZ);
     makeToggle(QStringLiteral("Origin Point"),     d->showOriginPoint(),   TagOrigin);
     makeToggle(QStringLiteral("Plane XY"),         d->showPlaneXY(),       TagPlaneXY);
     makeToggle(QStringLiteral("Plane XZ"),         d->showPlaneXZ(),       TagPlaneXZ);
@@ -138,6 +137,9 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
     case 3: d->setShowPlaneXY(on);       break;
     case 4: d->setShowPlaneXZ(on);       break;
     case 5: d->setShowPlaneYZ(on);       break;
+    case 6: d->setShowTrihedronAxisX(on); break;
+    case 7: d->setShowTrihedronAxisY(on); break;
+    case 8: d->setShowTrihedronAxisZ(on); break;
     default: return;
   }
   // Reinstall datum gizmos in viewer to reflect toggles
