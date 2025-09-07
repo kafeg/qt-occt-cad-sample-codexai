@@ -13,6 +13,8 @@
 #include <Sketch.h>
 #include <AIS_Shape.hxx>
 #include <MoveFeature.h>
+#include <PlaneFeature.h>
+#include <Datum.h>
 #include <gp_Quaternion.hxx>
 #include <gp_EulerSequence.hxx>
 #include <cmath>
@@ -45,6 +47,32 @@ TabPage::TabPage(QWidget* parent)
   m_doc = std::make_unique<Document>();
   // Initialize viewer with document's Datum so gizmos render from it
   if (m_viewer && m_doc) { m_viewer->setDatum(m_doc->datum()); }
+
+  // Add default XY/XZ/YZ planes into the new document using Datum extents
+  if (m_doc && m_doc->datum())
+  {
+    auto d = m_doc->datum();
+    const gp_Pnt ori = d->origin();
+    const gp_Dir dx  = d->dirX();
+    const gp_Dir dy  = d->dirY();
+    const gp_Dir dz  = d->dirZ();
+    const Standard_Real planeSize = d->planeSize();
+    const Standard_Real offset    = d->planeOffset();
+    const Standard_Real half = 0.5 * (planeSize - offset);
+    const Standard_Real centerOff = 0.5 * (planeSize + offset);
+    auto mkPt = [&](const gp_Dir& a, const gp_Dir& b) {
+      gp_Vec va(a.XYZ()); va.Multiply(centerOff);
+      gp_Vec vb(b.XYZ()); vb.Multiply(centerOff);
+      return ori.Translated(va + vb);
+    };
+    Handle(PlaneFeature) pXY = new PlaneFeature();
+    pXY->setOrigin(mkPt(dx, dy)); pXY->setNormal(dz); pXY->setSize(half); pXY->setName(TCollection_AsciiString("Plane XY")); m_doc->addPlane(pXY);
+    Handle(PlaneFeature) pXZ = new PlaneFeature();
+    pXZ->setOrigin(mkPt(dx, dz)); pXZ->setNormal(dy); pXZ->setSize(half); pXZ->setName(TCollection_AsciiString("Plane XZ")); m_doc->addPlane(pXZ);
+    Handle(PlaneFeature) pYZ = new PlaneFeature();
+    pYZ->setOrigin(mkPt(dy, dz)); pYZ->setNormal(dx); pYZ->setSize(half); pYZ->setName(TCollection_AsciiString("Plane YZ")); m_doc->addPlane(pYZ);
+    m_doc->recompute();
+  }
 
   // Connect panel actions
   connect(m_history, &FeatureHistoryPanel::requestRemoveSelected, [this]() {
@@ -122,6 +150,9 @@ TabPage::TabPage(QWidget* parent)
       if (!f.IsNull() && m_history) m_history->selectItem(Handle(DocumentItem)(f));
     }
   });
+
+  // Initial sync to display the default planes
+  syncViewerFromDoc(true);
 }
 
 TabPage::~TabPage() = default;
@@ -143,6 +174,15 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
     Handle(AIS_Shape) body = m_viewer->addShape(f->shape(), AIS_Shaded, 0, false);
     m_featureToBody.Add(f, body);
     m_bodyToFeature.Add(body, f);
+  }
+  // Display plane features (explicitly excluded from features())
+  for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_doc->items()); it.More(); it.Next())
+  {
+    Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(it.Value());
+    if (pf.IsNull() || pf->isSuppressed()) continue;
+    Handle(AIS_Shape) body = m_viewer->addShape(pf->shape(), AIS_Shaded, 0, false);
+    m_featureToBody.Add(pf, body);
+    m_bodyToFeature.Add(body, pf);
   }
   // Display registered sketches after features
   for (const auto& sk : m_doc->sketches())
