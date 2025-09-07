@@ -97,6 +97,10 @@ public:
 
   // Add primitives
   CurveId addLine(const gp_Pnt2d& a, const gp_Pnt2d& b);
+  // Interactive helper: add a line, snap endpoints to nearest existing endpoints within tol,
+  // and split any existing line if a new endpoint falls inside it (T-junction).
+  // Does NOT call solveConstraints; callers should solve and refresh visuals after.
+  CurveId addLineAuto(const gp_Pnt2d& a, const gp_Pnt2d& b, double tol = 1.0e-6);
   CurveId addArc(const gp_Pnt2d& center, const gp_Pnt2d& a, const gp_Pnt2d& b, bool clockwise);
 
   // Add constraints

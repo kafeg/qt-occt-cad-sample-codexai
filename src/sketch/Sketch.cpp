@@ -160,6 +160,131 @@ Sketch::CurveId Sketch::addLine(const gp_Pnt2d& a, const gp_Pnt2d& b)
   return static_cast<CurveId>(curves_.size() - 1);
 }
 
+Sketch::CurveId Sketch::addLineAuto(const gp_Pnt2d& aIn, const gp_Pnt2d& bIn, double tol)
+{
+  auto sqr = [](double v){ return v*v; };
+  auto dist2 = [&](const gp_Pnt2d& p, const gp_Pnt2d& q) {
+    return sqr(p.X() - q.X()) + sqr(p.Y() - q.Y());
+  };
+
+  // Build KDTree of existing endpoints for snapping
+  std::vector<KDPoint> pts;
+  pts.reserve(curves_.size() * 2);
+  for (std::size_t i = 0; i < curves_.size(); ++i)
+  {
+    for (int e = 0; e < 2; ++e)
+    {
+      EndpointRef r{static_cast<int>(i), e};
+      const auto p = getEndpoint(r);
+      pts.push_back(KDPoint{p.X(), p.Y(), static_cast<int>(endpointKey(r))});
+    }
+  }
+  gp_Pnt2d a = aIn;
+  gp_Pnt2d b = bIn;
+  std::optional<EndpointRef> snapA, snapB;
+  if (!pts.empty())
+  {
+    KDTree2D kdt(std::move(pts));
+    auto snapToNearest = [&](const gp_Pnt2d& p, std::optional<EndpointRef>& outRef, gp_Pnt2d& outP){
+      const double xmin = p.X() - tol, xmax = p.X() + tol;
+      const double ymin = p.Y() - tol, ymax = p.Y() + tol;
+      double bestD2 = std::numeric_limits<double>::infinity();
+      int bestId = -1;
+      kdt.rangeQuery(xmin, ymin, xmax, ymax, [&](const KDPoint& q){
+        gp_Pnt2d q2(q.x, q.y);
+        double d2 = dist2(p, q2);
+        if (d2 < bestD2)
+        {
+          bestD2 = d2; bestId = q.id;
+        }
+      });
+      if (bestId >= 0 && bestD2 <= tol*tol)
+      {
+        int curveIdx = bestId / 2;
+        int endIdx   = bestId % 2;
+        outRef = EndpointRef{curveIdx, endIdx};
+        outP   = getEndpoint(*outRef);
+      }
+    };
+    snapToNearest(a, snapA, a);
+    snapToNearest(b, snapB, b);
+  }
+
+  // Add the line (possibly with snapped endpoints)
+  const CurveId newId = addLine(a, b);
+
+  // Add explicit coincident constraints if snapped
+  if (snapA)
+    addCoincident(EndpointRef{newId, 0}, *snapA);
+  if (snapB)
+    addCoincident(EndpointRef{newId, 1}, *snapB);
+
+  // Helper: split an existing line at point P if P falls inside the segment (T-junction)
+  auto splitAtPointIfInside = [&](int curveIdx, const gp_Pnt2d& P) -> bool {
+    if (curveIdx < 0 || curveIdx >= static_cast<int>(curves_.size())) return false;
+    auto& c = curves_[static_cast<std::size_t>(curveIdx)];
+    if (c.type != CurveType::Line) return false;
+    const gp_Pnt2d A = c.line.p1;
+    const gp_Pnt2d B = c.line.p2;
+    const double vx = B.X() - A.X();
+    const double vy = B.Y() - A.Y();
+    const double len2 = vx*vx + vy*vy;
+    if (len2 <= std::numeric_limits<double>::epsilon()) return false; // degenerate
+    const double t = ((P.X() - A.X())*vx + (P.Y() - A.Y())*vy) / len2;
+    // Check strictly interior, with margin tol to avoid endpoint duplicates
+    if (t <= tol || t >= 1.0 - tol) return false;
+    // Closest point on AB
+    gp_Pnt2d X(A.X() + t*vx, A.Y() + t*vy);
+    // Ensure the perpendicular distance is within tol
+    const double d2 = (P.X() - X.X())*(P.X() - X.X()) + (P.Y() - X.Y())*(P.Y() - X.Y());
+    if (d2 > tol*tol) return false;
+
+    // Perform split: replace curveIdx with [A-X], append [X-B]
+    Curve first; first.type = CurveType::Line; first.line = Line{A, X};
+    Curve second; second.type = CurveType::Line; second.line = Line{X, B};
+
+    // Update constraints referencing old endpoint 1 (B) to point to the new second segment's endpoint 1
+    const int newSecondIdx = static_cast<int>(curves_.size());
+    for (auto& k : constraints_)
+    {
+      if (k.a.curve == curveIdx && k.a.endIndex == 1) { k.a.curve = newSecondIdx; }
+      if (k.b.curve == curveIdx && k.b.endIndex == 1) { k.b.curve = newSecondIdx; }
+    }
+
+    curves_[static_cast<std::size_t>(curveIdx)] = first;
+    curves_.push_back(second);
+
+    // Add coincident between the shared split point endpoints for stability
+    addCoincident(EndpointRef{curveIdx, 1}, EndpointRef{newSecondIdx, 0});
+    return true;
+  };
+
+  // For each new endpoint, if it falls on an existing segment's interior (within tol), split that segment
+  const gp_Pnt2d NA = getEndpoint(EndpointRef{newId, 0});
+  const gp_Pnt2d NB = getEndpoint(EndpointRef{newId, 1});
+
+  // Try split against all existing segments prior to the new one
+  for (int i = 0; i < newId; ++i)
+  {
+    if (splitAtPointIfInside(i, NA))
+    {
+      // Add coincident between new endpoint and the split node (the first segment's endpoint 1)
+      addCoincident(EndpointRef{newId, 0}, EndpointRef{i, 1});
+      break; // split only one segment per endpoint
+    }
+  }
+  for (int i = 0; i < newId; ++i)
+  {
+    if (splitAtPointIfInside(i, NB))
+    {
+      addCoincident(EndpointRef{newId, 1}, EndpointRef{i, 1});
+      break;
+    }
+  }
+
+  return newId;
+}
+
 Sketch::CurveId Sketch::addArc(const gp_Pnt2d& center, const gp_Pnt2d& a, const gp_Pnt2d& b, bool clockwise)
 {
   Curve c;
@@ -541,6 +666,11 @@ std::vector<TopoDS_Wire> Sketch::toOcctWires(double tol) const
       {
         gp_Pnt2d a = oc.reversed ? c.line.p2 : c.line.p1;
         gp_Pnt2d b = oc.reversed ? c.line.p1 : c.line.p2;
+        // Skip degenerate edges (zero or near-zero length)
+        const double dx = a.X() - b.X();
+        const double dy = a.Y() - b.Y();
+        if (dx*dx + dy*dy <= tol*tol)
+          continue;
         BRepBuilderAPI_MakeEdge me(toPnt(a), toPnt(b));
         mw.Add(me.Edge());
       }
@@ -565,13 +695,19 @@ std::vector<TopoDS_Wire> Sketch::toOcctWires(double tol) const
         if (u2 < u1)
           u2 += PI2;
 
+        // Skip degenerate arcs (no sweep or near-zero radius)
+        if (r <= tol || std::abs(u2 - u1) <= 1.0e-12)
+          continue;
+
         Handle(Geom_Circle) gc = new Geom_Circle(circ);
         Handle(Geom_TrimmedCurve) arc = new Geom_TrimmedCurve(gc, u1, u2);
         BRepBuilderAPI_MakeEdge me(arc);
         mw.Add(me.Edge());
       }
     }
-    wires.push_back(mw.Wire());
+    TopoDS_Wire w = mw.Wire();
+    if (!w.IsNull())
+      wires.push_back(w);
   }
   return wires;
 }

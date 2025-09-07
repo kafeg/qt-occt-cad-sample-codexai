@@ -390,7 +390,9 @@ void OcctQOpenGLWidgetViewer::mousePressEvent(QMouseEvent* theEvent)
           {
             if (auto sk = itSk->second.lock())
             {
-              sk->addLine(m_segStart2d, uv);
+              // Add with snapping and T-junction split; then solve constraints
+              sk->addLineAuto(m_segStart2d, uv);
+              sk->solveConstraints();
             }
           }
           // Reset rubber and rebuild AIS for this sketch
