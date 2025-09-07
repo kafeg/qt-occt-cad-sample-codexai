@@ -2,6 +2,7 @@
 
 #include <OcctQOpenGLWidgetViewer.h>
 #include "FeatureHistoryPanel.h"
+#include "DocumentTreePanel.h"
 
 #include <Standard_WarningsDisable.hxx>
 #include <QVBoxLayout>
@@ -25,13 +26,21 @@ TabPage::TabPage(QWidget* parent)
   lay->setContentsMargins(0, 0, 0, 0);
   auto* split = new QSplitter(Qt::Horizontal, this);
   split->setChildrenCollapsible(false);
-  m_history = new FeatureHistoryPanel(this, split);
+  // Left sidebar: vertical splitter with History over Document tree
+  QSplitter* left = new QSplitter(Qt::Vertical, split);
+  left->setChildrenCollapsible(false);
+  m_history = new FeatureHistoryPanel(this, left);
+  m_treePanel = new DocumentTreePanel(this, left);
+  left->addWidget(m_history);
+  left->addWidget(m_treePanel);
+  left->setStretchFactor(0, 1);
+  left->setStretchFactor(1, 1);
   m_viewer = new OcctQOpenGLWidgetViewer(split);
-  split->addWidget(m_history);
+  split->addWidget(left);
   split->addWidget(m_viewer);
   split->setStretchFactor(0, 0);
   split->setStretchFactor(1, 1);
-  split->setSizes({200, 800});
+  split->setSizes({260, 800});
   lay->addWidget(split);
   m_doc = std::make_unique<Document>();
   // Initialize viewer with document's Datum so gizmos render from it
@@ -53,6 +62,12 @@ TabPage::TabPage(QWidget* parent)
           if (mf->sourceId() != 0) toUnsuppressIds.push_back(mf->sourceId());
         }
         m_doc->removeFeature(f);
+      }
+      else if (!di.IsNull() && di->kind() == DocumentItem::Kind::Sketch)
+      {
+        // Remove sketch from ordered list if present and from registry/store
+        m_doc->removeItem(di);
+        m_doc->removeSketchById(di->id());
       }
     }
     // Deduplicate ids
@@ -89,6 +104,11 @@ TabPage::TabPage(QWidget* parent)
     refreshFeatureList();
   });
   connect(m_history, &FeatureHistoryPanel::requestSelectItem, [this](const Handle(DocumentItem)& it) {
+    if (Handle(Feature) f = Handle(Feature)::DownCast(it); !f.IsNull())
+      selectFeatureInViewer(f);
+  });
+  // Tree panel selection -> viewer select
+  connect(m_treePanel, &DocumentTreePanel::requestSelectItem, [this](const Handle(DocumentItem)& it) {
     if (Handle(Feature) f = Handle(Feature)::DownCast(it); !f.IsNull())
       selectFeatureInViewer(f);
   });
@@ -141,6 +161,12 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
 void TabPage::refreshFeatureList()
 {
   if (m_history) m_history->refreshFromDocument();
+  if (m_treePanel) m_treePanel->refreshFromDocument();
+}
+
+void TabPage::refreshDocumentTree()
+{
+  if (m_treePanel) m_treePanel->refreshFromDocument();
 }
 
 void TabPage::selectFeatureInViewer(const Handle(Feature)& f)

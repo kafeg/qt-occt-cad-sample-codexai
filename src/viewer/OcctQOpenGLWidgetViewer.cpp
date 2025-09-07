@@ -32,6 +32,7 @@
 #include <Standard_Version.hxx>
 #include <PrsMgr_DisplayStatus.hxx>
 #include <Graphic3d_ZLayerSettings.hxx>
+#include <Graphic3d_DisplayPriority.hxx>
 #include "FiniteGrid.h"
 #include <gp_Pnt.hxx>
 #include "SceneGizmos.h"
@@ -681,7 +682,9 @@ void OcctQOpenGLWidgetViewer::showManipulator(const Handle(AIS_Shape)& onShape)
   // Enable only required manipulation modes (no scaling or translation-plane)
   m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Translation);
   m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Rotation);
-  m_context->SetZLayer(m_manip, Graphic3d_ZLayerId_Top);
+  // Ensure manipulator is always on top of 3D (independent depth) and drawn last in its layer
+  m_context->SetZLayer(m_manip, Graphic3d_ZLayerId_Topmost);
+  m_context->SetDisplayPriority(m_manip, Graphic3d_DisplayPriority_Topmost);
   m_lastManipDelta = gp_Trsf();
   m_isManipDragging = false;
   m_manipAccumTrsf = gp_Trsf();

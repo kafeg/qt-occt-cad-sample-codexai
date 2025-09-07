@@ -16,6 +16,7 @@
 class Document;
 class OcctQOpenGLWidgetViewer;
 class FeatureHistoryPanel;
+class DocumentTreePanel;
 
 // Per-tab page: owns a Document and embeds a reusable 3D viewer
 class TabPage : public QWidget
@@ -36,6 +37,7 @@ public:
 
   // Rebuild the feature history panel list from Document
   void refreshFeatureList();
+  void refreshDocumentTree();
 
   // Select a feature's AIS body in the viewer
   void selectFeatureInViewer(const Handle(Feature)& f);
@@ -51,6 +53,7 @@ private:
   TColStd_IndexedDataMapOfTransientTransient m_featureToBody;  // feature -> body
   TColStd_IndexedDataMapOfTransientTransient m_bodyToFeature;  // body -> feature
   std::unordered_map<DocumentItem::Id, Handle(AIS_Shape)> m_sketchToHandle; // sketch id -> AIS handle
-  FeatureHistoryPanel*                     m_history = nullptr;// feature history panel
+  FeatureHistoryPanel*                     m_history = nullptr;   // feature history panel
+  DocumentTreePanel*                       m_treePanel = nullptr; // document tree panel
   QMetaObject::Connection                  m_connManipFinished; // manipulatorFinished connection
 };

@@ -29,6 +29,8 @@ public:
   void recompute();                                           // Execute features in order
   void removeLast();                                          // Pop last item
   void removeFeature(const Handle(Feature)& f);               // Remove by handle (first match)
+  void removeItem(const Handle(DocumentItem)& it);            // Remove any DocumentItem from ordered list
+  void removeSketchById(DocumentItem::Id id);                 // Remove sketch from registry/list by id
 
   // Register and query DocumentItems (e.g., sketches) for dependency resolution
   void addItem(const std::shared_ptr<DocumentItem>& item);

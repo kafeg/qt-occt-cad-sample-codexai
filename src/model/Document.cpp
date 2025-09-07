@@ -137,6 +137,29 @@ void Document::removeFeature(const Handle(Feature)& f)
   }
 }
 
+void Document::removeItem(const Handle(DocumentItem)& it)
+{
+  if (it.IsNull()) return;
+  for (int i = 1; i <= m_items.Size(); ++i)
+  {
+    if (m_items.Value(i) == it)
+    {
+      m_items.Remove(i);
+      m_featuresCacheDirty = true;
+      break;
+    }
+  }
+}
+
+void Document::removeSketchById(DocumentItem::Id id)
+{
+  if (id == 0) return;
+  // Erase from registry
+  m_registry.erase(id);
+  // Erase from ordered sketch list
+  m_sketchList.erase(std::remove_if(m_sketchList.begin(), m_sketchList.end(), [id](const std::shared_ptr<Sketch>& s){ return s && s->id() == id; }), m_sketchList.end());
+}
+
 void Document::addItem(const std::shared_ptr<DocumentItem>& item)
 {
   if (!item) return;
