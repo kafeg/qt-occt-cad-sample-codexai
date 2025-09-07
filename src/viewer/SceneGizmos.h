@@ -112,7 +112,7 @@ public:
       m_trihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
     }
     ctx->Display(m_trihedron, Standard_False);
-    ctx->Deactivate(m_trihedron);
+    // keep selectable
 
     // Create YZ plane using Datum directions (origin + Y/Z)
     auto P = [](const gp_Pnt& o, const gp_Dir& a, double sa, const gp_Dir& b, double sb) {
@@ -236,10 +236,10 @@ public:
       m_originMark->SetAttributes(dO);
       m_originMark->SetDisplayMode(AIS_Shaded);
       m_originMark->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-      m_originMark->SetAutoHilight(false);
+      m_originMark->SetAutoHilight(true);
     }
     ctx->Display(m_originMark, Standard_False);
-    ctx->Deactivate(m_originMark);
+    // keep selectable
     if (topmostOverlay) { ctx->SetZLayer(m_originMark, Graphic3d_ZLayerId_Top); }
 
     // Origin image overlay: small textured quad at Datum origin
@@ -270,24 +270,30 @@ public:
         const Standard_Real s = 48.0;
         Handle(Geom_Plane) plane = new Geom_Plane(gp_Ax3(ori, dz, dx));
         TopoDS_Face f = BRepBuilderAPI_MakeFace(Handle(Geom_Surface)(plane), -s * 0.5, s * 0.5, -s * 0.5, s * 0.5, 1.0e-7);
-        m_originSprite = new AIS_TexturedShape(f);
-        m_originSprite->SetTexturePixMap(spriteImg);
-        m_originSprite->SetTextureMapOn();
-        m_originSprite->SetTextureRepeat(Standard_False, 1.0, 1.0);
-        m_originSprite->DisableTextureModulate();
+        m_bgOriginSprite = new AIS_TexturedShape(f);
+        m_bgOriginSprite->SetTexturePixMap(spriteImg);
+        m_bgOriginSprite->SetTextureMapOn();
+        m_bgOriginSprite->SetTextureRepeat(Standard_False, 1.0, 1.0);
+        m_bgOriginSprite->DisableTextureModulate();
         // Enable per-pixel alpha blending
-        Handle(Prs3d_Drawer) sprDr = m_originSprite->Attributes(); if (sprDr.IsNull()) sprDr = new Prs3d_Drawer();
+        Handle(Prs3d_Drawer) sprDr = m_bgOriginSprite->Attributes(); if (sprDr.IsNull()) sprDr = new Prs3d_Drawer();
         Handle(Prs3d_ShadingAspect) sprShade = sprDr->ShadingAspect(); if (sprShade.IsNull()) { sprShade = new Prs3d_ShadingAspect(); sprDr->SetShadingAspect(sprShade); }
         Handle(Graphic3d_AspectFillArea3d) fillAsp = sprShade->Aspect(); if (fillAsp.IsNull()) fillAsp = new Graphic3d_AspectFillArea3d();
         fillAsp->SetAlphaMode(Graphic3d_AlphaMode_Blend);
+        // Push sprite slightly away to avoid failing depth test of the origin mark drawn later
+        fillAsp->SetPolygonOffsets(Aspect_POM_Fill, 1.0f, 1.0f);
         sprShade->SetAspect(fillAsp);
-        m_originSprite->SetAttributes(sprDr);
-        m_originSprite->SetDisplayMode(3);
-        m_originSprite->SetAutoHilight(false);
-        m_originSprite->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, ori));
-        ctx->Display(m_originSprite, Standard_False);
-        if (topmostOverlay) { ctx->SetZLayer(m_originSprite, Graphic3d_ZLayerId_Topmost); }
-        ctx->Deactivate(m_originSprite);
+        // Semi-transparency for the whole sprite on top of PNG alpha
+        sprShade->SetTransparency(0.5);
+        m_bgOriginSprite->SetAttributes(sprDr);
+        m_bgOriginSprite->SetDisplayMode(3);
+        m_bgOriginSprite->SetAutoHilight(false);
+        m_bgOriginSprite->SetTransparency(0.5f);
+        m_bgOriginSprite->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, ori));
+        ctx->Display(m_bgOriginSprite, Standard_False);
+        // Keep in background with axes
+        ctx->SetZLayer(m_bgOriginSprite, Graphic3d_ZLayerId_Default);
+        ctx->Deactivate(m_bgOriginSprite);
       }
     }
   }
@@ -302,7 +308,7 @@ public:
     if (!m_planeXZ.IsNull()) ctx->Display(m_planeXZ, Standard_False);
     if (!m_planeXY.IsNull()) ctx->Display(m_planeXY, Standard_False);
     if (!m_originMark.IsNull()) ctx->Display(m_originMark, Standard_False);
-    if (!m_originSprite.IsNull()) ctx->Display(m_originSprite, Standard_False);
+    if (!m_bgOriginSprite.IsNull()) ctx->Display(m_bgOriginSprite, Standard_False);
     // Origin circle quadrants are managed separately
   }
 
@@ -316,7 +322,7 @@ public:
     if (!m_planeXZ.IsNull()) ctx->Erase(m_planeXZ, Standard_False);
     if (!m_planeXY.IsNull()) ctx->Erase(m_planeXY, Standard_False);
     if (!m_originMark.IsNull()) ctx->Erase(m_originMark, Standard_False);
-    if (!m_originSprite.IsNull()) ctx->Erase(m_originSprite, Standard_False);
+    if (!m_bgOriginSprite.IsNull()) ctx->Erase(m_bgOriginSprite, Standard_False);
     // Origin circle quadrants are managed separately
   }
 
@@ -354,7 +360,7 @@ private:
   Handle(AIS_Shape)     m_planeXZ;
   Handle(AIS_Shape)     m_planeXY;
   Handle(AIS_Shape)          m_originMark;
-  Handle(AIS_TexturedShape)  m_originSprite;
+  Handle(AIS_TexturedShape)  m_bgOriginSprite;
 };
 
 #endif
