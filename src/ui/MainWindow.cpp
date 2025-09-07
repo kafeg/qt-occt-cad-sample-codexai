@@ -20,6 +20,7 @@
 #include <dialog/CreateCylinderDialog.h>
 #include <command/CreateExtrudeCommand.h>
 #include <dialog/CreateExtrudeDialog.h>
+#include <dialog/SettingsDialog.h>
 // sketch for extrusion
 #include <Sketch.h>
 // model/viewer headers for sync helpers
@@ -138,6 +139,18 @@ void MainWindow::createMenuBar()
     quit->setText("Quit");
     file->addAction(quit);
     connect(quit, &QAction::triggered, [this]() { close(); });
+  }
+  // Settings menu
+  QMenu* settingsMenu = mbar->addMenu("&Settings");
+  {
+    QAction* actSettings = new QAction(settingsMenu);
+    actSettings->setText("Preferences...");
+    settingsMenu->addAction(actSettings);
+    connect(actSettings, &QAction::triggered, [this]() {
+      SettingsDialog dlg(this);
+      dlg.exec();
+      // Panels auto-refresh via AppSettings signal
+    });
   }
   setMenuBar(mbar);
 }

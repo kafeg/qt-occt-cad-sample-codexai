@@ -25,6 +25,7 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
+#include <AppSettings.h>
 
 TabPage::TabPage(QWidget* parent)
   : QWidget(parent)
@@ -124,6 +125,10 @@ TabPage::TabPage(QWidget* parent)
       selectFeatureInViewer(f);
       if (m_history) m_history->selectItem(Handle(DocumentItem)(f));
     }
+  });
+  // React to settings changes that affect filtering (datum-related visibility)
+  QObject::connect(&AppSettings::instance(), &AppSettings::showDatumRelatedItemsChanged, this, [this](bool) {
+    refreshFeatureList();
   });
   // Sync selection from viewer back to list
   connect(m_viewer, &OcctQOpenGLWidgetViewer::selectionChanged, [this]() {

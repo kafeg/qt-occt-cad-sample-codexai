@@ -7,6 +7,7 @@ add_library(ui STATIC
     DocumentTreePanel.h
     FeatureHistoryPanel.cpp
     FeatureHistoryPanel.h
+    AppSettings.h
     command/AbstractCommand.h
     command/CreateBoxCommand.cpp
     command/CreateBoxCommand.h
@@ -22,6 +23,8 @@ add_library(ui STATIC
     dialog/CreateCylinderDialog.h
     dialog/CreateExtrudeDialog.cpp
     dialog/CreateExtrudeDialog.h
+    dialog/SettingsDialog.cpp
+    dialog/SettingsDialog.h
 )
 target_link_libraries(ui PUBLIC viewer model sketch Qt6::Widgets Qt6::OpenGLWidgets)
 target_include_directories(ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -12,6 +12,7 @@
 #include <Sketch.h>
 #include <Document.h>
 #include <Datum.h>
+#include <AppSettings.h>
 
 #include <Standard_WarningsDisable.hxx>
 #include <QVBoxLayout>
@@ -80,6 +81,9 @@ void DocumentTreePanel::refreshFromDocument()
     const Handle(DocumentItem)& di = it.Value();
     Handle(Feature) f = Handle(Feature)::DownCast(di);
     if (f.IsNull()) continue;
+    // Optional filter: hide Datum-related features when disabled in settings
+    if (!AppSettings::instance().showDatumRelatedItems() && f->isDatumRelated())
+      continue;
     auto* node = new QTreeWidgetItem(bodies, QStringList() << itemDisplayText(f));
     // Store document id to resolve selection later
     node->setData(0, Qt::UserRole, QVariant::fromValue<qulonglong>(static_cast<qulonglong>(f->id())));

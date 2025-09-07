@@ -77,6 +77,10 @@ public:
   bool isSuppressed() const { return m_suppressed; }
   void setSuppressed(bool on) { m_suppressed = on; }
 
+  // Datum-related flag: marks helper items created from DocumentInitializer (planes, axes, origin point)
+  bool isDatumRelated() const { return m_isDatumRelated; }
+  void setDatumRelated(bool on) { m_isDatumRelated = on; }
+
   // DocumentItem interface
   // Base Feature encodes common fields: name, suppressed flag, and params
   virtual Kind kind() const override = 0;
@@ -88,6 +92,7 @@ protected:
   ParamMap                m_params;
   TopoDS_Shape            m_shape; // resulting shape
   bool                    m_suppressed = false; // execution/display suppressed
+  bool                    m_isDatumRelated = false; // true for features tied to Datum helpers
 
   // Helper: read numeric parameter as double (accepts int/double; otherwise returns defVal)
   static double paramAsDouble(const ParamMap& pm, ParamKey key, double defVal);

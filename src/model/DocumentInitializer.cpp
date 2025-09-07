@@ -42,6 +42,7 @@ void initialize(Document& doc)
     pXY->setFixedGeometry(true);
     pXY->setTransparency(0.3);
     pXY->setName(TCollection_AsciiString("Plane XY"));
+    pXY->setDatumRelated(true);
     pXY->setSuppressed(!d->showPlaneXY());
     doc.addPlane(pXY);
   }
@@ -54,6 +55,7 @@ void initialize(Document& doc)
     pXY->setFixedGeometry(true);
     pXY->setTransparency(0.3);
     pXY->setName(TCollection_AsciiString("Plane XY"));
+    pXY->setDatumRelated(true);
     pXY->setSuppressed(true);
     doc.addPlane(pXY);
   }
@@ -68,6 +70,7 @@ void initialize(Document& doc)
     pXZ->setFixedGeometry(true);
     pXZ->setTransparency(0.3);
     pXZ->setName(TCollection_AsciiString("Plane XZ"));
+    pXZ->setDatumRelated(true);
     pXZ->setSuppressed(!d->showPlaneXZ());
     doc.addPlane(pXZ);
   }
@@ -80,6 +83,7 @@ void initialize(Document& doc)
     pXZ->setFixedGeometry(true);
     pXZ->setTransparency(0.3);
     pXZ->setName(TCollection_AsciiString("Plane XZ"));
+    pXZ->setDatumRelated(true);
     pXZ->setSuppressed(true);
     doc.addPlane(pXZ);
   }
@@ -94,6 +98,7 @@ void initialize(Document& doc)
     pYZ->setFixedGeometry(true);
     pYZ->setTransparency(0.3);
     pYZ->setName(TCollection_AsciiString("Plane YZ"));
+    pYZ->setDatumRelated(true);
     pYZ->setSuppressed(!d->showPlaneYZ());
     doc.addPlane(pYZ);
   }
@@ -106,6 +111,7 @@ void initialize(Document& doc)
     pYZ->setFixedGeometry(true);
     pYZ->setTransparency(0.3);
     pYZ->setName(TCollection_AsciiString("Plane YZ"));
+    pYZ->setDatumRelated(true);
     pYZ->setSuppressed(true);
     doc.addPlane(pYZ);
   }
@@ -118,6 +124,7 @@ void initialize(Document& doc)
     pt->setRadius(10.0);
     pt->setFixedGeometry(true);
     pt->setName(TCollection_AsciiString("Origin"));
+    pt->setDatumRelated(true);
     doc.addFeature(pt);
   }
 
@@ -131,6 +138,7 @@ void initialize(Document& doc)
     axX->setLength(axLen);
     axX->setFixedGeometry(true);
     axX->setName(TCollection_AsciiString("Axis X"));
+    axX->setDatumRelated(true);
     axX->setSuppressed(!d->showTrihedronAxisX());
     doc.addFeature(axX);
 
@@ -141,6 +149,7 @@ void initialize(Document& doc)
     axY->setLength(axLen);
     axY->setFixedGeometry(true);
     axY->setName(TCollection_AsciiString("Axis Y"));
+    axY->setDatumRelated(true);
     axY->setSuppressed(!d->showTrihedronAxisY());
     doc.addFeature(axY);
 
@@ -151,6 +160,7 @@ void initialize(Document& doc)
     axZ->setLength(axLen);
     axZ->setFixedGeometry(true);
     axZ->setName(TCollection_AsciiString("Axis Z"));
+    axZ->setDatumRelated(true);
     axZ->setSuppressed(!d->showTrihedronAxisZ());
     doc.addFeature(axZ);
   }

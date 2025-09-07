@@ -21,6 +21,7 @@
 #include <Standard_WarningsRestore.hxx>
 
 #include <AIS_Shape.hxx>
+#include <AppSettings.h>
 
 FeatureHistoryPanel::FeatureHistoryPanel(TabPage* page, QWidget* parent)
   : QWidget(parent), m_page(page)
@@ -53,6 +54,12 @@ void FeatureHistoryPanel::refreshFromDocument()
   for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(seq); it.More(); it.Next())
   {
     const Handle(DocumentItem)& di = it.Value();
+    // Optional filter: hide Datum-related features when disabled in settings
+    if (Handle(Feature) f = Handle(Feature)::DownCast(di); !f.IsNull())
+    {
+      if (!AppSettings::instance().showDatumRelatedItems() && f->isDatumRelated())
+        continue;
+    }
     m_rowHandles.Append(di);
     m_list->addItem(itemDisplayText(di));
   }

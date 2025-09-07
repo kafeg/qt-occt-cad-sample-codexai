@@ -29,6 +29,7 @@ std::string Feature::serialize() const
   std::ostringstream os;
   os << "name=" << escape(toString(m_name)) << "\n";
   os << "suppressed=" << (m_suppressed ? 1 : 0) << "\n";
+  os << "datum_related=" << (m_isDatumRelated ? 1 : 0) << "\n";
   for (const auto& kv : m_params)
   {
     const int keyIdx = static_cast<int>(kv.first);
@@ -79,6 +80,7 @@ void Feature::deserialize(const std::string& data)
 
     if (key == "name") m_name = toAscii(val);
     else if (key == "suppressed") m_suppressed = (val == "1");
+    else if (key == "datum_related") m_isDatumRelated = (val == "1");
     else if (key.rfind("p_", 0) == 0)
     {
       int idx = std::stoi(key.substr(2));
