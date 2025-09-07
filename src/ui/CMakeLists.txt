@@ -7,6 +7,8 @@ add_library(ui STATIC
     DocumentTreePanel.h
     FeatureHistoryPanel.cpp
     FeatureHistoryPanel.h
+    StatsPanel.cpp
+    StatsPanel.h
     AppSettings.h
     command/AbstractCommand.h
     command/CreateBoxCommand.cpp

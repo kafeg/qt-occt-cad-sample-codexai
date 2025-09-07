@@ -46,6 +46,8 @@
 
 #include <Sketch.h>
 #include <Datum.h>
+#include <TColStd_IndexedDataMapOfStringString.hxx>
+#include <TCollection_AsciiString.hxx>
 
 class OcctQtFrameBuffer : public OpenGl_FrameBuffer
 {
@@ -125,7 +127,8 @@ OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
 #ifndef __APPLE__
   m_view->ChangeRenderingParams().NbMsaaSamples = 4;
 #endif
-  m_view->ChangeRenderingParams().ToShowStats = true;
+  // Disable built-in on-screen stats; we display them in a side panel
+  m_view->ChangeRenderingParams().ToShowStats = false;
   m_view->ChangeRenderingParams().StatsTextHeight = 24;
   m_view->ChangeRenderingParams().CollectedStats = (Graphic3d_RenderingParams::PerfCounters)(
     Graphic3d_RenderingParams::PerfCounters_FrameRate | Graphic3d_RenderingParams::PerfCounters_Triangles);
@@ -589,6 +592,44 @@ void OcctQOpenGLWidgetViewer::handleViewRedraw(const Handle(AIS_InteractiveConte
     if (m_gizmos) { m_gizmos->setAxisExtents(theCtx, grid->halfSizeX(), grid->halfSizeY()); }
   }
   if (myToAskNextFrame) updateView();
+}
+
+double OcctQOpenGLWidgetViewer::currentFps() const
+{
+  if (m_view.IsNull()) return 0.0;
+  TColStd_IndexedDataMapOfStringString dict;
+  m_view->StatisticInformation(dict);
+  for (int i = 1; i <= dict.Extent(); ++i)
+  {
+    if (dict.FindKey(i).IsEqual(TCollection_AsciiString("FrameRate")))
+    {
+      const TCollection_AsciiString& v = dict.FindFromIndex(i);
+      try { return std::stod(v.ToCString()); } catch (...) { return 0.0; }
+    }
+  }
+  return 0.0;
+}
+
+Standard_Integer OcctQOpenGLWidgetViewer::currentTriangles() const
+{
+  if (m_view.IsNull()) return -1;
+  TColStd_IndexedDataMapOfStringString dict;
+  m_view->StatisticInformation(dict);
+  for (int i = 1; i <= dict.Extent(); ++i)
+  {
+    if (dict.FindKey(i).IsEqual(TCollection_AsciiString("Triangles")))
+    {
+      const TCollection_AsciiString& v = dict.FindFromIndex(i);
+      try { return static_cast<Standard_Integer>(std::stoll(v.ToCString())); } catch (...) { return -1; }
+    }
+  }
+  return -1;
+}
+
+double OcctQOpenGLWidgetViewer::currentScale() const
+{
+  if (m_view.IsNull()) return 0.0;
+  return m_view->Scale();
 }
 
 bool OcctQOpenGLWidgetViewer::rayHitZ0(const Handle(V3d_View)& theView, int thePx, int thePy, gp_Pnt& theHit) const

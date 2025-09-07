@@ -111,6 +111,14 @@ public: // sketches management
 public: // datum management
   void setDatum(const std::shared_ptr<Datum>& d);
 
+public: // runtime statistics
+  // FPS measured by OCCT stats (0.0 if unavailable)
+  double currentFps() const;
+  // Number of triangles drawn in last frame (-1 if unavailable)
+  Standard_Integer currentTriangles() const;
+  // Current view scale (zoom factor)
+  double currentScale() const;
+
 
 signals:
   void selectionChanged();

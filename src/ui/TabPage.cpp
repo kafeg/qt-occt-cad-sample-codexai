@@ -18,6 +18,7 @@
 #include <AxeFeature.h>
 #include <Datum.h>
 #include <Quantity_Color.hxx>
+#include "StatsPanel.h"
 #include <gp_Quaternion.hxx>
 #include <gp_EulerSequence.hxx>
 #include <Graphic3d_TransformPers.hxx>
@@ -44,15 +45,19 @@ TabPage::TabPage(QWidget* parent)
   left->setStretchFactor(0, 1);
   left->setStretchFactor(1, 1);
   m_viewer = new OcctQOpenGLWidgetViewer(split);
+  m_stats = new StatsPanel(split);
   split->addWidget(left);
   split->addWidget(m_viewer);
+  split->addWidget(m_stats);
   split->setStretchFactor(0, 0);
   split->setStretchFactor(1, 1);
-  split->setSizes({260, 800});
+  split->setStretchFactor(2, 0);
+  split->setSizes({260, 800, 200});
   lay->addWidget(split);
   m_doc = std::make_unique<Document>();
   // Initialize viewer with document's Datum so gizmos render from it
   if (m_viewer && m_doc) { m_viewer->setDatum(m_doc->datum()); }
+  if (m_stats && m_viewer) { m_stats->attachViewer(m_viewer); }
 
   // Connect panel actions
   connect(m_history, &FeatureHistoryPanel::requestRemoveSelected, [this]() {

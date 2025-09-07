@@ -17,6 +17,7 @@ class Document;
 class OcctQOpenGLWidgetViewer;
 class FeatureHistoryPanel;
 class DocumentTreePanel;
+class StatsPanel;
 
 // Per-tab page: owns a Document and embeds a reusable 3D viewer
 class TabPage : public QWidget
@@ -49,6 +50,7 @@ public:
 
 private:
   OcctQOpenGLWidgetViewer*                 m_viewer = nullptr; // OCCT viewer widget
+  StatsPanel*                               m_stats = nullptr;  // right-side stats panel
   std::unique_ptr<Document>                m_doc;              // model document
   TColStd_IndexedDataMapOfTransientTransient m_featureToBody;  // feature -> body
   TColStd_IndexedDataMapOfTransientTransient m_bodyToFeature;  // body -> feature
