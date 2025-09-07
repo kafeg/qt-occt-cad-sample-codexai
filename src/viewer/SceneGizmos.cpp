@@ -164,11 +164,7 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
   // Helper to build a rectangular plane aligned by two directions
   // No overlay planes; planes should be explicit document items
 
-  // Origin mark is now a PointFeature in the Document; erase any legacy overlay
-  if (!m_originMark.IsNull())
-  {
-    ctx->Erase(m_originMark, Standard_False);
-  }
+  // Origin mark is now a PointFeature in the Document; no overlay here.
 
   // Origin sprite (textured quad) - always visible, global scene at world origin
   if (m_bgOriginSprite.IsNull())
@@ -210,7 +206,6 @@ void SceneGizmos::reinstall(const Handle(AIS_InteractiveContext)& ctx)
   if (!m_bgAxisY.IsNull()) ctx->Display(m_bgAxisY, Standard_False);
   if (!m_trihedron.IsNull()) ctx->Display(m_trihedron, Standard_False);
   // no overlay planes to reinstall
-  if (!m_originMark.IsNull()) ctx->Display(m_originMark, Standard_False);
   if (!m_bgOriginSprite.IsNull()) ctx->Display(m_bgOriginSprite, Standard_False);
 }
 
@@ -221,7 +216,6 @@ void SceneGizmos::erase(const Handle(AIS_InteractiveContext)& ctx)
   if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
   if (!m_trihedron.IsNull()) ctx->Erase(m_trihedron, Standard_False);
   // no overlay planes to erase
-  if (!m_originMark.IsNull()) ctx->Erase(m_originMark, Standard_False);
   if (!m_bgOriginSprite.IsNull()) ctx->Erase(m_bgOriginSprite, Standard_False);
 }
 
