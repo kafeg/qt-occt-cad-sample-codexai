@@ -139,7 +139,7 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
     case 2:
     {
       d->setShowOriginPoint(on);
-      // Mirror origin visibility into the document by adding/suppressing PointFeature
+      // Mirror origin visibility only if the PointFeature exists; do NOT recreate if deleted.
       auto& doc = m_page->doc();
       Handle(PointFeature) pf;
       for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(doc.items()); it.More(); it.Next())
@@ -147,33 +147,16 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
         Handle(PointFeature) tmp = Handle(PointFeature)::DownCast(it.Value());
         if (!tmp.IsNull()) { pf = tmp; break; }
       }
+      bool changed = false;
       if (on)
       {
-        if (pf.IsNull())
-        {
-          Handle(PointFeature) pt = new PointFeature();
-          pt->setOrigin(d->origin());
-          pt->setRadius(10.0);
-          pt->setFixedGeometry(true);
-          pt->setName(TCollection_AsciiString("Origin"));
-          doc.addFeature(pt);
-        }
-        else
-        {
-          pf->setSuppressed(false);
-        }
-        doc.recompute();
-        m_page->syncViewerFromDoc(true);
+        if (!pf.IsNull()) { pf->setSuppressed(false); changed = true; }
       }
       else
       {
-        if (!pf.IsNull())
-        {
-          pf->setSuppressed(true);
-          doc.recompute();
-          m_page->syncViewerFromDoc(true);
-        }
+        if (!pf.IsNull()) { pf->setSuppressed(true); changed = true; }
       }
+      if (changed) { doc.recompute(); m_page->syncViewerFromDoc(true); }
       break;
     }
     case 3: // Plane XY
