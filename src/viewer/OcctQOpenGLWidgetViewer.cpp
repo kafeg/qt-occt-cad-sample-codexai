@@ -9,6 +9,7 @@
 #include <QSurfaceFormat>
 #include <Standard_WarningsRestore.hxx>
 
+#include <QResource>
 #include <OpenGl_Context.hxx>
 #include <OpenGl_FrameBuffer.hxx>
 #include <OpenGl_GraphicDriver.hxx>
@@ -66,6 +67,9 @@ public:
 OcctQOpenGLWidgetViewer::OcctQOpenGLWidgetViewer(QWidget* theParent)
   : QOpenGLWidget(theParent)
 {
+  // Ensure resources from viewer.qrc are registered (static library case)
+  Q_INIT_RESOURCE(viewer);
+
   Handle(Aspect_DisplayConnection) aDisp   = new Aspect_DisplayConnection();
   Handle(OpenGl_GraphicDriver)     aDriver = new OpenGl_GraphicDriver(aDisp, false);
   aDriver->ChangeOptions().buffersNoSwap = true;
