@@ -84,8 +84,8 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
   const bool showTri = datum->showTrihedronAxes();
   const bool showOri = datum->showOriginPoint();
 
-  // Trihedron (zoom persistent)
-  if (showTri)
+  // Trihedron (zoom persistent) — disabled per request (hidden)
+  if (false && showTri)
   {
     if (m_trihedron.IsNull())
     {
@@ -135,31 +135,9 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
     ctx->Erase(m_trihedron, Standard_False);
   }
 
-  // Background axes (world-space lines, non-selectable) - always visible, global scene
-  if (m_bgAxisX.IsNull() || m_bgAxisY.IsNull())
-  {
-    const Standard_Real halfX = 500.0;
-    const Standard_Real halfY = 500.0;
-    m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
-    m_bgAxisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
-    Handle(Prs3d_Drawer) dxAsp = new Prs3d_Drawer();
-    dxAsp->SetLineAspect(new Prs3d_LineAspect(kColX, Aspect_TOL_SOLID, 2.0f));
-    m_bgAxisX->SetAttributes(dxAsp);
-    m_bgAxisX->SetColor(kColX);
-    m_bgAxisX->SetDisplayMode(AIS_WireFrame);
-    m_bgAxisX->SetAutoHilight(false);
-    Handle(Prs3d_Drawer) dyAsp = new Prs3d_Drawer();
-    // Use blue for Y background axis as requested
-    dyAsp->SetLineAspect(new Prs3d_LineAspect(kColZ, Aspect_TOL_SOLID, 2.0f));
-    m_bgAxisY->SetAttributes(dyAsp);
-    m_bgAxisY->SetColor(kColZ);
-    m_bgAxisY->SetDisplayMode(AIS_WireFrame);
-    m_bgAxisY->SetAutoHilight(false);
-  }
-  ctx->Display(m_bgAxisX, Standard_False);
-  ctx->Display(m_bgAxisY, Standard_False);
-  ctx->Deactivate(m_bgAxisX);
-  ctx->Deactivate(m_bgAxisY);
+  // Background axes — disabled per request (hidden)
+  if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
+  if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
 
   // Helper to build a rectangular plane aligned by two directions
   // No overlay planes; planes should be explicit document items
@@ -202,9 +180,10 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
 void SceneGizmos::reinstall(const Handle(AIS_InteractiveContext)& ctx)
 {
   if (ctx.IsNull()) return;
-  if (!m_bgAxisX.IsNull()) ctx->Display(m_bgAxisX, Standard_False);
-  if (!m_bgAxisY.IsNull()) ctx->Display(m_bgAxisY, Standard_False);
-  if (!m_trihedron.IsNull()) ctx->Display(m_trihedron, Standard_False);
+  // Keep trihedron and background axes hidden
+  if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
+  if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
+  if (!m_trihedron.IsNull()) ctx->Erase(m_trihedron, Standard_False);
   // no overlay planes to reinstall
   if (!m_bgOriginSprite.IsNull()) ctx->Display(m_bgOriginSprite, Standard_False);
 }
@@ -222,21 +201,11 @@ void SceneGizmos::erase(const Handle(AIS_InteractiveContext)& ctx)
 void SceneGizmos::setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Standard_Real halfX, Standard_Real halfY)
 {
   if (ctx.IsNull()) return;
-  // Always update global axes; they are part of global scene
+  // Background axes are hidden; ensure they stay erased and do not recreate
   if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
   if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
-  m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
-  m_bgAxisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
-  Handle(Prs3d_Drawer) dxAsp = new Prs3d_Drawer(); dxAsp->SetLineAspect(new Prs3d_LineAspect(kColX, Aspect_TOL_SOLID, 2.0f));
-  m_bgAxisX->SetAttributes(dxAsp); m_bgAxisX->SetColor(kColX); m_bgAxisX->SetDisplayMode(AIS_WireFrame); m_bgAxisX->SetAutoHilight(false);
-  Handle(Prs3d_Drawer) dyAsp = new Prs3d_Drawer(); dyAsp->SetLineAspect(new Prs3d_LineAspect(kColZ, Aspect_TOL_SOLID, 2.0f));
-  m_bgAxisY->SetAttributes(dyAsp); m_bgAxisY->SetColor(kColZ); m_bgAxisY->SetDisplayMode(AIS_WireFrame); m_bgAxisY->SetAutoHilight(false);
-  ctx->Display(m_bgAxisX, Standard_False);
-  ctx->Display(m_bgAxisY, Standard_False);
-  ctx->Deactivate(m_bgAxisX);
-  ctx->Deactivate(m_bgAxisY);
-  ctx->SetZLayer(m_bgAxisX, Graphic3d_ZLayerId_Default);
-  ctx->SetZLayer(m_bgAxisY, Graphic3d_ZLayerId_Default);
+  m_bgAxisX.Nullify();
+  m_bgAxisY.Nullify();
 }
 
 void SceneGizmos::setTrihedronAxesVisibility(const Handle(AIS_InteractiveContext)& ctx,

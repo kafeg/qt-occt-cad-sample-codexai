@@ -8,6 +8,7 @@
 #include <MoveFeature.h>
 #include <PlaneFeature.h>
 #include <PointFeature.h>
+#include <AxeFeature.h>
 #include <Sketch.h>
 #include <Document.h>
 #include <Datum.h>
@@ -184,13 +185,65 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
       m_page->syncViewerFromDoc(true);
       break;
     }
-    case 6: d->setShowTrihedronAxisX(on); break;
-    case 7: d->setShowTrihedronAxisY(on); break;
-    case 8: d->setShowTrihedronAxisZ(on); break;
+    case 6: // X axis
+    case 7: // Y axis
+    case 8: // Z axis
+    {
+      // Update Datum flags
+      if (tag == 6) d->setShowTrihedronAxisX(on);
+      if (tag == 7) d->setShowTrihedronAxisY(on);
+      if (tag == 8) d->setShowTrihedronAxisZ(on);
+      // Suppress/unsuppress matching AxeFeature by name
+      auto& doc = m_page->doc();
+      const char* targetName = (tag == 6 ? "Axis X" : (tag == 7 ? "Axis Y" : "Axis Z"));
+      for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(doc.items()); it.More(); it.Next())
+      {
+        Handle(AxeFeature) ax = Handle(AxeFeature)::DownCast(it.Value());
+        if (ax.IsNull()) continue;
+        if (!ax->name().IsEmpty() && TCollection_AsciiString(targetName).IsEqual(ax->name()))
+        {
+          ax->setSuppressed(!on);
+          break;
+        }
+      }
+      doc.recompute();
+      m_page->syncViewerFromDoc(true);
+      break;
+    }
     default: return;
   }
   // Reinstall datum gizmos in viewer to reflect toggles
   m_page->viewer()->setDatum(d);
+}
+
+void DocumentTreePanel::selectItem(const Handle(DocumentItem)& it)
+{
+  if (!m_tree) return;
+  if (it.IsNull()) { m_tree->clearSelection(); return; }
+  const qulonglong targetId = static_cast<qulonglong>(it->id());
+  // Depth-first search for item with matching id stored in UserRole
+  std::function<QTreeWidgetItem*(QTreeWidgetItem*)> findInSubtree;
+  findInSubtree = [&](QTreeWidgetItem* node) -> QTreeWidgetItem*
+  {
+    if (!node) return nullptr;
+    QVariant v = node->data(0, Qt::UserRole);
+    if (v.isValid() && v.value<qulonglong>() == targetId) return node;
+    const int n = node->childCount();
+    for (int i = 0; i < n; ++i)
+    {
+      if (QTreeWidgetItem* found = findInSubtree(node->child(i))) return found;
+    }
+    return nullptr;
+  };
+  QTreeWidgetItem* found = nullptr;
+  for (int i = 0; i < m_tree->topLevelItemCount() && !found; ++i)
+  {
+    found = findInSubtree(m_tree->topLevelItem(i));
+  }
+  if (found)
+  {
+    m_tree->setCurrentItem(found, 0, QItemSelectionModel::ClearAndSelect);
+  }
 }
 
 QString DocumentTreePanel::itemDisplayText(const Handle(DocumentItem)& it) const

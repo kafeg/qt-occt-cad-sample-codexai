@@ -113,21 +113,31 @@ TabPage::TabPage(QWidget* parent)
   });
   connect(m_history, &FeatureHistoryPanel::requestSelectItem, [this](const Handle(DocumentItem)& it) {
     if (Handle(Feature) f = Handle(Feature)::DownCast(it); !f.IsNull())
+    {
       selectFeatureInViewer(f);
+      if (m_treePanel) m_treePanel->selectItem(Handle(DocumentItem)(f));
+    }
   });
   // Tree panel selection -> viewer select
   connect(m_treePanel, &DocumentTreePanel::requestSelectItem, [this](const Handle(DocumentItem)& it) {
     if (Handle(Feature) f = Handle(Feature)::DownCast(it); !f.IsNull())
+    {
       selectFeatureInViewer(f);
+      if (m_history) m_history->selectItem(Handle(DocumentItem)(f));
+    }
   });
   // Sync selection from viewer back to list
   connect(m_viewer, &OcctQOpenGLWidgetViewer::selectionChanged, [this]() {
     Handle(AIS_Shape) sel = m_viewer->selectedShape();
-    if (sel.IsNull()) { if (m_history) m_history->selectItem(Handle(DocumentItem)()); return; }
+    if (sel.IsNull()) { if (m_history) m_history->selectItem(Handle(DocumentItem)()); if (m_treePanel) m_treePanel->selectItem(Handle(DocumentItem)()); return; }
     if (m_bodyToFeature.Contains(sel))
     {
       Handle(Feature) f = Handle(Feature)::DownCast(m_bodyToFeature.FindFromKey(sel));
-      if (!f.IsNull() && m_history) m_history->selectItem(Handle(DocumentItem)(f));
+      if (!f.IsNull())
+      {
+        if (m_history) m_history->selectItem(Handle(DocumentItem)(f));
+        if (m_treePanel) m_treePanel->selectItem(Handle(DocumentItem)(f));
+      }
     }
   });
 

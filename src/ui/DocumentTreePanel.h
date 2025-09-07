@@ -21,6 +21,9 @@ public:
   // Rebuild the tree from the current Document state
   void refreshFromDocument();
 
+  // Select a specific item in the tree by handle (matches by id)
+  void selectItem(const Handle(DocumentItem)& it);
+
 signals:
   void requestSelectItem(const Handle(DocumentItem)& it);
 
