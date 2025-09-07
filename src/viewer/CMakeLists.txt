@@ -7,6 +7,7 @@ add_library(viewer STATIC
     OcctQtTools.h
     FiniteGrid.cpp
     FiniteGrid.h
+    SceneGizmos.cpp
     SceneGizmos.h
     viewer.qrc
 )
