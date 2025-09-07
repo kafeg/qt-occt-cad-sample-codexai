@@ -9,11 +9,13 @@
 #include <vector>
 
 class Sketch;
+class Datum;
 
 // Minimal parametric document: ordered list of features and recompute
 class Document
 {
 public:
+  Document();
   void clear();                                               // Remove all items
 
   // Timeline manipulation (ordered history)
@@ -34,6 +36,10 @@ public:
   std::shared_ptr<Sketch> findSketch(DocumentItem::Id id) const;
   std::vector<std::shared_ptr<Sketch>> sketches() const;      // list registered sketches
 
+  // Global Datum of the document
+  std::shared_ptr<Datum> datum() const { return m_datum; }
+  void setDatum(const std::shared_ptr<Datum>& d) { m_datum = d; }
+
 private:
   // Ordered document history (sketches, features, etc.)
   NCollection_Sequence<Handle(DocumentItem)> m_items;
@@ -45,4 +51,7 @@ private:
   std::unordered_map<DocumentItem::Id, std::shared_ptr<DocumentItem>> m_registry;
   // Ordered list of sketches preserving insertion order
   std::vector<std::shared_ptr<Sketch>> m_sketchList;
+
+  // Document's global datum
+  std::shared_ptr<Datum> m_datum;
 };

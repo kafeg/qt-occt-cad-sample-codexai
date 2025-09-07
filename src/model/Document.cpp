@@ -2,6 +2,13 @@
 #include <ExtrudeFeature.h>
 #include <MoveFeature.h>
 #include <Sketch.h>
+#include <Datum.h>
+
+Document::Document()
+{
+  // Initialize a default Datum at creation time
+  m_datum = std::make_shared<Datum>();
+}
 
 void Document::clear()
 {
@@ -10,6 +17,8 @@ void Document::clear()
   m_sketchList.clear();
   m_featuresCache.Clear();
   m_featuresCacheDirty = true;
+  // Keep Datum persistent; recreate default if missing
+  if (!m_datum) m_datum = std::make_shared<Datum>();
 }
 
 void Document::addItem(const Handle(DocumentItem)& item)

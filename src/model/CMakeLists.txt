@@ -3,6 +3,7 @@ add_library(model STATIC
     Feature.h
     Document.cpp
     Document.h
+    Datum.h
     BoxFeature.cpp
     BoxFeature.h
     CylinderFeature.cpp

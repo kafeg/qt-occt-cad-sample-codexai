@@ -34,6 +34,8 @@ TabPage::TabPage(QWidget* parent)
   split->setSizes({200, 800});
   lay->addWidget(split);
   m_doc = std::make_unique<Document>();
+  // Initialize viewer with document's Datum so gizmos render from it
+  if (m_viewer && m_doc) { m_viewer->setDatum(m_doc->datum()); }
 
   // Connect panel actions
   connect(m_history, &FeatureHistoryPanel::requestRemoveSelected, [this]() {
@@ -107,6 +109,8 @@ TabPage::~TabPage() = default;
 void TabPage::syncViewerFromDoc(bool toUpdate)
 {
   if (!m_viewer) return;
+  // Ensure gizmos reflect current document Datum
+  if (m_doc) { m_viewer->setDatum(m_doc->datum()); }
   m_featureToBody.Clear();
   m_bodyToFeature.Clear();
   m_sketchToHandle.clear();

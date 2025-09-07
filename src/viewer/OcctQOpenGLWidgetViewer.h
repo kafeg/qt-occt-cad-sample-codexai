@@ -22,10 +22,9 @@
 class SceneGizmos;
 class AIS_ViewCube;
 class AIS_Line;
-class AIS_Trihedron;
 class AIS_Shape;
-class Geom_Axis2Placement;
 class Sketch; // forward decl (from src/sketch)
+class Datum;
 
 // Reusable OCCT viewer widget (QOpenGLWidget + AIS_ViewController glue)
 // - Owns V3d_Viewer/View and AIS_InteractiveContext
@@ -109,6 +108,9 @@ public: // sketches management
   bool setSketchEditMode(std::uint64_t sketchId, bool enabled, bool theToUpdate = true);
   void clearSketchEditMode(bool theToUpdate = true) { (void)setSketchEditMode(m_activeSketchId, false, theToUpdate); }
 
+public: // datum management
+  void setDatum(const std::shared_ptr<Datum>& d);
+
 signals:
   void selectionChanged();
   void manipulatorFinished(const gp_Trsf& trsf);
@@ -134,9 +136,8 @@ private:
   Handle(AIS_Line)               m_axisX;            // X axis guide
   Handle(AIS_Line)               m_axisY;            // Y axis guide
   Handle(AIS_Line)               m_axisZ;            // Z axis guide
-  Handle(AIS_Trihedron)          m_originTrihedron;  // origin trihedron
-  Handle(Geom_Axis2Placement)    m_originPlacement;  // origin placement
   std::unique_ptr<SceneGizmos>   m_gizmos;           // axes + trihedron manager
+  std::shared_ptr<Datum>         m_datum;            // document datum (source of gizmos)
   NCollection_Sequence<Handle(AIS_Shape)> m_bodies;  // tracked displayed bodies
   NCollection_Sequence<Handle(AIS_Shape)> m_sketches; // tracked displayed sketches
   std::unordered_map<std::uint64_t, Handle(AIS_Shape)> m_sketchById; // id -> AIS mapping

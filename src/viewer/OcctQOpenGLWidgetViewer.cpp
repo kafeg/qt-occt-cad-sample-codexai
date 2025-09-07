@@ -283,17 +283,19 @@ void OcctQOpenGLWidgetViewer::initializeGL()
   }
 
   {
-    // Gizmos overlay: axes + trihedron in a dedicated helper
+    // Gizmos overlay: axes + planes driven by Document Datum
     if (!m_gizmos) m_gizmos = std::make_unique<SceneGizmos>();
-    m_originPlacement = new Geom_Axis2Placement(gp_Ax2(gp::Origin(), gp::DZ(), gp::DX()));
-    m_gizmos->install(m_context, m_originPlacement, Standard_True);
-    // Place gizmos into dedicated Axes layer to render above grid but below sketches/bodies
-    if (m_gizmos)
+    if (m_datum)
     {
-      if (!m_gizmos->axisX().IsNull()) m_context->SetZLayer(m_gizmos->axisX(), m_layerAxes);
-      if (!m_gizmos->axisY().IsNull()) m_context->SetZLayer(m_gizmos->axisY(), m_layerAxes);
-      if (!m_gizmos->axisZ().IsNull()) m_context->SetZLayer(m_gizmos->axisZ(), m_layerAxes);
-      if (!m_gizmos->trihedron().IsNull()) m_context->SetZLayer(m_gizmos->trihedron(), m_layerAxes);
+      m_gizmos->install(m_context, m_datum, Standard_True);
+      if (m_gizmos)
+      {
+        // Background axes with grid (Default layer)
+        if (!m_gizmos->bgAxisX().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisX(), Graphic3d_ZLayerId_Default);
+        if (!m_gizmos->bgAxisY().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisY(), Graphic3d_ZLayerId_Default);
+        // Trihedron above grid but below sketches
+        if (!m_gizmos->trihedron().IsNull()) m_context->SetZLayer(m_gizmos->trihedron(), m_layerAxes);
+      }
     }
     // Display custom infinite grid and initialize (force immediate update so it becomes visible)
     m_grid = new FiniteGrid();
@@ -305,11 +307,7 @@ void OcctQOpenGLWidgetViewer::initializeGL()
     if (!grid.IsNull()) {
       grid->updateFromView(m_view);
       m_context->Redisplay(grid, Standard_False);
-      // Clamp axes to grid bounds
-      if (m_gizmos)
-      {
-        m_gizmos->setAxisExtents(m_context, grid->halfSizeX(), grid->halfSizeY());
-      }
+      // Gizmos are zoom-pers and independent from grid extents
     }
   }
 
@@ -332,12 +330,10 @@ void OcctQOpenGLWidgetViewer::keyPressEvent(QKeyEvent* theEvent)
     case Aspect_VKey_Escape: QApplication::exit(); return;
     case Aspect_VKey_F: {
       // Fit-all while preserving axis visibility
-      const bool hadX = !m_gizmos || !m_gizmos->axisX().IsNull();
-      const bool hadY = !m_gizmos || !m_gizmos->axisY().IsNull();
-      const bool hadZ = !m_gizmos || !m_gizmos->axisZ().IsNull();
+      const bool hadTri = !m_gizmos || !m_gizmos->trihedron().IsNull();
       if (m_gizmos) m_gizmos->erase(m_context);
       m_view->FitAll(0.01, false);
-      if (m_gizmos && (hadX || hadY || hadZ)) m_gizmos->reinstall(m_context);
+      if (m_gizmos && hadTri) m_gizmos->reinstall(m_context);
       update();
       return;
     }
@@ -415,6 +411,24 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
   if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
   update();
   emit selectionChanged();
+}
+
+void OcctQOpenGLWidgetViewer::setDatum(const std::shared_ptr<Datum>& d)
+{
+  m_datum = d;
+  if (!m_context.IsNull())
+  {
+    if (!m_gizmos) m_gizmos = std::make_unique<SceneGizmos>();
+    if (m_datum)
+    {
+      m_gizmos->install(m_context, m_datum, Standard_True);
+      if (!m_gizmos->bgAxisX().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisX(), Graphic3d_ZLayerId_Default);
+      if (!m_gizmos->bgAxisY().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisY(), Graphic3d_ZLayerId_Default);
+      if (!m_gizmos->trihedron().IsNull()) m_context->SetZLayer(m_gizmos->trihedron(), m_layerAxes);
+      if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
+      update();
+    }
+  }
 }
 
 void OcctQOpenGLWidgetViewer::mouseMoveEvent(QMouseEvent* theEvent)

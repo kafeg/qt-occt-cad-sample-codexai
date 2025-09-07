@@ -15,6 +15,7 @@
 #include <Graphic3d_TransformPers.hxx>
 #include <Quantity_Color.hxx>
 #include <Geom_Line.hxx>
+#include <Geom_CartesianPoint.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Dir.hxx>
 #include <gp.hxx>
@@ -26,10 +27,15 @@
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS_Wire.hxx>
+#include <BRep_Builder.hxx>
+#include <TopoDS_Compound.hxx>
 #include <Aspect_TypeOfFacingModel.hxx>
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Graphic3d_NameOfMaterial.hxx>
 #include <Aspect_InteriorStyle.hxx>
+#include <memory>
+
+#include <Datum.h>
 
 class SceneGizmos
 {
@@ -37,59 +43,78 @@ public:
   SceneGizmos() = default;
 
   void install(const Handle(AIS_InteractiveContext)& ctx,
-               const Handle(Geom_Axis2Placement)&    originA2,
-               Standard_Boolean                      topmostOverlay = Standard_True)
+               const std::shared_ptr<Datum>&          datum,
+               Standard_Boolean                        topmostOverlay = Standard_True)
   {
     if (ctx.IsNull()) return;
+    if (!datum) return;
 
     // Colors
     const Quantity_Color colX(1.00, 0.20, 0.20, Quantity_TOC_sRGB);
     const Quantity_Color colY(0.25, 0.90, 0.25, Quantity_TOC_sRGB);
     const Quantity_Color colZ(0.25, 0.45, 1.00, Quantity_TOC_sRGB);
     const Quantity_Color colPlane(0.95, 0.85, 0.7, Quantity_TOC_sRGB); // Soft peachy beige
+    const Standard_Real planeSize = datum->planeSize();
+    const Standard_Real offset = datum->planeOffset();
+    const Standard_Real transparency = 0.3f; // semi-transparent planes
 
-    // Add small filled planes between axes in positive quadrant, like Fusion 360
-    const Standard_Real planeSize = 150.0;  // Larger size for better visibility
-    const Standard_Real offset = 30.0;       // offset from origin along each axis
-    const Standard_Real transparency = 0.3f; // 50% transparency for semi-transparent effect
-
-    // Create finite axes as edges (limited to current extents; defaults until grid is known)
+    // Create background long X/Y axes (world-space, non-selectable, thin)
     const Standard_Real halfX = 500.0;
     const Standard_Real halfY = 500.0;
-    m_axisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
-    m_axisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
+    m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
+    m_bgAxisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
+    Handle(Prs3d_Drawer) bgDx = m_bgAxisX->Attributes(); if (bgDx.IsNull()) bgDx = new Prs3d_Drawer();
+    bgDx->SetLineAspect(new Prs3d_LineAspect(colX, Aspect_TOL_SOLID, 2.0f));
+    m_bgAxisX->SetAttributes(bgDx);
+    m_bgAxisX->SetColor(colX);
+    m_bgAxisX->SetDisplayMode(AIS_WireFrame);
+    m_bgAxisX->SetAutoHilight(false);
+    Handle(Prs3d_Drawer) bgDy = m_bgAxisY->Attributes(); if (bgDy.IsNull()) bgDy = new Prs3d_Drawer();
+    bgDy->SetLineAspect(new Prs3d_LineAspect(colY, Aspect_TOL_SOLID, 2.0f));
+    m_bgAxisY->SetAttributes(bgDy);
+    m_bgAxisY->SetColor(colY);
+    m_bgAxisY->SetDisplayMode(AIS_WireFrame);
+    m_bgAxisY->SetAutoHilight(false);
+    ctx->Display(m_bgAxisX, Standard_False);
+    ctx->Display(m_bgAxisY, Standard_False);
+    ctx->Deactivate(m_bgAxisX);
+    ctx->Deactivate(m_bgAxisY);
 
-    Handle(Prs3d_Drawer) dx = m_axisX->Attributes(); if (dx.IsNull()) dx = new Prs3d_Drawer();
-    dx->SetLineAspect(new Prs3d_LineAspect(colX, Aspect_TOL_SOLID, 3.0f));
-    m_axisX->SetAttributes(dx);
-    m_axisX->SetColor(colX);
-    m_axisX->SetDisplayMode(AIS_WireFrame);
-    Handle(Prs3d_Drawer) dy = m_axisY->Attributes(); if (dy.IsNull()) dy = new Prs3d_Drawer();
-    dy->SetLineAspect(new Prs3d_LineAspect(colY, Aspect_TOL_SOLID, 3.0f));
-    m_axisY->SetAttributes(dy);
-    m_axisY->SetColor(colY);
-    m_axisY->SetDisplayMode(AIS_WireFrame);
-    // No long Z axis
+    // Create trihedron from Datum (fixed on-screen size)
+    const gp_Pnt ori = datum->origin();
+    const gp_Dir dx  = datum->dirX();
+    const gp_Dir dy  = datum->dirY();
+    const gp_Dir dz  = datum->dirZ();
+    const Standard_Real axLen = datum->axisLength();
+    Handle(Geom_Axis2Placement) a2 = new Geom_Axis2Placement(gp_Ax2(ori, dz, dx));
+    m_trihedron = new AIS_Trihedron(a2);
+    {
+      Handle(Prs3d_Drawer) trD = m_trihedron->Attributes(); if (trD.IsNull()) trD = new Prs3d_Drawer();
+      Handle(Prs3d_DatumAspect) dAsp = trD->DatumAspect(); if (dAsp.IsNull()) dAsp = new Prs3d_DatumAspect();
+      dAsp->SetAxisLength(axLen, axLen, axLen);
+      trD->SetDatumAspect(dAsp);
+      m_trihedron->SetAttributes(trD);
+      m_trihedron->SetDatumPartColor(Prs3d_DatumParts_XAxis, colX);
+      m_trihedron->SetDatumPartColor(Prs3d_DatumParts_YAxis, colY);
+      m_trihedron->SetDatumPartColor(Prs3d_DatumParts_ZAxis, colZ);
+      m_trihedron->SetArrowColor(Prs3d_DatumParts_XAxis, colX);
+      m_trihedron->SetArrowColor(Prs3d_DatumParts_YAxis, colY);
+      m_trihedron->SetArrowColor(Prs3d_DatumParts_ZAxis, colZ);
+      m_trihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+    }
+    ctx->Display(m_trihedron, Standard_False);
+    ctx->Deactivate(m_trihedron);
 
-    m_trihedron = new AIS_Trihedron(originA2);
-    Handle(Prs3d_Drawer) trD = m_trihedron->Attributes(); if (trD.IsNull()) trD = new Prs3d_Drawer();
-    Handle(Prs3d_DatumAspect) dAsp = trD->DatumAspect(); if (dAsp.IsNull()) dAsp = new Prs3d_DatumAspect();
-    dAsp->SetAxisLength(300.0, 300.0, 300.0);
-    trD->SetDatumAspect(dAsp);
-    m_trihedron->SetAttributes(trD);
-    m_trihedron->SetDatumPartColor(Prs3d_DatumParts_XAxis, colX);
-    m_trihedron->SetDatumPartColor(Prs3d_DatumParts_YAxis, colY);
-    m_trihedron->SetDatumPartColor(Prs3d_DatumParts_ZAxis, colZ);
-    m_trihedron->SetArrowColor(Prs3d_DatumParts_XAxis, colX);
-    m_trihedron->SetArrowColor(Prs3d_DatumParts_YAxis, colY);
-    m_trihedron->SetArrowColor(Prs3d_DatumParts_ZAxis, colZ);
-    m_trihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-    
-    // Create YZ plane (between Y and Z axes, starting from offset on both Y and Z)
-    gp_Pnt p1(0, offset, offset);
-    gp_Pnt p2(0, planeSize, offset);
-    gp_Pnt p3(0, planeSize, planeSize);
-    gp_Pnt p4(0, offset, planeSize);
+    // Create YZ plane using Datum directions (origin + Y/Z)
+    auto P = [](const gp_Pnt& o, const gp_Dir& a, double sa, const gp_Dir& b, double sb) {
+      return gp_Pnt(o.X() + a.X() * sa + b.X() * sb,
+                    o.Y() + a.Y() * sa + b.Y() * sb,
+                    o.Z() + a.Z() * sa + b.Z() * sb);
+    };
+    gp_Pnt p1 = P(ori, dy, offset,  dz, offset);
+    gp_Pnt p2 = P(ori, dy, planeSize, dz, offset);
+    gp_Pnt p3 = P(ori, dy, planeSize, dz, planeSize);
+    gp_Pnt p4 = P(ori, dy, offset,  dz, planeSize);
     
     TopoDS_Wire wireYZ = BRepBuilderAPI_MakeWire(
       BRepBuilderAPI_MakeEdge(p1, p2),
@@ -115,11 +140,11 @@ public:
       ctx->Display(m_planeYZ, Standard_False);
     }
     
-    // Create XZ plane (between X and Z axes, starting from offset on both X and Z)
-    gp_Pnt p5(offset, 0, offset);
-    gp_Pnt p6(planeSize, 0, offset);
-    gp_Pnt p7(planeSize, 0, planeSize);
-    gp_Pnt p8(offset, 0, planeSize);
+    // Create XZ plane (origin + X/Z)
+    gp_Pnt p5 = P(ori, dx, offset,  dz, offset);
+    gp_Pnt p6 = P(ori, dx, planeSize, dz, offset);
+    gp_Pnt p7 = P(ori, dx, planeSize, dz, planeSize);
+    gp_Pnt p8 = P(ori, dx, offset,  dz, planeSize);
     
     TopoDS_Wire wireXZ = BRepBuilderAPI_MakeWire(
       BRepBuilderAPI_MakeEdge(p5, p6),
@@ -144,11 +169,11 @@ public:
       ctx->Display(m_planeXZ, Standard_False);
     }
     
-    // Create XY plane (between X and Y axes, offset along Z)
-    gp_Pnt p9(offset, offset, 0);
-    gp_Pnt p10(planeSize, offset, 0);
-    gp_Pnt p11(planeSize, planeSize, 0);
-    gp_Pnt p12(offset, planeSize, 0);
+    // Create XY plane (origin + X/Y)
+    gp_Pnt p9  = P(ori, dx, offset,    dy, offset);
+    gp_Pnt p10 = P(ori, dx, planeSize, dy, offset);
+    gp_Pnt p11 = P(ori, dx, planeSize, dy, planeSize);
+    gp_Pnt p12 = P(ori, dx, offset,    dy, planeSize);
     
     TopoDS_Wire wireXY = BRepBuilderAPI_MakeWire(
       BRepBuilderAPI_MakeEdge(p9, p10),
@@ -172,180 +197,103 @@ public:
       m_planeXY->SetDisplayMode(AIS_Shaded);
       ctx->Display(m_planeXY, Standard_False);
     }
-
-    ctx->Display(m_axisX, Standard_False);
-    ctx->Display(m_axisY, Standard_False);
-    // no Z axis
-    ctx->Display(m_trihedron, Standard_False);
+    // trihedron already displayed above
 
     if (topmostOverlay)
     {
       // Keep axes/trihedron in Top overlay (depth-aware),
       // sketches and other 3D overlays go into Topmost (set elsewhere)
-      ctx->SetZLayer(m_axisX, Graphic3d_ZLayerId_Top);
-      ctx->SetZLayer(m_axisY, Graphic3d_ZLayerId_Top);
-      // no Z axis
-      ctx->SetZLayer(m_trihedron, Graphic3d_ZLayerId_Top);
+      if (!m_trihedron.IsNull()) ctx->SetZLayer(m_trihedron, Graphic3d_ZLayerId_Top);
       if (!m_planeYZ.IsNull()) ctx->SetZLayer(m_planeYZ, Graphic3d_ZLayerId_Top);
       if (!m_planeXZ.IsNull()) ctx->SetZLayer(m_planeXZ, Graphic3d_ZLayerId_Top);
       if (!m_planeXY.IsNull()) ctx->SetZLayer(m_planeXY, Graphic3d_ZLayerId_Top);
       // Origin circle quadrants Z-layers set individually
     }
 
-    // Origin circle with alternating black/white quadrants (1cm diameter) - STATIC
-    const Standard_Real radius = 15.0; // 5mm radius = 1cm diameter
-    
-    // Create 4 quadrants with alternating colors
-    // Quadrant 1: X>0, Y>0 (black)
-    gp_Pnt q1(0, 0, 0);
-    gp_Pnt q2(radius, 0, 0);
-    gp_Pnt q3(radius, radius, 0);
-    gp_Pnt q4(0, radius, 0);
-    
-    TopoDS_Wire wire1 = BRepBuilderAPI_MakeWire(
-      BRepBuilderAPI_MakeEdge(q1, q2),
-      BRepBuilderAPI_MakeEdge(q2, q3),
-      BRepBuilderAPI_MakeEdge(q3, q4),
-      BRepBuilderAPI_MakeEdge(q4, q1)
-    );
-    TopoDS_Face face1 = BRepBuilderAPI_MakeFace(wire1);
-    Handle(AIS_Shape) quad1 = new AIS_Shape(face1);
-    quad1->SetColor(Quantity_Color(Quantity_NOC_BLACK));
-    quad1->SetDisplayMode(AIS_Shaded);
-    // Make static like trihedron - no scaling with view
-    quad1->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-    ctx->Display(quad1, Standard_False);
-    ctx->SetZLayer(quad1, Graphic3d_ZLayerId_Top);
-    
-    // Quadrant 2: X<0, Y>0 (white)
-    gp_Pnt q5(-radius, 0, 0);
-    gp_Pnt q6(0, 0, 0);
-    gp_Pnt q7(0, radius, 0);
-    gp_Pnt q8(-radius, radius, 0);
-    
-    TopoDS_Wire wire2 = BRepBuilderAPI_MakeWire(
-      BRepBuilderAPI_MakeEdge(q5, q6),
-      BRepBuilderAPI_MakeEdge(q6, q7),
-      BRepBuilderAPI_MakeEdge(q7, q8),
-      BRepBuilderAPI_MakeEdge(q8, q5)
-    );
-    TopoDS_Face face2 = BRepBuilderAPI_MakeFace(wire2);
-    Handle(AIS_Shape) quad2 = new AIS_Shape(face2);
-    quad2->SetColor(Quantity_Color(Quantity_NOC_WHITE));
-    quad2->SetDisplayMode(AIS_Shaded);
-    // Make static like trihedron - no scaling with view
-    quad2->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-    ctx->Display(quad2, Standard_False);
-    ctx->SetZLayer(quad2, Graphic3d_ZLayerId_Top);
-    
-    // Quadrant 3: X<0, Y<0 (black)
-    gp_Pnt q9(-radius, -radius, 0);
-    gp_Pnt q10(0, -radius, 0);
-    gp_Pnt q11(0, 0, 0);
-    gp_Pnt q12(-radius, 0, 0);
-    
-    TopoDS_Wire wire3 = BRepBuilderAPI_MakeWire(
-      BRepBuilderAPI_MakeEdge(q9, q10),
-      BRepBuilderAPI_MakeEdge(q10, q11),
-      BRepBuilderAPI_MakeEdge(q11, q12),
-      BRepBuilderAPI_MakeEdge(q12, q9)
-    );
-    TopoDS_Face face3 = BRepBuilderAPI_MakeFace(wire3);
-    Handle(AIS_Shape) quad3 = new AIS_Shape(face3);
-    quad3->SetColor(Quantity_Color(Quantity_NOC_BLACK));
-    quad3->SetDisplayMode(AIS_Shaded);
-    // Make static like trihedron - no scaling with view
-    quad3->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-    ctx->Display(quad3, Standard_False);
-    ctx->SetZLayer(quad3, Graphic3d_ZLayerId_Top);
-    
-    // Quadrant 4: X>0, Y<0 (white)
-    gp_Pnt q13(0, -radius, 0);
-    gp_Pnt q14(radius, -radius, 0);
-    gp_Pnt q15(radius, 0, 0);
-    gp_Pnt q16(0, 0, 0);
-    
-    TopoDS_Wire wire4 = BRepBuilderAPI_MakeWire(
-      BRepBuilderAPI_MakeEdge(q13, q14),
-      BRepBuilderAPI_MakeEdge(q14, q15),
-      BRepBuilderAPI_MakeEdge(q15, q16),
-      BRepBuilderAPI_MakeEdge(q16, q13)
-    );
-    TopoDS_Face face4 = BRepBuilderAPI_MakeFace(wire4);
-    Handle(AIS_Shape) quad4 = new AIS_Shape(face4);
-    quad4->SetColor(Quantity_Color(Quantity_NOC_WHITE));
-    quad4->SetDisplayMode(AIS_Shaded);
-    // Make static like trihedron - no scaling with view
-    quad4->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-    ctx->Display(quad4, Standard_False);
-    ctx->SetZLayer(quad4, Graphic3d_ZLayerId_Top);
-    
-    // Origin circle quadrants created and displayed - STATIC (no scaling with view)
+    // Origin mark: small filled circle with thin outline (Fusion-like)
+    const Standard_Real r = 10.0;
+    gp_Ax2 circAx(ori, dz, dx);
+    Handle(Geom_Circle) gC = new Geom_Circle(circAx, r);
+    TopoDS_Edge eC = BRepBuilderAPI_MakeEdge(gC);
+    TopoDS_Wire wC = BRepBuilderAPI_MakeWire(eC);
+    TopoDS_Face fC = BRepBuilderAPI_MakeFace(wC);
+    m_originMark = new AIS_Shape(fC);
+    {
+      Handle(Prs3d_Drawer) dO = m_originMark->Attributes(); if (dO.IsNull()) dO = new Prs3d_Drawer();
+      dO->SetColor(Quantity_Color(Quantity_NOC_WHITE));
+      dO->SetFaceBoundaryDraw(Standard_True);
+      Handle(Prs3d_LineAspect) wa = new Prs3d_LineAspect(Quantity_Color(Quantity_NOC_BLACK), Aspect_TOL_SOLID, 1.5f);
+      dO->SetWireAspect(wa);
+      m_originMark->SetAttributes(dO);
+      m_originMark->SetDisplayMode(AIS_Shaded);
+      m_originMark->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+      m_originMark->SetAutoHilight(false);
+    }
+    ctx->Display(m_originMark, Standard_False);
+    ctx->Deactivate(m_originMark);
+    if (topmostOverlay) { ctx->SetZLayer(m_originMark, Graphic3d_ZLayerId_Top); }
   }
 
   void reinstall(const Handle(AIS_InteractiveContext)& ctx)
   {
     if (ctx.IsNull()) return;
-    if (!m_axisX.IsNull()) ctx->Display(m_axisX, Standard_False);
-    if (!m_axisY.IsNull()) ctx->Display(m_axisY, Standard_False);
-    // no Z axis
+    if (!m_bgAxisX.IsNull()) ctx->Display(m_bgAxisX, Standard_False);
+    if (!m_bgAxisY.IsNull()) ctx->Display(m_bgAxisY, Standard_False);
     if (!m_trihedron.IsNull()) ctx->Display(m_trihedron, Standard_False);
     if (!m_planeYZ.IsNull()) ctx->Display(m_planeYZ, Standard_False);
     if (!m_planeXZ.IsNull()) ctx->Display(m_planeXZ, Standard_False);
     if (!m_planeXY.IsNull()) ctx->Display(m_planeXY, Standard_False);
+    if (!m_originMark.IsNull()) ctx->Display(m_originMark, Standard_False);
     // Origin circle quadrants are managed separately
   }
 
   void erase(const Handle(AIS_InteractiveContext)& ctx)
   {
     if (ctx.IsNull()) return;
-    if (!m_axisX.IsNull()) ctx->Erase(m_axisX, Standard_False);
-    if (!m_axisY.IsNull()) ctx->Erase(m_axisY, Standard_False);
-    // no Z axis
+    if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
+    if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
     if (!m_trihedron.IsNull()) ctx->Erase(m_trihedron, Standard_False);
     if (!m_planeYZ.IsNull()) ctx->Erase(m_planeYZ, Standard_False);
     if (!m_planeXZ.IsNull()) ctx->Erase(m_planeXZ, Standard_False);
     if (!m_planeXY.IsNull()) ctx->Erase(m_planeXY, Standard_False);
+    if (!m_originMark.IsNull()) ctx->Erase(m_originMark, Standard_False);
     // Origin circle quadrants are managed separately
   }
 
-  Handle(AIS_InteractiveObject) axisX() const { return m_axisX; }
-  Handle(AIS_InteractiveObject) axisY() const { return m_axisY; }
-  Handle(AIS_InteractiveObject) axisZ() const { return Handle(AIS_InteractiveObject)(); }
+  Handle(AIS_InteractiveObject) bgAxisX() const { return m_bgAxisX; }
+  Handle(AIS_InteractiveObject) bgAxisY() const { return m_bgAxisY; }
   Handle(AIS_Trihedron) trihedron() const { return m_trihedron; }
 
   void setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Standard_Real halfX, Standard_Real halfY)
   {
     if (ctx.IsNull()) return;
-    if (!m_axisX.IsNull()) ctx->Erase(m_axisX, Standard_False);
-    if (!m_axisY.IsNull()) ctx->Erase(m_axisY, Standard_False);
-    
-    // Z-axis removed - only X and Y axes remain
-    m_axisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
-    m_axisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, halfY, 0.0)));
-    
-    // Reapply styles
+    if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
+    if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
+    m_bgAxisX = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(-halfX, 0.0, 0.0), gp_Pnt(halfX, 0.0, 0.0)));
+    m_bgAxisY = new AIS_Shape(BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -halfY, 0.0), gp_Pnt(0.0, halfY, 0.0)));
     const Quantity_Color colX(1.00, 0.20, 0.20, Quantity_TOC_sRGB);
     const Quantity_Color colY(0.25, 0.90, 0.25, Quantity_TOC_sRGB);
-    Handle(Prs3d_Drawer) dx = new Prs3d_Drawer(); dx->SetLineAspect(new Prs3d_LineAspect(colX, Aspect_TOL_SOLID, 3.0f));
-    m_axisX->SetAttributes(dx); m_axisX->SetColor(colX); m_axisX->SetDisplayMode(AIS_WireFrame);
-    Handle(Prs3d_Drawer) dy = new Prs3d_Drawer(); dy->SetLineAspect(new Prs3d_LineAspect(colY, Aspect_TOL_SOLID, 3.0f));
-    m_axisY->SetAttributes(dy); m_axisY->SetColor(colY); m_axisY->SetDisplayMode(AIS_WireFrame);
-    ctx->Display(m_axisX, Standard_False);
-    ctx->Display(m_axisY, Standard_False);
-    ctx->SetZLayer(m_axisX, Graphic3d_ZLayerId_Top);
-    ctx->SetZLayer(m_axisY, Graphic3d_ZLayerId_Top);
+    Handle(Prs3d_Drawer) dx = new Prs3d_Drawer(); dx->SetLineAspect(new Prs3d_LineAspect(colX, Aspect_TOL_SOLID, 2.0f));
+    m_bgAxisX->SetAttributes(dx); m_bgAxisX->SetColor(colX); m_bgAxisX->SetDisplayMode(AIS_WireFrame); m_bgAxisX->SetAutoHilight(false);
+    Handle(Prs3d_Drawer) dy = new Prs3d_Drawer(); dy->SetLineAspect(new Prs3d_LineAspect(colY, Aspect_TOL_SOLID, 2.0f));
+    m_bgAxisY->SetAttributes(dy); m_bgAxisY->SetColor(colY); m_bgAxisY->SetDisplayMode(AIS_WireFrame); m_bgAxisY->SetAutoHilight(false);
+    ctx->Display(m_bgAxisX, Standard_False);
+    ctx->Display(m_bgAxisY, Standard_False);
+    ctx->Deactivate(m_bgAxisX);
+    ctx->Deactivate(m_bgAxisY);
+    ctx->SetZLayer(m_bgAxisX, Graphic3d_ZLayerId_Default);
+    ctx->SetZLayer(m_bgAxisY, Graphic3d_ZLayerId_Default);
   }
 
 private:
-  Handle(AIS_InteractiveObject) m_axisX;
-  Handle(AIS_InteractiveObject) m_axisY;
-  Handle(AIS_InteractiveObject) m_axisZ; // unused
-  Handle(AIS_Trihedron) m_trihedron;
+  Handle(AIS_InteractiveObject) m_bgAxisX;
+  Handle(AIS_InteractiveObject) m_bgAxisY;
+  Handle(AIS_Trihedron)          m_trihedron;
 
   Handle(AIS_Shape)     m_planeYZ;
   Handle(AIS_Shape)     m_planeXZ;
   Handle(AIS_Shape)     m_planeXY;
+  Handle(AIS_Shape)     m_originMark;
 };
 
 #endif
