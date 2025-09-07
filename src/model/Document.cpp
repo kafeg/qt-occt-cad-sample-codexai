@@ -3,6 +3,7 @@
 #include <MoveFeature.h>
 #include <Sketch.h>
 #include <Datum.h>
+#include <algorithm>
 
 Document::Document()
 {
@@ -169,10 +170,33 @@ void Document::addItem(const std::shared_ptr<DocumentItem>& item)
 void Document::addSketch(const std::shared_ptr<Sketch>& s)
 {
   if (!s) return;
-  // Preserve insertion order for sketches
-  m_sketchList.push_back(s);
-  // Register in the generic item registry for dependency resolution
-  m_registry[s->id()] = s;
+  const auto sid = s->id();
+  // Register in the generic item registry for dependency resolution (overwrites by id)
+  m_registry[sid] = s;
+  // Preserve insertion order for sketches; avoid duplicates by id
+  const bool exists = std::any_of(m_sketchList.begin(), m_sketchList.end(), [sid](const std::shared_ptr<Sketch>& p){ return p && p->id() == sid; });
+  if (!exists)
+  {
+    m_sketchList.push_back(s);
+  }
+
+  // Ensure a corresponding timeline entry exists in items() so history reflects sketches
+  bool inTimeline = false;
+  for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_items); it.More(); it.Next())
+  {
+    const Handle(DocumentItem)& di = it.Value();
+    if (!di.IsNull() && di->kind() == DocumentItem::Kind::Sketch && di->id() == sid)
+    {
+      inTimeline = true;
+      break;
+    }
+  }
+  if (!inTimeline)
+  {
+    Handle(Sketch) hs = new Sketch(sid); // lightweight handle mirror with same id
+    // No need to serialize full geometry for history labeling; id is sufficient
+    addItem(Handle(DocumentItem)(hs));
+  }
 }
 
 std::shared_ptr<Sketch> Document::findSketch(DocumentItem::Id id) const

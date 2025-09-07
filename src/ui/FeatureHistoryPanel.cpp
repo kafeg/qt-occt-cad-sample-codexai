@@ -49,13 +49,11 @@ void FeatureHistoryPanel::refreshFromDocument()
   m_rowHandles.Clear();
   if (m_page == nullptr) return;
   const auto& seq = m_page->doc().items();
-  int row = 0;
   for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(seq); it.More(); it.Next())
   {
     const Handle(DocumentItem)& di = it.Value();
     m_rowHandles.Append(di);
     m_list->addItem(itemDisplayText(di));
-    ++row;
   }
 }
 

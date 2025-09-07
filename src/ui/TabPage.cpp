@@ -29,10 +29,10 @@ TabPage::TabPage(QWidget* parent)
   // Left sidebar: vertical splitter with History over Document tree
   QSplitter* left = new QSplitter(Qt::Vertical, split);
   left->setChildrenCollapsible(false);
-  m_history = new FeatureHistoryPanel(this, left);
   m_treePanel = new DocumentTreePanel(this, left);
-  left->addWidget(m_history);
-  left->addWidget(m_treePanel);
+  m_history = new FeatureHistoryPanel(this, left);
+  left->addWidget(m_treePanel);   // document tree on top
+  left->addWidget(m_history);     // history under it
   left->setStretchFactor(0, 1);
   left->setStretchFactor(1, 1);
   m_viewer = new OcctQOpenGLWidgetViewer(split);
