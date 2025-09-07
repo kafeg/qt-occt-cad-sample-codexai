@@ -17,7 +17,6 @@
 #include <PointFeature.h>
 #include <AxeFeature.h>
 #include <Datum.h>
-#include <Prs3d_LineAspect.hxx>
 #include <Quantity_Color.hxx>
 #include <gp_Quaternion.hxx>
 #include <gp_EulerSequence.hxx>
@@ -235,7 +234,7 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
   {
     Handle(AxeFeature) ax = Handle(AxeFeature)::DownCast(it.Value());
     if (ax.IsNull() || ax->isSuppressed()) continue;
-    Handle(AIS_Shape) body = m_viewer->addShape(ax->shape(), AIS_WireFrame, 0, false);
+    Handle(AIS_Shape) body = m_viewer->addShape(ax->shape(), AIS_Shaded, 0, false);
     // Color code by name suffix X/Y/Z (names set in initializer)
     TCollection_AsciiString nm = ax->name();
     Quantity_Color col(0.85, 0.85, 0.85, Quantity_TOC_sRGB);
@@ -243,15 +242,7 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
     else if (nm.Search("Axis Y") != -1) col = Quantity_Color(0.25, 0.90, 0.25, Quantity_TOC_sRGB);
     else if (nm.Search("Axis Z") != -1) col = Quantity_Color(0.25, 0.45, 1.00, Quantity_TOC_sRGB);
     body->SetColor(col);
-    // Thicker, dash-dot line style for better visibility
-    Handle(Prs3d_Drawer) dr = body->Attributes();
-    if (dr.IsNull()) dr = new Prs3d_Drawer();
-    dr->SetWireAspect(new Prs3d_LineAspect(col, Aspect_TOL_DOTDASH, 3.0f));
-    body->SetAttributes(dr);
-    if (!m_viewer->Context().IsNull())
-    {
-      m_viewer->Context()->Redisplay(body, Standard_False);
-    }
+    // Render as solids; thickness comes from geometry
     // Keep axes on top layer and zoom persistent like other fixed geometry helpers
     if (!m_viewer->Context().IsNull())
     {
