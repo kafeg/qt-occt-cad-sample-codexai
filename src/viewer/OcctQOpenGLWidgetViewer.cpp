@@ -197,6 +197,9 @@ void OcctQOpenGLWidgetViewer::resetViewToOrigin(Standard_Real distance)
     Handle(FiniteGrid) grid = Handle(FiniteGrid)::DownCast(m_grid);
     if (!grid.IsNull()) { grid->updateFromView(m_view); m_context->Redisplay(grid, Standard_False); }
   }
+  // Apply a consistent initial zoom scale for readability in stats
+  // Previous default hovered around ~5.000; cut it to 3.000 as requested
+  m_view->SetScale(3.000);
   update();
 }
 

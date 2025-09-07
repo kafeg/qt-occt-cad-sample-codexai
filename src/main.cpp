@@ -4,6 +4,8 @@
 #include <Standard_WarningsDisable.hxx>
 #include <QApplication>
 #include <QSurfaceFormat>
+#include <QScreen>
+#include <QStyle>
 #include <Standard_WarningsRestore.hxx>
 
 #include <Standard_Version.hxx>
@@ -28,7 +30,15 @@ int main(int argc, char** argv)
 #endif
 
   MainWindow win;
-  win.resize(win.sizeHint());
+  // Make initial window larger (1.5x of the hint) and center it
+  const QSize s = win.sizeHint();
+  win.resize(int(s.width() * 1.3), int(s.height() * 1.3));
+  if (QScreen* screen = QGuiApplication::primaryScreen())
+  {
+    const QRect avail = screen->availableGeometry();
+    const QRect geom  = QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter, win.size(), avail);
+    win.setGeometry(geom);
+  }
   win.show();
   return app.exec();
 }

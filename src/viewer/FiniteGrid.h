@@ -56,13 +56,13 @@ private:
   Standard_Real m_YMin = -100.0, m_YMax = 100.0;
   Standard_Boolean m_Initialized = Standard_False;
 
-  // Tuning to reduce flicker and density; try to mimic Fusion-like feel
-  Standard_Real m_TargetPixels = 48.0;   // desired pixels per minor cell (sparser)
-  Standard_Real m_Hysteresis   = 0.25;   // 25% hysteresis before switching step tier
+  // Tuning to reduce flicker and density
+  Standard_Real m_TargetPixels = 80.0;   // desired pixels per minor cell (coarser grid when zooming out)
+  Standard_Real m_Hysteresis   = 0.30;   // more hysteresis to avoid flicker at thresholds
 
   // Finite-plane settings (always enabled)
-  Standard_Real    m_HalfSizeX = 500.0;        // half-size (world units) along X (total size 1000)
-  Standard_Real    m_HalfSizeY = 500.0;        // half-size (world units) along Y
+  Standard_Real    m_HalfSizeX = 10000.0;      // half-size (world units) along X (total size 20000)
+  Standard_Real    m_HalfSizeY = 10000.0;      // half-size (world units) along Y
 };
 
 DEFINE_STANDARD_HANDLE(FiniteGrid, AIS_InteractiveObject)

@@ -20,7 +20,7 @@ StatsPanel::StatsPanel(QWidget* parent)
   auto* v = new QVBoxLayout(grp);
   m_lblFps = new QLabel(QStringLiteral("FPS: —"), grp);
   m_lblTriangles = new QLabel(QStringLiteral("Triangles: —"), grp);
-  m_lblZoom = new QLabel(QStringLiteral("Zoom: —"), grp);
+  m_lblZoom = new QLabel(QStringLiteral("Zoom (scale): —"), grp);
   v->addWidget(m_lblFps);
   v->addWidget(m_lblTriangles);
   v->addWidget(m_lblZoom);
@@ -47,6 +47,5 @@ void StatsPanel::refresh()
   QLocale loc;
   m_lblFps->setText(QStringLiteral("FPS: ") + (fps > 0.0 ? loc.toString(fps, 'f', 1) : QStringLiteral("—")));
   m_lblTriangles->setText(QStringLiteral("Triangles: ") + (tri >= 0 ? loc.toString(tri) : QStringLiteral("—")));
-  m_lblZoom->setText(QStringLiteral("Zoom: ") + (sc > 0.0 ? loc.toString(sc, 'f', 3) : QStringLiteral("—")));
+  m_lblZoom->setText(QStringLiteral("Zoom (scale): ") + (sc > 0.0 ? loc.toString(sc, 'f', 3) : QStringLiteral("—")));
 }
-

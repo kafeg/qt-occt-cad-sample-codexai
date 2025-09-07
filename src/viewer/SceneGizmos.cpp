@@ -135,9 +135,7 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
     ctx->Erase(m_trihedron, Standard_False);
   }
 
-  // Background axes — disabled per request (hidden)
-  if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
-  if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
+  // Background axes will be created/updated by setAxisExtents() based on grid size
 
   // Helper to build a rectangular plane aligned by two directions
   // No overlay planes; planes should be explicit document items
@@ -180,10 +178,10 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
 void SceneGizmos::reinstall(const Handle(AIS_InteractiveContext)& ctx)
 {
   if (ctx.IsNull()) return;
-  // Keep trihedron and background axes hidden
-  if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
-  if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
-  if (!m_trihedron.IsNull()) ctx->Erase(m_trihedron, Standard_False);
+  // Re-display created items; trihedron is managed by install() based on Datum flag
+  if (!m_bgAxisX.IsNull()) ctx->Display(m_bgAxisX, Standard_False);
+  if (!m_bgAxisY.IsNull()) ctx->Display(m_bgAxisY, Standard_False);
+  if (!m_trihedron.IsNull()) ctx->Display(m_trihedron, Standard_False);
   // no overlay planes to reinstall
   if (!m_bgOriginSprite.IsNull()) ctx->Display(m_bgOriginSprite, Standard_False);
 }
@@ -201,11 +199,34 @@ void SceneGizmos::erase(const Handle(AIS_InteractiveContext)& ctx)
 void SceneGizmos::setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Standard_Real halfX, Standard_Real halfY)
 {
   if (ctx.IsNull()) return;
-  // Background axes are hidden; ensure they stay erased and do not recreate
+  if (!(halfX > 0.0) || !(halfY > 0.0)) return;
+
+  // Build new edges representing axes at Z=0 and (re)display them
+  auto makeAxis = [&](bool isX) -> Handle(AIS_Shape)
+  {
+    const gp_Pnt p0(isX ? -halfX : 0.0, isX ? 0.0 : -halfY, 0.0);
+    const gp_Pnt p1(isX ?  halfX : 0.0, isX ? 0.0 :  halfY, 0.0);
+    TopoDS_Edge e = BRepBuilderAPI_MakeEdge(p0, p1);
+    Handle(AIS_Shape) ais = new AIS_Shape(e);
+    Handle(Prs3d_Drawer) dr = new Prs3d_Drawer();
+    Handle(Prs3d_LineAspect) la = new Prs3d_LineAspect(isX ? kColX : kColY, Aspect_TOL_SOLID, 2.0f);
+    dr->SetWireAspect(la);
+    dr->SetShadingAspect(new Prs3d_ShadingAspect());
+    ais->SetAttributes(dr);
+    ais->SetDisplayMode(AIS_WireFrame);
+    ais->SetAutoHilight(false);
+    return ais;
+  };
+
+  Handle(AIS_Shape) newX = makeAxis(true);
+  Handle(AIS_Shape) newY = makeAxis(false);
+
   if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
   if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
-  m_bgAxisX.Nullify();
-  m_bgAxisY.Nullify();
+  m_bgAxisX = newX;
+  m_bgAxisY = newY;
+  ctx->Display(m_bgAxisX, Standard_False);
+  ctx->Display(m_bgAxisY, Standard_False);
 }
 
 void SceneGizmos::setTrihedronAxesVisibility(const Handle(AIS_InteractiveContext)& ctx,
