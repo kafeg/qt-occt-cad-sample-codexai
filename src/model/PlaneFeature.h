@@ -48,8 +48,8 @@ public:
   double size() const;
 
   // Modifiers
-  void  setFixed(bool on) { params()[Feature::ParamKey::Fixed] = on ? 1 : 0; }
-  bool  isFixed() const { return Feature::paramAsDouble(params(), Feature::ParamKey::Fixed, 0.0) != 0.0; }
+  void  setFixedGeometry(bool on) { params()[Feature::ParamKey::FixedGeometry] = on ? 1 : 0; }
+  bool  isFixedGeometry() const { return Feature::paramAsDouble(params(), Feature::ParamKey::FixedGeometry, 0.0) != 0.0; }
   void  setTransparency(double t) { params()[Feature::ParamKey::Transparency] = t; }
   double transparency() const;
 
