@@ -8,6 +8,7 @@
 #include <AIS_Shape.hxx>
 #include <Geom_Plane.hxx>
 #include <AIS_Trihedron.hxx>
+#include <AIS_TrihedronSelectionMode.hxx>
 #include <Geom_Axis2Placement.hxx>
 #include <Prs3d_DatumAspect.hxx>
 #include <Prs3d_LineAspect.hxx>
@@ -112,6 +113,10 @@ public:
       m_trihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
     }
     ctx->Display(m_trihedron, Standard_False);
+    // Enable per-axis picking on trihedron
+    ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Axes);
+    // Optionally keep origin picking as well
+    ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Origin);
     // keep selectable
 
     // Create YZ plane using Datum directions (origin + Y/Z)
@@ -284,11 +289,11 @@ public:
         fillAsp->SetPolygonOffsets(Aspect_POM_Fill, 1.0f, 1.0f);
         sprShade->SetAspect(fillAsp);
         // Semi-transparency for the whole sprite on top of PNG alpha
-        sprShade->SetTransparency(0.5);
+        sprShade->SetTransparency(0.9f);
         m_bgOriginSprite->SetAttributes(sprDr);
         m_bgOriginSprite->SetDisplayMode(3);
         m_bgOriginSprite->SetAutoHilight(false);
-        m_bgOriginSprite->SetTransparency(0.5f);
+        m_bgOriginSprite->SetTransparency(0.9f);
         m_bgOriginSprite->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, ori));
         ctx->Display(m_bgOriginSprite, Standard_False);
         // Keep in background with axes
