@@ -187,7 +187,17 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
     // Style: semi-transparent plane as before; apply per-feature transparency
     const Standard_ShortReal tr = static_cast<Standard_ShortReal>(std::clamp(pf->transparency(), 0.0, 1.0));
     body->SetTransparency(tr);
-    // Do not use TransformPersistence on planes to keep them pickable/seleсtable
+    // Keep planes fixed on screen (zoom persistent) while remaining selectable
+    // Use Top layer (depth-aware) rather than Topmost overlay to preserve picking
+    if (pf->isFixedGeometry())
+    {
+      body->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+      if (m_viewer && !m_viewer->Context().IsNull())
+      {
+        m_viewer->Context()->SetZLayer(body, Graphic3d_ZLayerId_Top);
+      }
+      body->SetAutoHilight(true);
+    }
     m_featureToBody.Add(pf, body);
     m_bodyToFeature.Add(body, pf);
   }
