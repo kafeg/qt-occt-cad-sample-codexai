@@ -5,6 +5,7 @@
 #include <PlaneFeature.h>
 #include <PointFeature.h>
 #include <Datum.h>
+#include <AxeFeature.h>
 #include "DocumentInitializer.h"
 #include <algorithm>
 
@@ -66,8 +67,8 @@ const NCollection_Sequence<Handle(Feature)>& Document::features() const
     {
       const Handle(DocumentItem)& di = it.Value();
       if (Handle(Feature) f = Handle(Feature)::DownCast(di); !f.IsNull()) {
-        // Exclude fixed-geometry helpers (planes and origin point) from generic features
-        if (Handle(PlaneFeature)::DownCast(f).IsNull() && Handle(PointFeature)::DownCast(f).IsNull())
+        // Exclude fixed-geometry helpers (planes, axes and origin point) from generic features
+        if (Handle(PlaneFeature)::DownCast(f).IsNull() && Handle(PointFeature)::DownCast(f).IsNull() && Handle(AxeFeature)::DownCast(f).IsNull())
           m_featuresCache.Append(f);
       }
     }

@@ -15,7 +15,10 @@
 #include <MoveFeature.h>
 #include <PlaneFeature.h>
 #include <PointFeature.h>
+#include <AxeFeature.h>
 #include <Datum.h>
+#include <Prs3d_LineAspect.hxx>
+#include <Quantity_Color.hxx>
 #include <gp_Quaternion.hxx>
 #include <gp_EulerSequence.hxx>
 #include <Graphic3d_TransformPers.hxx>
@@ -215,6 +218,35 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
   {
     Handle(AIS_Shape) h = m_viewer->addSketch(sk);
     if (!h.IsNull()) m_sketchToHandle[sk->id()] = h;
+  }
+
+  // Display axis features (explicitly excluded from features())
+  for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_doc->items()); it.More(); it.Next())
+  {
+    Handle(AxeFeature) ax = Handle(AxeFeature)::DownCast(it.Value());
+    if (ax.IsNull() || ax->isSuppressed()) continue;
+    Handle(AIS_Shape) body = m_viewer->addShape(ax->shape(), AIS_WireFrame, 0, false);
+    // Color code by name suffix X/Y/Z (names set in initializer)
+    TCollection_AsciiString nm = ax->name();
+    Quantity_Color col(0.85, 0.85, 0.85, Quantity_TOC_sRGB);
+    if (nm.Search("Axis X") != -1) col = Quantity_Color(1.00, 0.20, 0.20, Quantity_TOC_sRGB);
+    else if (nm.Search("Axis Y") != -1) col = Quantity_Color(0.25, 0.90, 0.25, Quantity_TOC_sRGB);
+    else if (nm.Search("Axis Z") != -1) col = Quantity_Color(0.25, 0.45, 1.00, Quantity_TOC_sRGB);
+    body->SetColor(col);
+    // Thicker, dash-dot line style for better visibility
+    Handle(Prs3d_Drawer) dr = body->Attributes();
+    if (dr.IsNull()) dr = new Prs3d_Drawer();
+    dr->SetLineAspect(new Prs3d_LineAspect(col, Aspect_TOL_DOTDASH, 3.0f));
+    body->SetAttributes(dr);
+    // Keep axes on top layer and zoom persistent like other fixed geometry helpers
+    if (!m_viewer->Context().IsNull())
+    {
+      m_viewer->Context()->SetZLayer(body, Graphic3d_ZLayerId_Top);
+    }
+    body->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+    body->SetAutoHilight(true);
+    m_featureToBody.Add(ax, body);
+    m_bodyToFeature.Add(body, ax);
   }
   if (toUpdate)
   {

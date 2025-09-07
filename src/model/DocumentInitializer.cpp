@@ -4,6 +4,7 @@
 #include "PlaneFeature.h"
 #include "PointFeature.h"
 #include "Datum.h"
+#include "AxeFeature.h"
 
 #include <gp_Vec.hxx>
 
@@ -120,9 +121,42 @@ void initialize(Document& doc)
     doc.addFeature(pt);
   }
 
+  // Axes (X, Y, Z) as fixed geometry edges, visibility bound to Datum toggles
+  {
+    const double axLen = d->axisLength();
+    // X axis
+    Handle(AxeFeature) axX = new AxeFeature();
+    axX->setOrigin(ori);
+    axX->setDirection(dx);
+    axX->setLength(axLen);
+    axX->setFixedGeometry(true);
+    axX->setName(TCollection_AsciiString("Axis X"));
+    axX->setSuppressed(!d->showTrihedronAxisX());
+    doc.addFeature(axX);
+
+    // Y axis
+    Handle(AxeFeature) axY = new AxeFeature();
+    axY->setOrigin(ori);
+    axY->setDirection(dy);
+    axY->setLength(axLen);
+    axY->setFixedGeometry(true);
+    axY->setName(TCollection_AsciiString("Axis Y"));
+    axY->setSuppressed(!d->showTrihedronAxisY());
+    doc.addFeature(axY);
+
+    // Z axis
+    Handle(AxeFeature) axZ = new AxeFeature();
+    axZ->setOrigin(ori);
+    axZ->setDirection(dz);
+    axZ->setLength(axLen);
+    axZ->setFixedGeometry(true);
+    axZ->setName(TCollection_AsciiString("Axis Z"));
+    axZ->setSuppressed(!d->showTrihedronAxisZ());
+    doc.addFeature(axZ);
+  }
+
   // Recompute to ensure shapes are built for immediate use
   doc.recompute();
 }
 
 } // namespace DocumentInitializer
-

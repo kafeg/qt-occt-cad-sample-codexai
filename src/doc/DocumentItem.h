@@ -24,6 +24,7 @@ public:
     MoveFeature = 103,
     PlaneFeature = 104,
     PointFeature = 105,
+    AxeFeature = 106,
   };
 
   virtual ~DocumentItem() = default;

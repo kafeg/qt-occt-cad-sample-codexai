@@ -16,6 +16,8 @@ add_library(model STATIC
     PlaneFeature.h
     PointFeature.cpp
     PointFeature.h
+    AxeFeature.cpp
+    AxeFeature.h
     DocumentInitializer.cpp
     DocumentInitializer.h
 )

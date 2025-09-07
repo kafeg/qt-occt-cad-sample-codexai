@@ -43,6 +43,7 @@ public:
     Ny,
     Nz,
     Size,
+    Length,
     FixedGeometry,        // bool stored as 0/1
     Transparency, // 0..1 where 0=opaque, 1=fully transparent
   };
