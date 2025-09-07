@@ -424,6 +424,8 @@ void OcctQOpenGLWidgetViewer::setDatum(const std::shared_ptr<Datum>& d)
   if (!m_context.IsNull())
   {
     if (!m_gizmos) m_gizmos = std::make_unique<SceneGizmos>();
+    // Erase previous gizmos to avoid duplicates and apply new visibility flags
+    m_gizmos->erase(m_context);
     if (m_datum)
     {
       m_gizmos->install(m_context, m_datum, Standard_True);

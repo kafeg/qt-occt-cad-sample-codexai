@@ -18,6 +18,11 @@ public:
     , m_axisLength(300.0)      // analogous to previous trihedron axis length
     , m_planeSize(150.0)       // default plane size used by gizmos
     , m_planeOffset(30.0)      // default offset from origin along axes for planes
+    , m_showTrihedronAxes(true)
+    , m_showOriginPoint(true)
+    , m_showPlaneXY(true)
+    , m_showPlaneXZ(true)
+    , m_showPlaneYZ(true)
   {}
 
   // Origin
@@ -38,6 +43,19 @@ public:
   void setPlaneSize(double v)   { m_planeSize  = v; }
   void setPlaneOffset(double v) { m_planeOffset = v; }
 
+  // Visibility toggles (to be controlled from Document/UI)
+  bool showTrihedronAxes() const { return m_showTrihedronAxes; }
+  bool showOriginPoint()   const { return m_showOriginPoint; }
+  bool showPlaneXY()       const { return m_showPlaneXY; }
+  bool showPlaneXZ()       const { return m_showPlaneXZ; }
+  bool showPlaneYZ()       const { return m_showPlaneYZ; }
+
+  void setShowTrihedronAxes(bool v) { m_showTrihedronAxes = v; }
+  void setShowOriginPoint(bool v)   { m_showOriginPoint   = v; }
+  void setShowPlaneXY(bool v)       { m_showPlaneXY       = v; }
+  void setShowPlaneXZ(bool v)       { m_showPlaneXZ       = v; }
+  void setShowPlaneYZ(bool v)       { m_showPlaneYZ       = v; }
+
 private:
   gp_Pnt m_origin;
   gp_Dir m_dirX;
@@ -46,5 +64,10 @@ private:
   double m_axisLength;
   double m_planeSize;
   double m_planeOffset;
-};
 
+  bool   m_showTrihedronAxes;
+  bool   m_showOriginPoint;
+  bool   m_showPlaneXY;
+  bool   m_showPlaneXZ;
+  bool   m_showPlaneYZ;
+};

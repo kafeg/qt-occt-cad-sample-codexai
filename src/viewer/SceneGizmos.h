@@ -67,6 +67,12 @@ public:
     const Standard_Real planeSize = datum->planeSize();
     const Standard_Real offset = datum->planeOffset();
     const Standard_Real transparency = 0.3f; // semi-transparent planes
+    // Visibility toggles from Document's Datum
+    const bool showTri = datum->showTrihedronAxes();
+    const bool showOri = datum->showOriginPoint();
+    const bool showXY  = datum->showPlaneXY();
+    const bool showXZ  = datum->showPlaneXZ();
+    const bool showYZ  = datum->showPlaneYZ();
 
     // Create background long X/Y axes (world-space, non-selectable, thin)
     const Standard_Real halfX = 500.0;
@@ -96,28 +102,31 @@ public:
     const gp_Dir dy  = datum->dirY();
     const gp_Dir dz  = datum->dirZ();
     const Standard_Real axLen = datum->axisLength();
-    Handle(Geom_Axis2Placement) a2 = new Geom_Axis2Placement(gp_Ax2(ori, dz, dx));
-    m_trihedron = new AIS_Trihedron(a2);
+    if (showTri)
     {
-      Handle(Prs3d_Drawer) trD = m_trihedron->Attributes(); if (trD.IsNull()) trD = new Prs3d_Drawer();
-      Handle(Prs3d_DatumAspect) dAsp = trD->DatumAspect(); if (dAsp.IsNull()) dAsp = new Prs3d_DatumAspect();
-      dAsp->SetAxisLength(axLen, axLen, axLen);
-      trD->SetDatumAspect(dAsp);
-      m_trihedron->SetAttributes(trD);
-      m_trihedron->SetDatumPartColor(Prs3d_DatumParts_XAxis, colX);
-      m_trihedron->SetDatumPartColor(Prs3d_DatumParts_YAxis, colY);
-      m_trihedron->SetDatumPartColor(Prs3d_DatumParts_ZAxis, colZ);
-      m_trihedron->SetArrowColor(Prs3d_DatumParts_XAxis, colX);
-      m_trihedron->SetArrowColor(Prs3d_DatumParts_YAxis, colY);
-      m_trihedron->SetArrowColor(Prs3d_DatumParts_ZAxis, colZ);
-      m_trihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+      Handle(Geom_Axis2Placement) a2 = new Geom_Axis2Placement(gp_Ax2(ori, dz, dx));
+      m_trihedron = new AIS_Trihedron(a2);
+      {
+        Handle(Prs3d_Drawer) trD = m_trihedron->Attributes(); if (trD.IsNull()) trD = new Prs3d_Drawer();
+        Handle(Prs3d_DatumAspect) dAsp = trD->DatumAspect(); if (dAsp.IsNull()) dAsp = new Prs3d_DatumAspect();
+        dAsp->SetAxisLength(axLen, axLen, axLen);
+        trD->SetDatumAspect(dAsp);
+        m_trihedron->SetAttributes(trD);
+        m_trihedron->SetDatumPartColor(Prs3d_DatumParts_XAxis, colX);
+        m_trihedron->SetDatumPartColor(Prs3d_DatumParts_YAxis, colY);
+        m_trihedron->SetDatumPartColor(Prs3d_DatumParts_ZAxis, colZ);
+        m_trihedron->SetArrowColor(Prs3d_DatumParts_XAxis, colX);
+        m_trihedron->SetArrowColor(Prs3d_DatumParts_YAxis, colY);
+        m_trihedron->SetArrowColor(Prs3d_DatumParts_ZAxis, colZ);
+        m_trihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+      }
+      ctx->Display(m_trihedron, Standard_False);
+      // Enable per-axis picking on trihedron
+      ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Axes);
+      // Optionally keep origin picking as well
+      ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Origin);
+      // keep selectable
     }
-    ctx->Display(m_trihedron, Standard_False);
-    // Enable per-axis picking on trihedron
-    ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Axes);
-    // Optionally keep origin picking as well
-    ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Origin);
-    // keep selectable
 
     // Create YZ plane using Datum directions (origin + Y/Z)
     auto P = [](const gp_Pnt& o, const gp_Dir& a, double sa, const gp_Dir& b, double sb) {
@@ -130,28 +139,31 @@ public:
     gp_Pnt p3 = P(ori, dy, planeSize, dz, planeSize);
     gp_Pnt p4 = P(ori, dy, offset,  dz, planeSize);
     
-    TopoDS_Wire wireYZ = BRepBuilderAPI_MakeWire(
-      BRepBuilderAPI_MakeEdge(p1, p2),
-      BRepBuilderAPI_MakeEdge(p2, p3),
-      BRepBuilderAPI_MakeEdge(p3, p4),
-      BRepBuilderAPI_MakeEdge(p4, p1)
-    );
-    TopoDS_Face faceYZ = BRepBuilderAPI_MakeFace(wireYZ);
-    m_planeYZ = new AIS_Shape(faceYZ);
-    if (!m_planeYZ.IsNull()) {
-      m_planeYZ->SetColor(colPlane);
-      m_planeYZ->SetTransparency(transparency);
-      m_planeYZ->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-      // Set face material to be filled and always visible
-      Handle(Prs3d_Drawer) drYZ = m_planeYZ->Attributes();
-      if (drYZ.IsNull()) {
-        drYZ = new Prs3d_Drawer();
-        m_planeYZ->SetAttributes(drYZ);
+    if (showYZ)
+    {
+      TopoDS_Wire wireYZ = BRepBuilderAPI_MakeWire(
+        BRepBuilderAPI_MakeEdge(p1, p2),
+        BRepBuilderAPI_MakeEdge(p2, p3),
+        BRepBuilderAPI_MakeEdge(p3, p4),
+        BRepBuilderAPI_MakeEdge(p4, p1)
+      );
+      TopoDS_Face faceYZ = BRepBuilderAPI_MakeFace(wireYZ);
+      m_planeYZ = new AIS_Shape(faceYZ);
+      if (!m_planeYZ.IsNull()) {
+        m_planeYZ->SetColor(colPlane);
+        m_planeYZ->SetTransparency(transparency);
+        m_planeYZ->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+        // Set face material to be filled and always visible
+        Handle(Prs3d_Drawer) drYZ = m_planeYZ->Attributes();
+        if (drYZ.IsNull()) {
+          drYZ = new Prs3d_Drawer();
+          m_planeYZ->SetAttributes(drYZ);
+        }
+        drYZ->SetFaceBoundaryDraw(Standard_False);  // Hide edges
+        // Force shaded display mode to show filled faces
+        m_planeYZ->SetDisplayMode(AIS_Shaded);
+        ctx->Display(m_planeYZ, Standard_False);
       }
-      drYZ->SetFaceBoundaryDraw(Standard_False);  // Hide edges
-      // Force shaded display mode to show filled faces
-      m_planeYZ->SetDisplayMode(AIS_Shaded);
-      ctx->Display(m_planeYZ, Standard_False);
     }
     
     // Create XZ plane (origin + X/Z)
@@ -160,27 +172,30 @@ public:
     gp_Pnt p7 = P(ori, dx, planeSize, dz, planeSize);
     gp_Pnt p8 = P(ori, dx, offset,  dz, planeSize);
     
-    TopoDS_Wire wireXZ = BRepBuilderAPI_MakeWire(
-      BRepBuilderAPI_MakeEdge(p5, p6),
-      BRepBuilderAPI_MakeEdge(p6, p7),
-      BRepBuilderAPI_MakeEdge(p7, p8),
-      BRepBuilderAPI_MakeEdge(p8, p5)
-    );
-    TopoDS_Face faceXZ = BRepBuilderAPI_MakeFace(wireXZ);
-    m_planeXZ = new AIS_Shape(faceXZ);
-    if (!m_planeXZ.IsNull()) {
-      m_planeXZ->SetColor(colPlane);
-      m_planeXZ->SetTransparency(transparency);
-      m_planeXZ->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-      Handle(Prs3d_Drawer) drXZ = m_planeXZ->Attributes();
-      if (drXZ.IsNull()) {
-        drXZ = new Prs3d_Drawer();
-        m_planeXZ->SetAttributes(drXZ);
+    if (showXZ)
+    {
+      TopoDS_Wire wireXZ = BRepBuilderAPI_MakeWire(
+        BRepBuilderAPI_MakeEdge(p5, p6),
+        BRepBuilderAPI_MakeEdge(p6, p7),
+        BRepBuilderAPI_MakeEdge(p7, p8),
+        BRepBuilderAPI_MakeEdge(p8, p5)
+      );
+      TopoDS_Face faceXZ = BRepBuilderAPI_MakeFace(wireXZ);
+      m_planeXZ = new AIS_Shape(faceXZ);
+      if (!m_planeXZ.IsNull()) {
+        m_planeXZ->SetColor(colPlane);
+        m_planeXZ->SetTransparency(transparency);
+        m_planeXZ->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+        Handle(Prs3d_Drawer) drXZ = m_planeXZ->Attributes();
+        if (drXZ.IsNull()) {
+          drXZ = new Prs3d_Drawer();
+          m_planeXZ->SetAttributes(drXZ);
+        }
+        drXZ->SetFaceBoundaryDraw(Standard_False);
+        // Force shaded display mode to show filled faces
+        m_planeXZ->SetDisplayMode(AIS_Shaded);
+        ctx->Display(m_planeXZ, Standard_False);
       }
-      drXZ->SetFaceBoundaryDraw(Standard_False);
-      // Force shaded display mode to show filled faces
-      m_planeXZ->SetDisplayMode(AIS_Shaded);
-      ctx->Display(m_planeXZ, Standard_False);
     }
     
     // Create XY plane (origin + X/Y)
@@ -189,27 +204,30 @@ public:
     gp_Pnt p11 = P(ori, dx, planeSize, dy, planeSize);
     gp_Pnt p12 = P(ori, dx, offset,    dy, planeSize);
     
-    TopoDS_Wire wireXY = BRepBuilderAPI_MakeWire(
-      BRepBuilderAPI_MakeEdge(p9, p10),
-      BRepBuilderAPI_MakeEdge(p10, p11),
-      BRepBuilderAPI_MakeEdge(p11, p12),
-      BRepBuilderAPI_MakeEdge(p12, p9)
-    );
-    TopoDS_Face faceXY = BRepBuilderAPI_MakeFace(wireXY);
-    m_planeXY = new AIS_Shape(faceXY);
-    if (!m_planeXY.IsNull()) {
-      m_planeXY->SetColor(colPlane);
-      m_planeXY->SetTransparency(transparency);
-      m_planeXY->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-      Handle(Prs3d_Drawer) drXY = m_planeXY->Attributes();
-      if (drXY.IsNull()) {
-        drXY = new Prs3d_Drawer();
-        m_planeXY->SetAttributes(drXY);
+    if (showXY)
+    {
+      TopoDS_Wire wireXY = BRepBuilderAPI_MakeWire(
+        BRepBuilderAPI_MakeEdge(p9, p10),
+        BRepBuilderAPI_MakeEdge(p10, p11),
+        BRepBuilderAPI_MakeEdge(p11, p12),
+        BRepBuilderAPI_MakeEdge(p12, p9)
+      );
+      TopoDS_Face faceXY = BRepBuilderAPI_MakeFace(wireXY);
+      m_planeXY = new AIS_Shape(faceXY);
+      if (!m_planeXY.IsNull()) {
+        m_planeXY->SetColor(colPlane);
+        m_planeXY->SetTransparency(transparency);
+        m_planeXY->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+        Handle(Prs3d_Drawer) drXY = m_planeXY->Attributes();
+        if (drXY.IsNull()) {
+          drXY = new Prs3d_Drawer();
+          m_planeXY->SetAttributes(drXY);
+        }
+        drXY->SetFaceBoundaryDraw(Standard_False);
+        // Force shaded display mode to show filled faces
+        m_planeXY->SetDisplayMode(AIS_Shaded);
+        ctx->Display(m_planeXY, Standard_False);
       }
-      drXY->SetFaceBoundaryDraw(Standard_False);
-      // Force shaded display mode to show filled faces
-      m_planeXY->SetDisplayMode(AIS_Shaded);
-      ctx->Display(m_planeXY, Standard_False);
     }
     // trihedron already displayed above
 
@@ -225,29 +243,33 @@ public:
     }
 
     // Origin mark: small filled circle with thin outline (Fusion-like)
-    const Standard_Real r = 10.0;
-    gp_Ax2 circAx(ori, dz, dx);
-    Handle(Geom_Circle) gC = new Geom_Circle(circAx, r);
-    TopoDS_Edge eC = BRepBuilderAPI_MakeEdge(gC);
-    TopoDS_Wire wC = BRepBuilderAPI_MakeWire(eC);
-    TopoDS_Face fC = BRepBuilderAPI_MakeFace(wC);
-    m_originMark = new AIS_Shape(fC);
+    if (showOri)
     {
-      Handle(Prs3d_Drawer) dO = m_originMark->Attributes(); if (dO.IsNull()) dO = new Prs3d_Drawer();
-      dO->SetColor(Quantity_Color(Quantity_NOC_WHITE));
-      dO->SetFaceBoundaryDraw(Standard_True);
-      Handle(Prs3d_LineAspect) wa = new Prs3d_LineAspect(Quantity_Color(Quantity_NOC_BLACK), Aspect_TOL_SOLID, 1.5f);
-      dO->SetWireAspect(wa);
-      m_originMark->SetAttributes(dO);
-      m_originMark->SetDisplayMode(AIS_Shaded);
-      m_originMark->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-      m_originMark->SetAutoHilight(true);
+      const Standard_Real r = 10.0;
+      gp_Ax2 circAx(ori, dz, dx);
+      Handle(Geom_Circle) gC = new Geom_Circle(circAx, r);
+      TopoDS_Edge eC = BRepBuilderAPI_MakeEdge(gC);
+      TopoDS_Wire wC = BRepBuilderAPI_MakeWire(eC);
+      TopoDS_Face fC = BRepBuilderAPI_MakeFace(wC);
+      m_originMark = new AIS_Shape(fC);
+      {
+        Handle(Prs3d_Drawer) dO = m_originMark->Attributes(); if (dO.IsNull()) dO = new Prs3d_Drawer();
+        dO->SetColor(Quantity_Color(Quantity_NOC_WHITE));
+        dO->SetFaceBoundaryDraw(Standard_True);
+        Handle(Prs3d_LineAspect) wa = new Prs3d_LineAspect(Quantity_Color(Quantity_NOC_BLACK), Aspect_TOL_SOLID, 1.5f);
+        dO->SetWireAspect(wa);
+        m_originMark->SetAttributes(dO);
+        m_originMark->SetDisplayMode(AIS_Shaded);
+        m_originMark->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+        m_originMark->SetAutoHilight(true);
+      }
+      ctx->Display(m_originMark, Standard_False);
+      // keep selectable
+      if (topmostOverlay) { ctx->SetZLayer(m_originMark, Graphic3d_ZLayerId_Top); }
     }
-    ctx->Display(m_originMark, Standard_False);
-    // keep selectable
-    if (topmostOverlay) { ctx->SetZLayer(m_originMark, Graphic3d_ZLayerId_Top); }
 
     // Origin image overlay: small textured quad at Datum origin
+    if (showOri)
     {
       Handle(Image_PixMap) spriteImg; // image with RGBA
       QResource res(":/images/circle.png");
