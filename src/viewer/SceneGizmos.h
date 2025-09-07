@@ -287,22 +287,22 @@ public:
           }
         }
       }
-      if (!hasImage) {
-        dr->SetPointAspect(new Prs3d_PointAspect(Aspect_TOM_O_POINT, Quantity_Color(Quantity_NOC_RED), 8.0));
-      }
-      m_originImage->SetAttributes(dr);
-      m_originImage->SetDisplayMode(AIS_WireFrame);
-      m_originImage->SetAutoHilight(false);
-      // Keep constant pixel size while staying anchored at Datum origin
-      m_originImage->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, ori));
-      ctx->Display(m_originImage, Standard_False);
-      if (topmostOverlay) { ctx->SetZLayer(m_originImage, Graphic3d_ZLayerId_Topmost); }
-      ctx->Deactivate(m_originImage);
+      // if (!hasImage) {
+      //   dr->SetPointAspect(new Prs3d_PointAspect(Aspect_TOM_O_POINT, Quantity_Color(Quantity_NOC_RED), 8.0));
+      // }
+      // m_originImage->SetAttributes(dr);
+      // m_originImage->SetDisplayMode(AIS_WireFrame);
+      // m_originImage->SetAutoHilight(false);
+      // // Keep constant pixel size while staying anchored at Datum origin
+      // m_originImage->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, ori));
+      // ctx->Display(m_originImage, Standard_False);
+      // if (topmostOverlay) { ctx->SetZLayer(m_originImage, Graphic3d_ZLayerId_Topmost); }
+      // ctx->Deactivate(m_originImage);
 
       // Additionally, display a small textured quad at the origin as a robust image overlay
       if (hasImage)
       {
-        const Standard_Real s = 24.0; // target on-screen size (approx.)
+        const Standard_Real s = 48.0; // target on-screen size (approx.)
         Handle(Geom_Plane) plane = new Geom_Plane(gp_Ax3(ori, dz, dx));
         TopoDS_Face f = BRepBuilderAPI_MakeFace(Handle(Geom_Surface)(plane),
                                                 -s * 0.5, s * 0.5,
@@ -313,6 +313,18 @@ public:
         m_originSprite->SetTextureMapOn();
         m_originSprite->SetTextureRepeat(Standard_False, 1.0, 1.0);
         m_originSprite->DisableTextureModulate();
+        // Ensure per-pixel alpha in texture is blended (not treated as opaque)
+        {
+          Handle(Prs3d_Drawer) sprDr = m_originSprite->Attributes();
+          if (sprDr.IsNull()) sprDr = new Prs3d_Drawer();
+          Handle(Prs3d_ShadingAspect) sprShade = sprDr->ShadingAspect();
+          if (sprShade.IsNull()) { sprShade = new Prs3d_ShadingAspect(); sprDr->SetShadingAspect(sprShade); }
+          Handle(Graphic3d_AspectFillArea3d) fillAsp = sprShade->Aspect();
+          if (fillAsp.IsNull()) fillAsp = new Graphic3d_AspectFillArea3d();
+          fillAsp->SetAlphaMode(Graphic3d_AlphaMode_Blend);
+          sprShade->SetAspect(fillAsp);
+          m_originSprite->SetAttributes(sprDr);
+        }
         m_originSprite->SetDisplayMode(3); // textured mode
         m_originSprite->SetAutoHilight(false);
         m_originSprite->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, ori));
