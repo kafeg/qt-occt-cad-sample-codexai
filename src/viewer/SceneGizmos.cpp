@@ -107,6 +107,8 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
       m_trihedron->SetArrowColor(Prs3d_DatumParts_ZAxis, kColZ);
       m_trihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
       ctx->Display(m_trihedron, Standard_False);
+      // Ensure only per-part selection modes are active (no entire-object selection)
+      ctx->Deactivate(m_trihedron);
       ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Axes);
       ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Origin);
     }
@@ -123,6 +125,10 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
       }
       ctx->Redisplay(m_trihedron, Standard_False);
       ctx->Display(m_trihedron, Standard_False);
+      // Keep only axes/origin selection modes enabled
+      ctx->Deactivate(m_trihedron);
+      ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Axes);
+      ctx->Activate(m_trihedron, AIS_TrihedronSelectionMode_Origin);
     }
     if (topmostOverlay && !m_trihedron.IsNull())
       ctx->SetZLayer(m_trihedron, Graphic3d_ZLayerId_Top);
