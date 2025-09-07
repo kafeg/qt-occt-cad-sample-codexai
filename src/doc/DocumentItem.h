@@ -22,6 +22,7 @@ public:
     CylinderFeature = 101,
     ExtrudeFeature = 102,
     MoveFeature = 103,
+    PlaneFeature = 104,
   };
 
   virtual ~DocumentItem() = default;

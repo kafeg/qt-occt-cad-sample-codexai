@@ -46,9 +46,6 @@ private:
   Handle(AIS_InteractiveObject) m_bgAxisX;
   Handle(AIS_InteractiveObject) m_bgAxisY;
   Handle(AIS_Trihedron)         m_trihedron;
-  Handle(AIS_Shape)             m_planeYZ;
-  Handle(AIS_Shape)             m_planeXZ;
-  Handle(AIS_Shape)             m_planeXY;
   Handle(AIS_Shape)             m_originMark;
   Handle(AIS_TexturedShape)     m_bgOriginSprite;
   bool                          m_showBgAxes = false;

@@ -35,6 +35,14 @@ public:
     Rx,
     Ry,
     Rz,
+    // Plane params
+    Ox,
+    Oy,
+    Oz,
+    Nx,
+    Ny,
+    Nz,
+    Size,
   };
 
   struct ParamKeyHash

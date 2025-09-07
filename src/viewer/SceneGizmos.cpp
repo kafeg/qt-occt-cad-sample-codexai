@@ -83,9 +83,6 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
 
   const bool showTri = datum->showTrihedronAxes();
   const bool showOri = datum->showOriginPoint();
-  const bool showXY  = datum->showPlaneXY();
-  const bool showXZ  = datum->showPlaneXZ();
-  const bool showYZ  = datum->showPlaneYZ();
 
   // Trihedron (zoom persistent)
   if (showTri)
@@ -165,63 +162,7 @@ void SceneGizmos::install(const Handle(AIS_InteractiveContext)& ctx,
   ctx->Deactivate(m_bgAxisY);
 
   // Helper to build a rectangular plane aligned by two directions
-  auto makeRectPlane = [&](const gp_Dir& a, const gp_Dir& b) -> Handle(AIS_Shape)
-  {
-    const gp_Pnt p1 = pMix(ori, a, offset,     b, offset);
-    const gp_Pnt p2 = pMix(ori, a, planeSize,  b, offset);
-    const gp_Pnt p3 = pMix(ori, a, planeSize,  b, planeSize);
-    const gp_Pnt p4 = pMix(ori, a, offset,     b, planeSize);
-    TopoDS_Wire w = BRepBuilderAPI_MakeWire(
-        BRepBuilderAPI_MakeEdge(p1, p2),
-        BRepBuilderAPI_MakeEdge(p2, p3),
-        BRepBuilderAPI_MakeEdge(p3, p4),
-        BRepBuilderAPI_MakeEdge(p4, p1));
-    Handle(AIS_Shape) shp = new AIS_Shape(BRepBuilderAPI_MakeFace(w));
-    shp->SetColor(kColPlane);
-    shp->SetTransparency(kPlaneTransp);
-    shp->SetDisplayMode(AIS_Shaded);
-    shp->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
-    Handle(Prs3d_Drawer) dr = shp->Attributes();
-    if (dr.IsNull()) { dr = new Prs3d_Drawer(); shp->SetAttributes(dr); }
-    dr->SetFaceBoundaryDraw(Standard_False);
-    return shp;
-  };
-
-  // YZ plane
-  if (showYZ)
-  {
-    if (m_planeYZ.IsNull()) m_planeYZ = makeRectPlane(dy, dz);
-    ctx->Display(m_planeYZ, Standard_False);
-    if (topmostOverlay) ctx->SetZLayer(m_planeYZ, Graphic3d_ZLayerId_Top);
-  }
-  else if (!m_planeYZ.IsNull())
-  {
-    ctx->Erase(m_planeYZ, Standard_False);
-  }
-
-  // XZ plane
-  if (showXZ)
-  {
-    if (m_planeXZ.IsNull()) m_planeXZ = makeRectPlane(dx, dz);
-    ctx->Display(m_planeXZ, Standard_False);
-    if (topmostOverlay) ctx->SetZLayer(m_planeXZ, Graphic3d_ZLayerId_Top);
-  }
-  else if (!m_planeXZ.IsNull())
-  {
-    ctx->Erase(m_planeXZ, Standard_False);
-  }
-
-  // XY plane
-  if (showXY)
-  {
-    if (m_planeXY.IsNull()) m_planeXY = makeRectPlane(dx, dy);
-    ctx->Display(m_planeXY, Standard_False);
-    if (topmostOverlay) ctx->SetZLayer(m_planeXY, Graphic3d_ZLayerId_Top);
-  }
-  else if (!m_planeXY.IsNull())
-  {
-    ctx->Erase(m_planeXY, Standard_False);
-  }
+  // No overlay planes; planes should be explicit document items
 
   // Origin mark (circle)
   if (showOri)
@@ -288,9 +229,7 @@ void SceneGizmos::reinstall(const Handle(AIS_InteractiveContext)& ctx)
   if (!m_bgAxisX.IsNull()) ctx->Display(m_bgAxisX, Standard_False);
   if (!m_bgAxisY.IsNull()) ctx->Display(m_bgAxisY, Standard_False);
   if (!m_trihedron.IsNull()) ctx->Display(m_trihedron, Standard_False);
-  if (!m_planeYZ.IsNull()) ctx->Display(m_planeYZ, Standard_False);
-  if (!m_planeXZ.IsNull()) ctx->Display(m_planeXZ, Standard_False);
-  if (!m_planeXY.IsNull()) ctx->Display(m_planeXY, Standard_False);
+  // no overlay planes to reinstall
   if (!m_originMark.IsNull()) ctx->Display(m_originMark, Standard_False);
   if (!m_bgOriginSprite.IsNull()) ctx->Display(m_bgOriginSprite, Standard_False);
 }
@@ -301,9 +240,7 @@ void SceneGizmos::erase(const Handle(AIS_InteractiveContext)& ctx)
   if (!m_bgAxisX.IsNull()) ctx->Erase(m_bgAxisX, Standard_False);
   if (!m_bgAxisY.IsNull()) ctx->Erase(m_bgAxisY, Standard_False);
   if (!m_trihedron.IsNull()) ctx->Erase(m_trihedron, Standard_False);
-  if (!m_planeYZ.IsNull()) ctx->Erase(m_planeYZ, Standard_False);
-  if (!m_planeXZ.IsNull()) ctx->Erase(m_planeXZ, Standard_False);
-  if (!m_planeXY.IsNull()) ctx->Erase(m_planeXY, Standard_False);
+  // no overlay planes to erase
   if (!m_originMark.IsNull()) ctx->Erase(m_originMark, Standard_False);
   if (!m_bgOriginSprite.IsNull()) ctx->Erase(m_bgOriginSprite, Standard_False);
 }

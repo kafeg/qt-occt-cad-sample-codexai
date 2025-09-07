@@ -6,6 +6,7 @@
 #include <CylinderFeature.h>
 #include <Document.h>
 #include <MoveFeature.h>
+#include <PlaneFeature.h>
 
 #include <Standard_WarningsDisable.hxx>
 #include <QListWidget>
@@ -116,6 +117,15 @@ QString FeatureHistoryPanel::itemDisplayText(const Handle(DocumentItem)& it) con
       label = QString("Move [T=(%1,%2,%3), R=(%4,%5,%6) deg]")
                 .arg(mf->tx()).arg(mf->ty()).arg(mf->tz())
                 .arg(mf->rxDeg()).arg(mf->ryDeg()).arg(mf->rzDeg());
+    }
+    else if (Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(f); !pf.IsNull())
+    {
+      const gp_Pnt o = pf->origin();
+      const gp_Dir n = pf->normal();
+      label = QString("Plane [O=(%1,%2,%3), N=(%4,%5,%6), S=%7]")
+                .arg(o.X()).arg(o.Y()).arg(o.Z())
+                .arg(n.X()).arg(n.Y()).arg(n.Z())
+                .arg(pf->size());
     }
     // Fallback to RTTI name
     if (label.isEmpty()) label = QString::fromLatin1(f->DynamicType()->Name());

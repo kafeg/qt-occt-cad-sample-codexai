@@ -10,6 +10,7 @@
 
 class Sketch;
 class Datum;
+class PlaneFeature;
 
 // Minimal parametric document: ordered list of features and recompute
 class Document
@@ -38,6 +39,10 @@ public:
   std::shared_ptr<Sketch> findSketch(DocumentItem::Id id) const;
   std::vector<std::shared_ptr<Sketch>> sketches() const;      // list registered sketches
 
+  // Planes: convenience APIs and container for plane features
+  void addPlane(const Handle(PlaneFeature)& p);                // append plane to timeline and container
+  Handle(PlaneFeature) findPlane(DocumentItem::Id id) const;   // find plane by id
+
   // Global Datum of the document
   std::shared_ptr<Datum> datum() const { return m_datum; }
   void setDatum(const std::shared_ptr<Datum>& d) { m_datum = d; }
@@ -53,6 +58,9 @@ private:
   std::unordered_map<DocumentItem::Id, std::shared_ptr<DocumentItem>> m_registry;
   // Ordered list of sketches preserving insertion order
   std::vector<std::shared_ptr<Sketch>> m_sketchList;
+
+  // Ordered list of plane features for quick access/grouping
+  NCollection_Sequence<Handle(PlaneFeature)> m_planes;
 
   // Document's global datum
   std::shared_ptr<Datum> m_datum;

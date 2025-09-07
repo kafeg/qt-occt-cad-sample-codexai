@@ -6,6 +6,7 @@
 #include <BoxFeature.h>
 #include <CylinderFeature.h>
 #include <MoveFeature.h>
+#include <PlaneFeature.h>
 #include <Sketch.h>
 #include <Document.h>
 #include <Datum.h>
@@ -55,7 +56,7 @@ void DocumentTreePanel::refreshFromDocument()
       it->setData(0, Qt::UserRole + 1, tag);
       return it;
     };
-    enum ToggleTag { TagTrihedron = 1, TagOrigin = 2, TagPlaneXY = 3, TagPlaneXZ = 4, TagPlaneYZ = 5,
+    enum ToggleTag { TagTrihedron = 1, TagOrigin = 2,
                      TagTriX = 6, TagTriY = 7, TagTriZ = 8 };
     // Removed overall trihedron toggle from UI; keep per-axis only
     // Per-axis visibility controls (now stored in Datum)
@@ -63,9 +64,6 @@ void DocumentTreePanel::refreshFromDocument()
     makeToggle(QStringLiteral("  Y axis"), d->showTrihedronAxisY(), TagTriY);
     makeToggle(QStringLiteral("  Z axis"), d->showTrihedronAxisZ(), TagTriZ);
     makeToggle(QStringLiteral("Origin Point"),     d->showOriginPoint(),   TagOrigin);
-    makeToggle(QStringLiteral("Plane XY"),         d->showPlaneXY(),       TagPlaneXY);
-    makeToggle(QStringLiteral("Plane XZ"),         d->showPlaneXZ(),       TagPlaneXZ);
-    makeToggle(QStringLiteral("Plane YZ"),         d->showPlaneYZ(),       TagPlaneYZ);
   }
 
   // Bodies (features)
@@ -134,9 +132,6 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
   {
     case 1: d->setShowTrihedronAxes(on); break;
     case 2: d->setShowOriginPoint(on);   break;
-    case 3: d->setShowPlaneXY(on);       break;
-    case 4: d->setShowPlaneXZ(on);       break;
-    case 5: d->setShowPlaneYZ(on);       break;
     case 6: d->setShowTrihedronAxisX(on); break;
     case 7: d->setShowTrihedronAxisY(on); break;
     case 8: d->setShowTrihedronAxisZ(on); break;
@@ -162,6 +157,15 @@ QString DocumentTreePanel::itemDisplayText(const Handle(DocumentItem)& it) const
       label = QString("Move [T=(%1,%2,%3), R=(%4,%5,%6) deg]")
                 .arg(mf->tx()).arg(mf->ty()).arg(mf->tz())
                 .arg(mf->rxDeg()).arg(mf->ryDeg()).arg(mf->rzDeg());
+    else if (Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(f); !pf.IsNull())
+    {
+      const gp_Pnt o = pf->origin();
+      const gp_Dir n = pf->normal();
+      label = QString("Plane [O=(%1,%2,%3), N=(%4,%5,%6), S=%7]")
+                .arg(o.X()).arg(o.Y()).arg(o.Z())
+                .arg(n.X()).arg(n.Y()).arg(n.Z())
+                .arg(pf->size());
+    }
     if (label.isEmpty()) label = QString::fromLatin1(f->DynamicType()->Name());
     if (f->isSuppressed()) label += QStringLiteral(" [Suppressed]");
     return label;

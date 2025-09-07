@@ -2,6 +2,7 @@
 #include <ExtrudeFeature.h>
 #include <MoveFeature.h>
 #include <Sketch.h>
+#include <PlaneFeature.h>
 #include <Datum.h>
 #include <algorithm>
 
@@ -20,6 +21,8 @@ void Document::clear()
   m_featuresCacheDirty = true;
   // Keep Datum persistent; recreate default if missing
   if (!m_datum) m_datum = std::make_shared<Datum>();
+  // Clear planes container
+  m_planes.Clear();
 }
 
 void Document::addItem(const Handle(DocumentItem)& item)
@@ -28,6 +31,10 @@ void Document::addItem(const Handle(DocumentItem)& item)
   {
     m_items.Append(item);
     m_featuresCacheDirty = true;
+    if (Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(item); !pf.IsNull())
+    {
+      m_planes.Append(pf);
+    }
   }
 }
 
@@ -38,6 +45,10 @@ void Document::insertItem(int index1, const Handle(DocumentItem)& item)
   if (index1 > m_items.Size() + 1) index1 = m_items.Size() + 1;
   m_items.InsertBefore(index1, item);
   m_featuresCacheDirty = true;
+  if (Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(item); !pf.IsNull())
+  {
+    m_planes.Append(pf);
+  }
 }
 
 const NCollection_Sequence<Handle(Feature)>& Document::features() const
@@ -133,6 +144,14 @@ void Document::removeFeature(const Handle(Feature)& f)
     {
       m_items.Remove(i);
       m_featuresCacheDirty = true;
+      // If it is a plane, remove from planes container as well
+      if (!Handle(PlaneFeature)::DownCast(f).IsNull())
+      {
+        for (NCollection_Sequence<Handle(PlaneFeature)>::Iterator pit(m_planes); pit.More(); pit.Next())
+        {
+          if (pit.Value()->id() == f->id()) { m_planes.Remove(pit); break; }
+        }
+      }
       break;
     }
   }
@@ -210,4 +229,26 @@ std::vector<std::shared_ptr<Sketch>> Document::sketches() const
 {
   // Return the ordered list to keep stable, insertion-order enumeration
   return m_sketchList;
+}
+
+void Document::addPlane(const Handle(PlaneFeature)& p)
+{
+  if (p.IsNull()) return;
+  addItem(Handle(DocumentItem)(p));
+}
+
+Handle(PlaneFeature) Document::findPlane(DocumentItem::Id id) const
+{
+  for (NCollection_Sequence<Handle(PlaneFeature)>::Iterator it(m_planes); it.More(); it.Next())
+  {
+    const Handle(PlaneFeature)& pf = it.Value();
+    if (!pf.IsNull() && pf->id() == id) return pf;
+  }
+  // fallback: search timeline
+  for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_items); it.More(); it.Next())
+  {
+    Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(it.Value());
+    if (!pf.IsNull() && pf->id() == id) return pf;
+  }
+  return Handle(PlaneFeature)();
 }
