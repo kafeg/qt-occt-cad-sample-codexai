@@ -1,12 +1,14 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/core`: Kernel API wrappers over OCCT primitives/booleans (no Qt deps). Exposed functions: `makeBox`, `makeCylinder`, `fuse`.
-- `src/model`: `Feature` (parameter map), `Document` (ordered features, recompute), primitives: `BoxFeature`, `CylinderFeature`.
-- `src/viewer`: `OcctQOpenGLWidgetViewer` (rendering, input, grid auto-step, view cube, axes/trihedron).
-- `src/ui`: `MainWindow`, `TabPage`, commands (`CreateBoxCommand`, `CreateCylinderCommand`) and dialogs.
+- `src/core`: Kernel API wrappers over OCCT primitives/booleans (no Qt deps). Exposed: `makeBox`, `makeCylinder`, `fuse`.
+- `src/doc`: `DocumentItem` base with ids and minimal serialization API (string blob); registry support in `Document` for cross‑references.
+- `src/model`: `Feature` (parameter map, serialization), `Document` (ordered items, recompute, registry), primitives/features: `BoxFeature`, `CylinderFeature`, `ExtrudeFeature`, `MoveFeature`.
+- `src/viewer`: `OcctQOpenGLWidgetViewer` (rendering, input, grid auto‑step, view cube, axes/trihedron, split views, manipulator, sketch overlay mode).
+- `src/ui`: `MainWindow`, `TabPage`, panels (`FeatureHistoryPanel`, `DocumentTreePanel`), commands (`CreateBoxCommand`, `CreateCylinderCommand`, `CreateExtrudeCommand`, `MoveCommand`) and dialogs.
+- `src/sketch`: Sketch data/serialization and viewer integration; used by `ExtrudeFeature` by id.
 - `src/main.cpp`: Qt app entry. Executable name: `cad-app`.
-- `tests/`: GoogleTest unit tests, including model and command integration.
+- `tests/`: GoogleTest unit tests, including model, sketch, serialization, and UI integration.
 - `CMakeLists.txt`, `CMakePresets.json`: Top-level build and presets; tests via `CTest`.
 - `vcpkg/`, `vcpkg.json`: Manifest dependencies (`qtbase`, `opencascade`, `gtest`).
 - `.clang-format`: Enforced C++ style (OCCT-leaning, Microsoft base).
@@ -41,10 +43,15 @@
 ## Quick Feature Map
 - `BoxFeature`: params `Dx/Dy/Dz`; shape from `KernelAPI::makeBox`.
 - `CylinderFeature`: params `Radius/Height`; shape from `KernelAPI::makeCylinder`.
-- New features follow the same pattern: add params in `Feature::ParamKey` if common, implement execute via `KernelAPI`, add UI command+dialog if interactive.
+- `ExtrudeFeature`: params `SketchId/Distance`; consumes Sketch from document registry; produces prism body.
+- `MoveFeature`: params `SourceId`, exact `gp_Trsf` (+ decomposed Tx/Ty/Tz and Rx/Ry/Rz for readability); moves source and typically suppresses it.
+- New features follow the same pattern: add params in `Feature::ParamKey` if common, implement `execute()` via `KernelAPI`/OCCT, add UI command+dialog if interactive.
 
 ## UI Actions
-- File/Toolbar: `Add Box`, `Add Cylinder` open dialogs and push features, then `Document::recompute()` and viewer sync.
+- File/Toolbar: `Add Box`, `Add Cylinder`, `Add Extrude` open dialogs and push features, then `Document::recompute()` and viewer sync.
+- Move tool: `Move` activates an `AIS_Manipulator` on the selected body; Confirm commits a `MoveFeature`, Cancel discards temporary transforms.
+- Split Views: `Split Views` toggles two subviews; viewer tracks active subview and updates input routing.
+- Sketch overlay: viewer supports toggling a sketch into an edit overlay (Topmost w/o depth) for editing contexts.
 - Test toolbar: `Clear All`, `Add Sample` (adds 3 boxes and 3 cylinders; cylinders row offset along +Y). Local transforms applied via AIS for layout only.
 
 ## External Learning Resources
