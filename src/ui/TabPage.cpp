@@ -15,17 +15,21 @@
 #include <MoveFeature.h>
 #include <PlaneFeature.h>
 #include <PointFeature.h>
+#include <AxeFeature.h>
 #include <Datum.h>
 #include <gp_Quaternion.hxx>
 #include <gp_EulerSequence.hxx>
 #include <Graphic3d_TransformPers.hxx>
 #include <Graphic3d_ZLayerId.hxx>
+#include <Prs3d_Drawer.hxx>
+#include <Prs3d_LineAspect.hxx>
+#include <Quantity_Color.hxx>
 #include <cmath>
 #include <algorithm>
 #include <vector>
 
 TabPage::TabPage(QWidget* parent)
-  : QWidget(parent)
+    : QWidget(parent)
 {
   auto* lay = new QVBoxLayout(this);
   lay->setContentsMargins(0, 0, 0, 0);
@@ -35,9 +39,9 @@ TabPage::TabPage(QWidget* parent)
   QSplitter* left = new QSplitter(Qt::Vertical, split);
   left->setChildrenCollapsible(false);
   m_treePanel = new DocumentTreePanel(this, left);
-  m_history = new FeatureHistoryPanel(this, left);
-  left->addWidget(m_treePanel);   // document tree on top
-  left->addWidget(m_history);     // history under it
+  m_history   = new FeatureHistoryPanel(this, left);
+  left->addWidget(m_treePanel); // document tree on top
+  left->addWidget(m_history);   // history under it
   left->setStretchFactor(0, 1);
   left->setStretchFactor(1, 1);
   m_viewer = new OcctQOpenGLWidgetViewer(split);
@@ -49,7 +53,10 @@ TabPage::TabPage(QWidget* parent)
   lay->addWidget(split);
   m_doc = std::make_unique<Document>();
   // Initialize viewer with document's Datum so gizmos render from it
-  if (m_viewer && m_doc) { m_viewer->setDatum(m_doc->datum()); }
+  if (m_viewer && m_doc)
+  {
+    m_viewer->setDatum(m_doc->datum());
+  }
 
   // Connect panel actions
   connect(m_history, &FeatureHistoryPanel::requestRemoveSelected, [this]() {
@@ -64,7 +71,8 @@ TabPage::TabPage(QWidget* parent)
       {
         if (Handle(MoveFeature) mf = Handle(MoveFeature)::DownCast(f); !mf.IsNull())
         {
-          if (mf->sourceId() != 0) toUnsuppressIds.push_back(mf->sourceId());
+          if (mf->sourceId() != 0)
+            toUnsuppressIds.push_back(mf->sourceId());
         }
         m_doc->removeFeature(f);
       }
@@ -88,15 +96,24 @@ TabPage::TabPage(QWidget* parent)
         for (NCollection_Sequence<Handle(Feature)>::Iterator fit(feats); fit.More(); fit.Next())
         {
           const Handle(Feature)& ff = fit.Value();
-          if (!ff.IsNull() && ff->id() == sid) { src = ff; break; }
+          if (!ff.IsNull() && ff->id() == sid)
+          {
+            src = ff;
+            break;
+          }
         }
-        if (src.IsNull()) continue;
+        if (src.IsNull())
+          continue;
         // Check if any MoveFeature still references this source id
         bool stillReferenced = false;
         for (NCollection_Sequence<Handle(Feature)>::Iterator fit(feats); fit.More(); fit.Next())
         {
           Handle(MoveFeature) remMf = Handle(MoveFeature)::DownCast(fit.Value());
-          if (!remMf.IsNull() && remMf->sourceId() == sid) { stillReferenced = true; break; }
+          if (!remMf.IsNull() && remMf->sourceId() == sid)
+          {
+            stillReferenced = true;
+            break;
+          }
         }
         if (!stillReferenced && src->isSuppressed())
         {
@@ -120,11 +137,17 @@ TabPage::TabPage(QWidget* parent)
   // Sync selection from viewer back to list
   connect(m_viewer, &OcctQOpenGLWidgetViewer::selectionChanged, [this]() {
     Handle(AIS_Shape) sel = m_viewer->selectedShape();
-    if (sel.IsNull()) { if (m_history) m_history->selectItem(Handle(DocumentItem)()); return; }
+    if (sel.IsNull())
+    {
+      if (m_history)
+        m_history->selectItem(Handle(DocumentItem)());
+      return;
+    }
     if (m_bodyToFeature.Contains(sel))
     {
       Handle(Feature) f = Handle(Feature)::DownCast(m_bodyToFeature.FindFromKey(sel));
-      if (!f.IsNull() && m_history) m_history->selectItem(Handle(DocumentItem)(f));
+      if (!f.IsNull() && m_history)
+        m_history->selectItem(Handle(DocumentItem)(f));
     }
   });
 
@@ -136,9 +159,13 @@ TabPage::~TabPage() = default;
 
 void TabPage::syncViewerFromDoc(bool toUpdate)
 {
-  if (!m_viewer) return;
+  if (!m_viewer)
+    return;
   // Ensure gizmos reflect current document Datum
-  if (m_doc) { m_viewer->setDatum(m_doc->datum()); }
+  if (m_doc)
+  {
+    m_viewer->setDatum(m_doc->datum());
+  }
   m_featureToBody.Clear();
   m_bodyToFeature.Clear();
   m_sketchToHandle.clear();
@@ -146,8 +173,11 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
   m_viewer->clearSketches(false);
   for (NCollection_Sequence<Handle(Feature)>::Iterator it(m_doc->features()); it.More(); it.Next())
   {
-    const Handle(Feature)& f = it.Value(); if (f.IsNull()) continue;
-    if (f->isSuppressed()) continue; // do not display suppressed features
+    const Handle(Feature)& f = it.Value();
+    if (f.IsNull())
+      continue;
+    if (f->isSuppressed())
+      continue; // do not display suppressed features
     Handle(AIS_Shape) body = m_viewer->addShape(f->shape(), AIS_Shaded, 0, false);
     // Apply fixed-geometry handling for PointFeature (zoom persistence + top layer)
     if (Handle(PointFeature) pft = Handle(PointFeature)::DownCast(f); !pft.IsNull())
@@ -162,7 +192,8 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
         body->SetAutoHilight(true);
       }
       const Standard_ShortReal tr = static_cast<Standard_ShortReal>(std::clamp(pft->transparency(), 0.0, 1.0));
-      if (tr > 0.0f) body->SetTransparency(tr);
+      if (tr > 0.0f)
+        body->SetTransparency(tr);
     }
     m_featureToBody.Add(f, body);
     m_bodyToFeature.Add(body, f);
@@ -171,7 +202,8 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
   for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_doc->items()); it.More(); it.Next())
   {
     Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(it.Value());
-    if (pf.IsNull() || pf->isSuppressed()) continue;
+    if (pf.IsNull() || pf->isSuppressed())
+      continue;
     Handle(AIS_Shape) body = m_viewer->addShape(pf->shape(), AIS_Shaded, 0, false);
     // Style: semi-transparent plane as before; apply per-feature transparency
     const Standard_ShortReal tr = static_cast<Standard_ShortReal>(std::clamp(pf->transparency(), 0.0, 1.0));
@@ -194,7 +226,8 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
   for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_doc->items()); it.More(); it.Next())
   {
     Handle(PointFeature) pft = Handle(PointFeature)::DownCast(it.Value());
-    if (pft.IsNull() || pft->isSuppressed()) continue;
+    if (pft.IsNull() || pft->isSuppressed())
+      continue;
     Handle(AIS_Shape) body = m_viewer->addShape(pft->shape(), AIS_Shaded, 0, false);
     if (pft->isFixedGeometry())
     {
@@ -206,15 +239,50 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
       body->SetAutoHilight(true);
     }
     const Standard_ShortReal tr = static_cast<Standard_ShortReal>(std::clamp(pft->transparency(), 0.0, 1.0));
-    if (tr > 0.0f) body->SetTransparency(tr);
+    if (tr > 0.0f)
+      body->SetTransparency(tr);
     m_featureToBody.Add(pft, body);
     m_bodyToFeature.Add(body, pft);
+  }
+  // Display axis features (excluded from features())
+  for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(m_doc->items()); it.More(); it.Next())
+  {
+    Handle(AxeFeature) af = Handle(AxeFeature)::DownCast(it.Value());
+    if (af.IsNull() || af->isSuppressed())
+      continue;
+    Handle(AIS_Shape) body = m_viewer->addShape(af->shape(), AIS_WireFrame, 0, false);
+    Quantity_Color    col(1.0, 0.2, 0.2, Quantity_TOC_sRGB);
+    if (auto d = m_doc->datum())
+    {
+      const gp_Dir dir = af->direction();
+      if (dir.IsParallel(d->dirY(), 1.0e-3))
+        col = Quantity_Color(0.25, 0.90, 0.25, Quantity_TOC_sRGB);
+      else if (dir.IsParallel(d->dirZ(), 1.0e-3))
+        col = Quantity_Color(0.25, 0.45, 1.0, Quantity_TOC_sRGB);
+    }
+    Handle(Prs3d_Drawer) dr = new Prs3d_Drawer();
+    dr->SetLineAspect(new Prs3d_LineAspect(col, Aspect_TOL_DASHDOT, 3.0f));
+    body->SetAttributes(dr);
+    body->SetColor(col);
+    body->SetDisplayMode(AIS_WireFrame);
+    if (af->isFixedGeometry())
+    {
+      body->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, gp::Origin()));
+      if (m_viewer && !m_viewer->Context().IsNull())
+      {
+        m_viewer->Context()->SetZLayer(body, Graphic3d_ZLayerId_Top);
+      }
+      body->SetAutoHilight(true);
+    }
+    m_featureToBody.Add(af, body);
+    m_bodyToFeature.Add(body, af);
   }
   // Display registered sketches after features
   for (const auto& sk : m_doc->sketches())
   {
     Handle(AIS_Shape) h = m_viewer->addSketch(sk);
-    if (!h.IsNull()) m_sketchToHandle[sk->id()] = h;
+    if (!h.IsNull())
+      m_sketchToHandle[sk->id()] = h;
   }
   if (toUpdate)
   {
@@ -226,21 +294,27 @@ void TabPage::syncViewerFromDoc(bool toUpdate)
 
 void TabPage::refreshFeatureList()
 {
-  if (m_history) m_history->refreshFromDocument();
-  if (m_treePanel) m_treePanel->refreshFromDocument();
+  if (m_history)
+    m_history->refreshFromDocument();
+  if (m_treePanel)
+    m_treePanel->refreshFromDocument();
 }
 
 void TabPage::refreshDocumentTree()
 {
-  if (m_treePanel) m_treePanel->refreshFromDocument();
+  if (m_treePanel)
+    m_treePanel->refreshFromDocument();
 }
 
 void TabPage::selectFeatureInViewer(const Handle(Feature)& f)
 {
-  if (f.IsNull() || !m_viewer) return;
-  if (!m_featureToBody.Contains(f)) return;
+  if (f.IsNull() || !m_viewer)
+    return;
+  if (!m_featureToBody.Contains(f))
+    return;
   Handle(AIS_Shape) body = Handle(AIS_Shape)::DownCast(m_featureToBody.FindFromKey(f));
-  if (body.IsNull()) return;
+  if (body.IsNull())
+    return;
   auto ctx = m_viewer->Context();
   ctx->ClearSelected(false);
   ctx->AddOrRemoveSelected(body, false);
@@ -251,12 +325,16 @@ void TabPage::selectFeatureInViewer(const Handle(Feature)& f)
 
 void TabPage::activateMove()
 {
-  if (!m_viewer) return;
+  if (!m_viewer)
+    return;
   Handle(AIS_Shape) sel = m_viewer->selectedShape();
-  if (sel.IsNull()) return;
-  if (!m_bodyToFeature.Contains(sel)) return;
+  if (sel.IsNull())
+    return;
+  if (!m_bodyToFeature.Contains(sel))
+    return;
   Handle(Feature) src = Handle(Feature)::DownCast(m_bodyToFeature.FindFromKey(sel));
-  if (src.IsNull()) return;
+  if (src.IsNull())
+    return;
   // Prevent moving fixed planes
   if (Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(src); !pf.IsNull() && pf->isFixedGeometry())
   {
@@ -267,57 +345,83 @@ void TabPage::activateMove()
   {
     return;
   }
+  // Prevent moving fixed axes
+  if (Handle(AxeFeature) ax = Handle(AxeFeature)::DownCast(src); !ax.IsNull() && ax->isFixedGeometry())
+  {
+    return;
+  }
 
   // Show manipulator and connect finish signal to add MoveFeature
   m_viewer->showManipulator(sel);
   // Drop any previous connection(s) for this signal to avoid duplicate commits
   QObject::disconnect(m_viewer, &OcctQOpenGLWidgetViewer::manipulatorFinished, this, nullptr);
-  if (m_connManipFinished) { QObject::disconnect(m_connManipFinished); m_connManipFinished = QMetaObject::Connection(); }
+  if (m_connManipFinished)
+  {
+    QObject::disconnect(m_connManipFinished);
+    m_connManipFinished = QMetaObject::Connection();
+  }
   // Connect once per activation; capture Source by value
-  m_connManipFinished = QObject::connect(m_viewer, &OcctQOpenGLWidgetViewer::manipulatorFinished, this, [this, src](const gp_Trsf& tr) {
-    // Commit at confirm only
-    gp_XYZ t = tr.TranslationPart();
-    gp_Quaternion q = tr.GetRotation();
-    Standard_Real ax = 0.0, ay = 0.0, az = 0.0;
-    q.GetEulerAngles(gp_Intrinsic_XYZ, ax, ay, az);
-    const double r2d = 180.0 / M_PI;
-    const double rx = ax * r2d;
-    const double ry = ay * r2d;
-    const double rz = az * r2d;
+  m_connManipFinished =
+    QObject::connect(m_viewer, &OcctQOpenGLWidgetViewer::manipulatorFinished, this, [this, src](const gp_Trsf& tr) {
+      // Commit at confirm only
+      gp_XYZ        t  = tr.TranslationPart();
+      gp_Quaternion q  = tr.GetRotation();
+      Standard_Real ax = 0.0, ay = 0.0, az = 0.0;
+      q.GetEulerAngles(gp_Intrinsic_XYZ, ax, ay, az);
+      const double r2d = 180.0 / M_PI;
+      const double rx  = ax * r2d;
+      const double ry  = ay * r2d;
+      const double rz  = az * r2d;
 
-    Handle(MoveFeature) mf = new MoveFeature();
-    mf->setSourceId(src->id());
-    // Store exact transform to avoid Euler reconstruction errors
-    mf->setDeltaTrsf(tr);
-    // Also store decomposed params for UI/serialization readability
-    mf->setTranslation(t.X(), t.Y(), t.Z());
-    mf->setRotation(rx, ry, rz);
-    // Hide source in the scene; result should appear as a single moved body
-    src->setSuppressed(true);
-    m_doc->addFeature(mf);
-    m_doc->recompute();
-    syncViewerFromDoc(true);
-    refreshFeatureList();
-    // Disconnect to prevent multiple triggers on subsequent confirmations
-    if (m_connManipFinished) { QObject::disconnect(m_connManipFinished); m_connManipFinished = QMetaObject::Connection(); }
-  });
+      Handle(MoveFeature) mf = new MoveFeature();
+      mf->setSourceId(src->id());
+      // Store exact transform to avoid Euler reconstruction errors
+      mf->setDeltaTrsf(tr);
+      // Also store decomposed params for UI/serialization readability
+      mf->setTranslation(t.X(), t.Y(), t.Z());
+      mf->setRotation(rx, ry, rz);
+      // Hide source in the scene; result should appear as a single moved body
+      src->setSuppressed(true);
+      m_doc->addFeature(mf);
+      m_doc->recompute();
+      syncViewerFromDoc(true);
+      refreshFeatureList();
+      // Disconnect to prevent multiple triggers on subsequent confirmations
+      if (m_connManipFinished)
+      {
+        QObject::disconnect(m_connManipFinished);
+        m_connManipFinished = QMetaObject::Connection();
+      }
+    });
 }
 
 void TabPage::confirmMove()
 {
-  if (!m_viewer) return;
-  if (!m_viewer->isManipulatorActive()) return;
+  if (!m_viewer)
+    return;
+  if (!m_viewer->isManipulatorActive())
+    return;
   m_viewer->confirmManipulator();
   // Keep state clean in case of edge conditions
-  if (m_connManipFinished) { QObject::disconnect(m_connManipFinished); m_connManipFinished = QMetaObject::Connection(); }
+  if (m_connManipFinished)
+  {
+    QObject::disconnect(m_connManipFinished);
+    m_connManipFinished = QMetaObject::Connection();
+  }
 }
 
 void TabPage::cancelMove()
 {
-  if (!m_viewer) return;
-  if (!m_viewer->isManipulatorActive()) return;
+  if (!m_viewer)
+    return;
+  if (!m_viewer->isManipulatorActive())
+    return;
   // Cancel move means no commit; drop any pending connection
-  if (m_connManipFinished) { QObject::disconnect(m_connManipFinished); m_connManipFinished = QMetaObject::Connection(); }
+  if (m_connManipFinished)
+  {
+    QObject::disconnect(m_connManipFinished);
+    m_connManipFinished = QMetaObject::Connection();
+  }
   m_viewer->cancelManipulator();
   // Reset any temporary local transforms by resyncing from document
   syncViewerFromDoc(true);

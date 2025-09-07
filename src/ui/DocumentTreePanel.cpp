@@ -8,6 +8,7 @@
 #include <MoveFeature.h>
 #include <PlaneFeature.h>
 #include <PointFeature.h>
+#include <AxeFeature.h>
 #include <Sketch.h>
 #include <Document.h>
 #include <Datum.h>
@@ -22,7 +23,8 @@
 #include <Standard_WarningsRestore.hxx>
 
 DocumentTreePanel::DocumentTreePanel(TabPage* page, QWidget* parent)
-  : QWidget(parent), m_page(page)
+    : QWidget(parent),
+      m_page(page)
 {
   auto* lay = new QVBoxLayout(this);
   lay->setContentsMargins(0, 0, 0, 0);
@@ -37,10 +39,12 @@ DocumentTreePanel::DocumentTreePanel(TabPage* page, QWidget* parent)
 
 void DocumentTreePanel::refreshFromDocument()
 {
-  if (!m_tree) return;
+  if (!m_tree)
+    return;
   QSignalBlocker blocker(m_tree);
   m_tree->clear();
-  if (m_page == nullptr) return;
+  if (m_page == nullptr)
+    return;
 
   QTreeWidgetItem* root = new QTreeWidgetItem(QStringList() << QStringLiteral("Document"));
   m_tree->addTopLevelItem(root);
@@ -57,9 +61,19 @@ void DocumentTreePanel::refreshFromDocument()
       it->setData(0, Qt::UserRole + 1, tag);
       return it;
     };
-    enum ToggleTag { TagTrihedron = 1, TagOrigin = 2,
-                     TagPlaneXY = 3, TagPlaneXZ = 4, TagPlaneYZ = 5,
-                     TagTriX = 6, TagTriY = 7, TagTriZ = 8 };
+
+    enum ToggleTag
+    {
+      TagTrihedron = 1,
+      TagOrigin    = 2,
+      TagPlaneXY   = 3,
+      TagPlaneXZ   = 4,
+      TagPlaneYZ   = 5,
+      TagTriX      = 6,
+      TagTriY      = 7,
+      TagTriZ      = 8
+    };
+
     // Removed overall trihedron toggle from UI; keep per-axis only
     // Per-axis visibility controls (now stored in Datum)
     makeToggle(QStringLiteral("  Plane XY"), d->showPlaneXY(), TagPlaneXY);
@@ -68,17 +82,18 @@ void DocumentTreePanel::refreshFromDocument()
     makeToggle(QStringLiteral("  X axis"), d->showTrihedronAxisX(), TagTriX);
     makeToggle(QStringLiteral("  Y axis"), d->showTrihedronAxisY(), TagTriY);
     makeToggle(QStringLiteral("  Z axis"), d->showTrihedronAxisZ(), TagTriZ);
-    makeToggle(QStringLiteral("Origin Point"),     d->showOriginPoint(),   TagOrigin);
+    makeToggle(QStringLiteral("Origin Point"), d->showOriginPoint(), TagOrigin);
   }
 
   // Bodies (features)
   QTreeWidgetItem* bodies = new QTreeWidgetItem(root, QStringList() << QStringLiteral("Bodies"));
-  const auto& seq = m_page->doc().items();
+  const auto&      seq    = m_page->doc().items();
   for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(seq); it.More(); it.Next())
   {
     const Handle(DocumentItem)& di = it.Value();
-    Handle(Feature) f = Handle(Feature)::DownCast(di);
-    if (f.IsNull()) continue;
+    Handle(Feature)             f  = Handle(Feature)::DownCast(di);
+    if (f.IsNull())
+      continue;
     auto* node = new QTreeWidgetItem(bodies, QStringList() << itemDisplayText(f));
     // Store document id to resolve selection later
     node->setData(0, Qt::UserRole, QVariant::fromValue<qulonglong>(static_cast<qulonglong>(f->id())));
@@ -86,7 +101,7 @@ void DocumentTreePanel::refreshFromDocument()
 
   // Sketches
   QTreeWidgetItem* sketchesNode = new QTreeWidgetItem(root, QStringList() << QStringLiteral("Sketches"));
-  const auto sketches = m_page->doc().sketches();
+  const auto       sketches     = m_page->doc().sketches();
   for (const auto& sk : sketches)
   {
     const auto sid = sk ? sk->id() : 0;
@@ -101,20 +116,24 @@ void DocumentTreePanel::refreshFromDocument()
 
 void DocumentTreePanel::onSelectionChanged()
 {
-  if (!m_tree || !m_page) return;
+  if (!m_tree || !m_page)
+    return;
   auto items = m_tree->selectedItems();
-  if (items.isEmpty()) return;
+  if (items.isEmpty())
+    return;
   QTreeWidgetItem* it = items.first();
-  QVariant v = it->data(0, Qt::UserRole);
-  if (!v.isValid()) return;
+  QVariant         v  = it->data(0, Qt::UserRole);
+  if (!v.isValid())
+    return;
   const qulonglong id = v.value<qulonglong>();
-  if (id == 0) return;
+  if (id == 0)
+    return;
   // Find matching Handle(Feature) by id in the document items
   const auto& seq = m_page->doc().items();
   for (NCollection_Sequence<Handle(DocumentItem)>::Iterator dit(seq); dit.More(); dit.Next())
   {
     const Handle(DocumentItem)& di = dit.Value();
-    Handle(Feature) f = Handle(Feature)::DownCast(di);
+    Handle(Feature)             f  = Handle(Feature)::DownCast(di);
     if (!f.IsNull() && static_cast<qulonglong>(f->id()) == id)
     {
       emit requestSelectItem(Handle(DocumentItem)(f));
@@ -125,38 +144,58 @@ void DocumentTreePanel::onSelectionChanged()
 
 void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
 {
-  if (!item || !m_page || !m_page->viewer()) return;
+  if (!item || !m_page || !m_page->viewer())
+    return;
   // Only handle our checkable toggles (identified by UserRole+1)
   QVariant tagVar = item->data(0, Qt::UserRole + 1);
-  if (!tagVar.isValid()) return;
+  if (!tagVar.isValid())
+    return;
   auto d = m_page->doc().datum();
-  if (!d) return;
-  const bool on = (item->checkState(0) == Qt::Checked);
-  const int tag = tagVar.toInt();
+  if (!d)
+    return;
+  const bool on  = (item->checkState(0) == Qt::Checked);
+  const int  tag = tagVar.toInt();
   switch (tag)
   {
-    case 1: d->setShowTrihedronAxes(on); break;
-    case 2:
-    {
+    case 1:
+      d->setShowTrihedronAxes(on);
+      break;
+    case 2: {
       d->setShowOriginPoint(on);
       // Mirror origin visibility only if the PointFeature exists; do NOT recreate if deleted.
-      auto& doc = m_page->doc();
+      auto&                doc = m_page->doc();
       Handle(PointFeature) pf;
       for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(doc.items()); it.More(); it.Next())
       {
         Handle(PointFeature) tmp = Handle(PointFeature)::DownCast(it.Value());
-        if (!tmp.IsNull()) { pf = tmp; break; }
+        if (!tmp.IsNull())
+        {
+          pf = tmp;
+          break;
+        }
       }
       bool changed = false;
       if (on)
       {
-        if (!pf.IsNull()) { pf->setSuppressed(false); changed = true; }
+        if (!pf.IsNull())
+        {
+          pf->setSuppressed(false);
+          changed = true;
+        }
       }
       else
       {
-        if (!pf.IsNull()) { pf->setSuppressed(true); changed = true; }
+        if (!pf.IsNull())
+        {
+          pf->setSuppressed(true);
+          changed = true;
+        }
       }
-      if (changed) { doc.recompute(); m_page->syncViewerFromDoc(true); }
+      if (changed)
+      {
+        doc.recompute();
+        m_page->syncViewerFromDoc(true);
+      }
       break;
     }
     case 3: // Plane XY
@@ -164,16 +203,20 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
     case 5: // Plane YZ
     {
       // Update Datum flags
-      if (tag == 3) d->setShowPlaneXY(on);
-      if (tag == 4) d->setShowPlaneXZ(on);
-      if (tag == 5) d->setShowPlaneYZ(on);
+      if (tag == 3)
+        d->setShowPlaneXY(on);
+      if (tag == 4)
+        d->setShowPlaneXZ(on);
+      if (tag == 5)
+        d->setShowPlaneYZ(on);
       // Suppress/unsuppress matching plane features by name
-      auto& doc = m_page->doc();
+      auto&       doc        = m_page->doc();
       const char* targetName = (tag == 3 ? "Plane XY" : (tag == 4 ? "Plane XZ" : "Plane YZ"));
       for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(doc.items()); it.More(); it.Next())
       {
         Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(it.Value());
-        if (pf.IsNull()) continue;
+        if (pf.IsNull())
+          continue;
         if (!pf->name().IsEmpty() && TCollection_AsciiString(targetName).IsEqual(pf->name()))
         {
           pf->setSuppressed(!on);
@@ -184,10 +227,35 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
       m_page->syncViewerFromDoc(true);
       break;
     }
-    case 6: d->setShowTrihedronAxisX(on); break;
-    case 7: d->setShowTrihedronAxisY(on); break;
-    case 8: d->setShowTrihedronAxisZ(on); break;
-    default: return;
+    case 6: // X axis
+    case 7: // Y axis
+    case 8: // Z axis
+    {
+      if (tag == 6)
+        d->setShowTrihedronAxisX(on);
+      if (tag == 7)
+        d->setShowTrihedronAxisY(on);
+      if (tag == 8)
+        d->setShowTrihedronAxisZ(on);
+      auto&       doc        = m_page->doc();
+      const char* targetName = (tag == 6 ? "Axis X" : (tag == 7 ? "Axis Y" : "Axis Z"));
+      for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(doc.items()); it.More(); it.Next())
+      {
+        Handle(AxeFeature) af = Handle(AxeFeature)::DownCast(it.Value());
+        if (af.IsNull())
+          continue;
+        if (!af->name().IsEmpty() && TCollection_AsciiString(targetName).IsEqual(af->name()))
+        {
+          af->setSuppressed(!on);
+          break;
+        }
+      }
+      doc.recompute();
+      m_page->syncViewerFromDoc(true);
+      break;
+    }
+    default:
+      return;
   }
   // Reinstall datum gizmos in viewer to reflect toggles
   m_page->viewer()->setDatum(d);
@@ -195,7 +263,8 @@ void DocumentTreePanel::onItemChanged(QTreeWidgetItem* item, int column)
 
 QString DocumentTreePanel::itemDisplayText(const Handle(DocumentItem)& it) const
 {
-  if (it.IsNull()) return QString("<null>");
+  if (it.IsNull())
+    return QString("<null>");
   if (Handle(Feature) f = Handle(Feature)::DownCast(it); !f.IsNull())
   {
     if (!f->name().IsEmpty())
@@ -207,26 +276,47 @@ QString DocumentTreePanel::itemDisplayText(const Handle(DocumentItem)& it) const
       label = QString("Cylinder [R=%1, H=%2]").arg(cf->radius()).arg(cf->height());
     else if (Handle(MoveFeature) mf = Handle(MoveFeature)::DownCast(f); !mf.IsNull())
       label = QString("Move [T=(%1,%2,%3), R=(%4,%5,%6) deg]")
-                .arg(mf->tx()).arg(mf->ty()).arg(mf->tz())
-                .arg(mf->rxDeg()).arg(mf->ryDeg()).arg(mf->rzDeg());
+                .arg(mf->tx())
+                .arg(mf->ty())
+                .arg(mf->tz())
+                .arg(mf->rxDeg())
+                .arg(mf->ryDeg())
+                .arg(mf->rzDeg());
     else if (Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(f); !pf.IsNull())
     {
       const gp_Pnt o = pf->origin();
       const gp_Dir n = pf->normal();
-      label = QString("Plane [O=(%1,%2,%3), N=(%4,%5,%6), S=%7]")
-                .arg(o.X()).arg(o.Y()).arg(o.Z())
-                .arg(n.X()).arg(n.Y()).arg(n.Z())
+      label          = QString("Plane [O=(%1,%2,%3), N=(%4,%5,%6), S=%7]")
+                .arg(o.X())
+                .arg(o.Y())
+                .arg(o.Z())
+                .arg(n.X())
+                .arg(n.Y())
+                .arg(n.Z())
                 .arg(pf->size());
     }
     else if (Handle(PointFeature) pt = Handle(PointFeature)::DownCast(f); !pt.IsNull())
     {
       const gp_Pnt o = pt->origin();
-      label = QString("Point [O=(%1,%2,%3), R=%4]")
-                .arg(o.X()).arg(o.Y()).arg(o.Z())
-                .arg(pt->radius());
+      label          = QString("Point [O=(%1,%2,%3), R=%4]").arg(o.X()).arg(o.Y()).arg(o.Z()).arg(pt->radius());
     }
-    if (label.isEmpty()) label = QString::fromLatin1(f->DynamicType()->Name());
-    if (f->isSuppressed()) label += QStringLiteral(" [Suppressed]");
+    else if (Handle(AxeFeature) ax = Handle(AxeFeature)::DownCast(f); !ax.IsNull())
+    {
+      const gp_Pnt o = ax->origin();
+      const gp_Dir d = ax->direction();
+      label          = QString("Axis [O=(%1,%2,%3), D=(%4,%5,%6), L=%7]")
+                .arg(o.X())
+                .arg(o.Y())
+                .arg(o.Z())
+                .arg(d.X())
+                .arg(d.Y())
+                .arg(d.Z())
+                .arg(ax->length());
+    }
+    if (label.isEmpty())
+      label = QString::fromLatin1(f->DynamicType()->Name());
+    if (f->isSuppressed())
+      label += QStringLiteral(" [Suppressed]");
     return label;
   }
   if (!it->DynamicType().IsNull())

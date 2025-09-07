@@ -17,13 +17,14 @@ public:
 
   enum class Kind
   {
-    Sketch = 1,
-    BoxFeature = 100,
+    Sketch          = 1,
+    BoxFeature      = 100,
     CylinderFeature = 101,
-    ExtrudeFeature = 102,
-    MoveFeature = 103,
-    PlaneFeature = 104,
-    PointFeature = 105,
+    ExtrudeFeature  = 102,
+    MoveFeature     = 103,
+    PlaneFeature    = 104,
+    PointFeature    = 105,
+    AxeFeature      = 106,
   };
 
   virtual ~DocumentItem() = default;
@@ -34,13 +35,13 @@ public:
   virtual Kind kind() const = 0;
 
   // Minimal serialization interface: encode to a string blob and restore from it
-  virtual std::string serialize() const = 0;
+  virtual std::string serialize() const                    = 0;
   virtual void        deserialize(const std::string& data) = 0;
 
   // Factory registration and creation for document load
   using CreateFn = std::function<std::shared_ptr<DocumentItem>()>;
 
-  static void registerFactory(Kind k, CreateFn fn);
+  static void                          registerFactory(Kind k, CreateFn fn);
   static std::shared_ptr<DocumentItem> create(Kind k);
 
 protected:

@@ -3,31 +3,37 @@
 #include "Document.h"
 #include "PlaneFeature.h"
 #include "PointFeature.h"
+#include "AxeFeature.h"
 #include "Datum.h"
 
 #include <gp_Vec.hxx>
 
-namespace DocumentInitializer {
+namespace DocumentInitializer
+{
 
 void initialize(Document& doc)
 {
   auto d = doc.datum();
-  if (!d) return;
+  if (!d)
+    return;
 
-  const gp_Pnt ori = d->origin();
-  const gp_Dir dx  = d->dirX();
-  const gp_Dir dy  = d->dirY();
-  const gp_Dir dz  = d->dirZ();
+  const gp_Pnt        ori       = d->origin();
+  const gp_Dir        dx        = d->dirX();
+  const gp_Dir        dy        = d->dirY();
+  const gp_Dir        dz        = d->dirZ();
   const Standard_Real planeSize = d->planeSize();
   const Standard_Real offset    = d->planeOffset();
+  const Standard_Real axLen     = d->axisLength();
 
   // Match previous UI-created geometry extents
-  const Standard_Real half = 0.5 * (planeSize - offset);
+  const Standard_Real half      = 0.5 * (planeSize - offset);
   const Standard_Real centerOff = 0.5 * (planeSize + offset);
 
   auto mkPt = [&](const gp_Dir& a, const gp_Dir& b) {
-    gp_Vec va(a.XYZ()); va.Multiply(centerOff);
-    gp_Vec vb(b.XYZ()); vb.Multiply(centerOff);
+    gp_Vec va(a.XYZ());
+    va.Multiply(centerOff);
+    gp_Vec vb(b.XYZ());
+    vb.Multiply(centerOff);
     return ori.Translated(va + vb);
   };
 
@@ -109,6 +115,22 @@ void initialize(Document& doc)
     doc.addPlane(pYZ);
   }
 
+  // Axes
+  auto makeAxis = [&](const gp_Dir& dir, const char* name, bool show) {
+    Handle(AxeFeature) ax = new AxeFeature();
+    ax->setOrigin(ori);
+    ax->setDirection(dir);
+    ax->setLength(axLen);
+    ax->setFixedGeometry(true);
+    ax->setName(TCollection_AsciiString(name));
+    ax->setSuppressed(!show);
+    doc.addFeature(ax);
+  };
+  const bool showTri = d->showTrihedronAxes();
+  makeAxis(dx, "Axis X", showTri && d->showTrihedronAxisX());
+  makeAxis(dy, "Axis Y", showTri && d->showTrihedronAxisY());
+  makeAxis(dz, "Axis Z", showTri && d->showTrihedronAxisZ());
+
   // Optional origin point
   if (d->showOriginPoint())
   {
@@ -125,4 +147,3 @@ void initialize(Document& doc)
 }
 
 } // namespace DocumentInitializer
-

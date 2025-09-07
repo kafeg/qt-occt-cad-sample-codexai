@@ -7,6 +7,7 @@
 #include <Document.h>
 #include <MoveFeature.h>
 #include <PlaneFeature.h>
+#include <AxeFeature.h>
 
 #include <Standard_WarningsDisable.hxx>
 #include <QListWidget>
@@ -23,12 +24,13 @@
 #include <AIS_Shape.hxx>
 
 FeatureHistoryPanel::FeatureHistoryPanel(TabPage* page, QWidget* parent)
-  : QWidget(parent), m_page(page)
+    : QWidget(parent),
+      m_page(page)
 {
   auto* lay = new QVBoxLayout(this);
   lay->setContentsMargins(0, 0, 0, 0);
   auto* btnRow = new QHBoxLayout();
-  m_btnRemove = new QPushButton("Remove", this);
+  m_btnRemove  = new QPushButton("Remove", this);
   btnRow->addStretch(1);
   btnRow->addWidget(m_btnRemove);
   lay->addLayout(btnRow);
@@ -48,7 +50,8 @@ void FeatureHistoryPanel::refreshFromDocument()
 {
   m_list->clear();
   m_rowHandles.Clear();
-  if (m_page == nullptr) return;
+  if (m_page == nullptr)
+    return;
   const auto& seq = m_page->doc().items();
   for (NCollection_Sequence<Handle(DocumentItem)>::Iterator it(seq); it.More(); it.Next())
   {
@@ -61,9 +64,11 @@ void FeatureHistoryPanel::refreshFromDocument()
 NCollection_Sequence<Handle(DocumentItem)> FeatureHistoryPanel::selectedItems() const
 {
   NCollection_Sequence<Handle(DocumentItem)> result;
-  if (!m_list) return result;
+  if (!m_list)
+    return result;
   auto items = m_list->selectedItems();
-  if (items.isEmpty()) return result;
+  if (items.isEmpty())
+    return result;
   int row = m_list->row(items.first());
   if (row >= 0 && row < m_rowHandles.Size())
   {
@@ -75,7 +80,8 @@ NCollection_Sequence<Handle(DocumentItem)> FeatureHistoryPanel::selectedItems() 
 void FeatureHistoryPanel::onSelectionChanged()
 {
   auto sel = selectedItems();
-  if (sel.IsEmpty()) return;
+  if (sel.IsEmpty())
+    return;
   emit requestSelectItem(sel.First());
 }
 
@@ -100,10 +106,11 @@ bool FeatureHistoryPanel::eventFilter(QObject* obj, QEvent* ev)
 
 QString FeatureHistoryPanel::itemDisplayText(const Handle(DocumentItem)& it) const
 {
-  if (it.IsNull()) return QString("<null>");
+  if (it.IsNull())
+    return QString("<null>");
   if (Handle(Feature) f = Handle(Feature)::DownCast(it); !f.IsNull())
   {
-  // Prefer explicit name if set
+    // Prefer explicit name if set
     if (!f->name().IsEmpty())
       return QString::fromLatin1(f->name().ToCString());
     // Otherwise, basic type-specific summary
@@ -115,21 +122,44 @@ QString FeatureHistoryPanel::itemDisplayText(const Handle(DocumentItem)& it) con
     else if (Handle(MoveFeature) mf = Handle(MoveFeature)::DownCast(f); !mf.IsNull())
     {
       label = QString("Move [T=(%1,%2,%3), R=(%4,%5,%6) deg]")
-                .arg(mf->tx()).arg(mf->ty()).arg(mf->tz())
-                .arg(mf->rxDeg()).arg(mf->ryDeg()).arg(mf->rzDeg());
+                .arg(mf->tx())
+                .arg(mf->ty())
+                .arg(mf->tz())
+                .arg(mf->rxDeg())
+                .arg(mf->ryDeg())
+                .arg(mf->rzDeg());
     }
     else if (Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(f); !pf.IsNull())
     {
       const gp_Pnt o = pf->origin();
       const gp_Dir n = pf->normal();
-      label = QString("Plane [O=(%1,%2,%3), N=(%4,%5,%6), S=%7]")
-                .arg(o.X()).arg(o.Y()).arg(o.Z())
-                .arg(n.X()).arg(n.Y()).arg(n.Z())
+      label          = QString("Plane [O=(%1,%2,%3), N=(%4,%5,%6), S=%7]")
+                .arg(o.X())
+                .arg(o.Y())
+                .arg(o.Z())
+                .arg(n.X())
+                .arg(n.Y())
+                .arg(n.Z())
                 .arg(pf->size());
     }
+    else if (Handle(AxeFeature) ax = Handle(AxeFeature)::DownCast(f); !ax.IsNull())
+    {
+      const gp_Pnt o = ax->origin();
+      const gp_Dir d = ax->direction();
+      label          = QString("Axis [O=(%1,%2,%3), D=(%4,%5,%6), L=%7]")
+                .arg(o.X())
+                .arg(o.Y())
+                .arg(o.Z())
+                .arg(d.X())
+                .arg(d.Y())
+                .arg(d.Z())
+                .arg(ax->length());
+    }
     // Fallback to RTTI name
-    if (label.isEmpty()) label = QString::fromLatin1(f->DynamicType()->Name());
-    if (f->isSuppressed()) label += QStringLiteral(" [Suppressed]");
+    if (label.isEmpty())
+      label = QString::fromLatin1(f->DynamicType()->Name());
+    if (f->isSuppressed())
+      label += QStringLiteral(" [Suppressed]");
     return label;
   }
   // Non-feature items
@@ -147,7 +177,11 @@ QString FeatureHistoryPanel::itemDisplayText(const Handle(DocumentItem)& it) con
 
 void FeatureHistoryPanel::selectItem(const Handle(DocumentItem)& it)
 {
-  if (it.IsNull()) { m_list->clearSelection(); return; }
+  if (it.IsNull())
+  {
+    m_list->clearSelection();
+    return;
+  }
   // Find row by handle equality
   for (int i = 1; i <= m_rowHandles.Size(); ++i)
   {
@@ -161,11 +195,11 @@ void FeatureHistoryPanel::selectItem(const Handle(DocumentItem)& it)
 
 void FeatureHistoryPanel::onContextMenuRequested(const QPoint& pos)
 {
-  auto items = m_list->selectedItems();
-  QMenu menu(this);
+  auto     items = m_list->selectedItems();
+  QMenu    menu(this);
   QAction* actRename = menu.addAction("Rename...");
   QAction* actToggle = nullptr;
-  bool haveSel = !items.isEmpty();
+  bool     haveSel   = !items.isEmpty();
   if (haveSel)
   {
     int row = m_list->row(items.first());
@@ -177,31 +211,47 @@ void FeatureHistoryPanel::onContextMenuRequested(const QPoint& pos)
     }
   }
   QAction* actRemove = menu.addAction("Remove");
-  QAction* chosen = menu.exec(m_list->viewport()->mapToGlobal(pos));
-  if (!chosen) return;
-  if (chosen == actRename) { doRenameSelected(); }
-  else if (chosen == actRemove) { onRemoveClicked(); }
-  else if (chosen == actToggle) { doToggleSuppressSelected(); }
+  QAction* chosen    = menu.exec(m_list->viewport()->mapToGlobal(pos));
+  if (!chosen)
+    return;
+  if (chosen == actRename)
+  {
+    doRenameSelected();
+  }
+  else if (chosen == actRemove)
+  {
+    onRemoveClicked();
+  }
+  else if (chosen == actToggle)
+  {
+    doToggleSuppressSelected();
+  }
 }
 
 void FeatureHistoryPanel::doRenameSelected()
 {
   auto items = m_list->selectedItems();
-  if (items.isEmpty() || m_page == nullptr) return;
+  if (items.isEmpty() || m_page == nullptr)
+    return;
   int row = m_list->row(items.first());
-  if (row < 0 || row >= m_rowHandles.Size()) return;
+  if (row < 0 || row >= m_rowHandles.Size())
+    return;
   Handle(DocumentItem) di = m_rowHandles.Value(row + 1);
-  Handle(Feature) f = Handle(Feature)::DownCast(di);
-  if (f.IsNull()) return;
-  bool ok = false;
+  Handle(Feature)      f  = Handle(Feature)::DownCast(di);
+  if (f.IsNull())
+    return;
+  bool    ok      = false;
   QString current = itemDisplayText(f);
   // Use only name component if present
-  if (!f->name().IsEmpty()) current = QString::fromLatin1(f->name().ToCString());
+  if (!f->name().IsEmpty())
+    current = QString::fromLatin1(f->name().ToCString());
   QString text = QInputDialog::getText(this, "Rename Feature", "Name:", QLineEdit::Normal, current, &ok);
-  if (!ok) return;
+  if (!ok)
+    return;
   // Trim and set
   text = text.trimmed();
-  if (text.isEmpty()) return;
+  if (text.isEmpty())
+    return;
   f->setName(TCollection_AsciiString(text.toLatin1().constData()));
   refreshFromDocument();
 }
@@ -209,12 +259,15 @@ void FeatureHistoryPanel::doRenameSelected()
 void FeatureHistoryPanel::doToggleSuppressSelected()
 {
   auto items = m_list->selectedItems();
-  if (items.isEmpty() || m_page == nullptr) return;
+  if (items.isEmpty() || m_page == nullptr)
+    return;
   int row = m_list->row(items.first());
-  if (row < 0 || row >= m_rowHandles.Size()) return;
+  if (row < 0 || row >= m_rowHandles.Size())
+    return;
   Handle(DocumentItem) di = m_rowHandles.Value(row + 1);
-  Handle(Feature) f = Handle(Feature)::DownCast(di);
-  if (f.IsNull()) return;
+  Handle(Feature)      f  = Handle(Feature)::DownCast(di);
+  if (f.IsNull())
+    return;
   f->setSuppressed(!f->isSuppressed());
   // Recompute document and resync viewer + list
   m_page->doc().recompute();
