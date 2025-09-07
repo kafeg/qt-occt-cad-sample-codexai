@@ -209,6 +209,26 @@ Sketch::CurveId Sketch::addLineAuto(const gp_Pnt2d& aIn, const gp_Pnt2d& bIn, do
     snapToNearest(a, snapA, a);
     snapToNearest(b, snapB, b);
   }
+  // Also snap to existing sketch points (auxiliary markers)
+  if (!points_.empty())
+  {
+    auto snapToPointIfNear = [&](gp_Pnt2d& p){
+      double bestD2 = std::numeric_limits<double>::infinity();
+      int bestIdx = -1;
+      for (int i = 0; i < static_cast<int>(points_.size()); ++i)
+      {
+        const gp_Pnt2d& q = points_[static_cast<std::size_t>(i)];
+        double d2 = dist2(p, q);
+        if (d2 < bestD2) { bestD2 = d2; bestIdx = i; }
+      }
+      if (bestIdx >= 0 && bestD2 <= tol*tol)
+      {
+        p = points_[static_cast<std::size_t>(bestIdx)];
+      }
+    };
+    snapToPointIfNear(a);
+    snapToPointIfNear(b);
+  }
 
   // Add the line (possibly with snapped endpoints)
   const CurveId newId = addLine(a, b);
@@ -282,6 +302,112 @@ Sketch::CurveId Sketch::addLineAuto(const gp_Pnt2d& aIn, const gp_Pnt2d& bIn, do
     }
   }
 
+  // Create intersection points with other line segments (proper crossings, not at endpoints)
+  auto tryAddIntersectionWith = [&](int i){
+    const auto& ci = curves_[static_cast<std::size_t>(i)];
+    if (ci.type != CurveType::Line) return;
+    const gp_Pnt2d A = ci.line.p1;
+    const gp_Pnt2d B = ci.line.p2;
+    const gp_Pnt2d C = NA;
+    const gp_Pnt2d D = NB;
+    const double x1=A.X(), y1=A.Y(), x2=B.X(), y2=B.Y();
+    const double x3=C.X(), y3=C.Y(), x4=D.X(), y4=D.Y();
+    const double den = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+    if (std::abs(den) <= 1.0e-18) return; // parallel/coincident
+    const double t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / den;
+    const double u = ((x1-x3)*(y1-y2) - (y1-y3)*(x1-x2)) / den;
+    if (t <= tol || t >= 1.0 - tol || u <= tol || u >= 1.0 - tol) return; // ignore near endpoints
+    const gp_Pnt2d P(x1 + t*(x2-x1), y1 + t*(y2-y1));
+    // Deduplicate by proximity to existing points
+    for (const auto& q : points_) {
+      const double dx = q.X() - P.X();
+      const double dy = q.Y() - P.Y();
+      if (dx*dx + dy*dy <= tol*tol) return;
+    }
+    addPoint(P);
+  };
+  for (int i = 0; i < newId; ++i) { tryAddIntersectionWith(i); }
+
+  // Full cross-intersection splitting of both existing lines and the new line
+  {
+    struct CrossHit { int curveIdx; double uNew; gp_Pnt2d P; };
+    std::vector<CrossHit> hits;
+    const double x1=NA.X(), y1=NA.Y(), x2=NB.X(), y2=NB.Y();
+    for (int i = 0; i < newId; ++i)
+    {
+      const auto& ci = curves_[static_cast<std::size_t>(i)];
+      if (ci.type != CurveType::Line) continue;
+      const double x3=ci.line.p1.X(), y3=ci.line.p1.Y();
+      const double x4=ci.line.p2.X(), y4=ci.line.p2.Y();
+      const double den = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+      if (std::abs(den) <= 1.0e-18) continue; // parallel/coincident
+      const double t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / den; // param on new [0,1]
+      const double u = ((x1-x3)*(y1-y2) - (y1-y3)*(x1-x2)) / den; // param on existing [0,1]
+      if (t <= tol || t >= 1.0 - tol || u <= tol || u >= 1.0 - tol) continue; // ignore near endpoints
+      const gp_Pnt2d P(x1 + t*(x2-x1), y1 + t*(y2-y1));
+      hits.push_back(CrossHit{i, t, P});
+    }
+
+    std::sort(hits.begin(), hits.end(), [](const CrossHit& a, const CrossHit& b){ return a.uNew < b.uNew; });
+    std::vector<CrossHit> uniqueHits; uniqueHits.reserve(hits.size());
+    for (const auto& h : hits)
+    {
+      if (uniqueHits.empty() || std::abs(h.uNew - uniqueHits.back().uNew) > tol)
+        uniqueHits.push_back(h);
+    }
+
+    if (!uniqueHits.empty())
+    {
+      // Split existing
+      for (const auto& h : uniqueHits) { splitAtPointIfInside(h.curveIdx, h.P); }
+
+      // Split the new line at all intersection points
+      std::vector<gp_Pnt2d> cuts; cuts.reserve(uniqueHits.size() + 2);
+      cuts.push_back(NA); for (const auto& h : uniqueHits) cuts.push_back(h.P); cuts.push_back(NB);
+
+      std::vector<int> newSegIds; newSegIds.reserve(cuts.size() - 1);
+      curves_[static_cast<std::size_t>(newId)].type = CurveType::Line;
+      curves_[static_cast<std::size_t>(newId)].line = Line{cuts[0], cuts[1]};
+      newSegIds.push_back(newId);
+      int lastId = newId;
+      for (std::size_t k = 1; k + 1 < cuts.size(); ++k)
+      {
+        Curve seg; seg.type = CurveType::Line; seg.line = Line{cuts[k], cuts[k+1]};
+        curves_.push_back(seg);
+        int segId = static_cast<int>(curves_.size()) - 1;
+        addCoincident(EndpointRef{lastId, 1}, EndpointRef{segId, 0});
+        newSegIds.push_back(segId);
+        lastId = segId;
+      }
+
+      // Tie each interior joint of the new line to the nearest existing endpoint cluster
+      std::vector<KDPoint> eps; eps.reserve(curves_.size() * 2);
+      for (std::size_t i = 0; i < curves_.size(); ++i)
+        for (int e = 0; e < 2; ++e)
+        {
+          EndpointRef r{static_cast<int>(i), e}; const auto p = getEndpoint(r);
+          eps.push_back(KDPoint{p.X(), p.Y(), static_cast<int>(endpointKey(r))});
+        }
+      KDTree2D eKdt(std::move(eps));
+      for (std::size_t j = 1; j + 1 < cuts.size(); ++j)
+      {
+        const gp_Pnt2d& P = cuts[j];
+        const double xmin = P.X() - tol, xmax = P.X() + tol;
+        const double ymin = P.Y() - tol, ymax = P.Y() + tol;
+        int bestId = -1; double bestD2 = std::numeric_limits<double>::infinity();
+        eKdt.rangeQuery(xmin, ymin, xmax, ymax, [&](const KDPoint& q){
+          gp_Pnt2d q2(q.x, q.y); double d2 = dist2(P, q2);
+          if (d2 < bestD2) { bestD2 = d2; bestId = q.id; }
+        });
+        if (bestId >= 0 && bestD2 <= tol*tol)
+        {
+          int nearCurve = bestId / 2; int nearEnd = bestId % 2;
+          addCoincident(EndpointRef{newSegIds[j-1], 1}, EndpointRef{nearCurve, nearEnd});
+        }
+      }
+    }
+  }
+
   return newId;
 }
 
@@ -292,6 +418,12 @@ Sketch::CurveId Sketch::addArc(const gp_Pnt2d& center, const gp_Pnt2d& a, const 
   c.arc = Arc{center, a, b, clockwise};
   curves_.push_back(c);
   return static_cast<CurveId>(curves_.size() - 1);
+}
+
+int Sketch::addPoint(const gp_Pnt2d& p)
+{
+  points_.push_back(p);
+  return static_cast<int>(points_.size() - 1);
 }
 
 void Sketch::addCoincident(const EndpointRef& a, const EndpointRef& b)
@@ -739,6 +871,12 @@ std::string Sketch::serialize() const
          << (c.arc.clockwise ? 1 : 0) << "\n";
     }
   }
+  // Points block
+  os << "points " << points_.size() << "\n";
+  for (const auto& p : points_)
+  {
+    os << "P " << p.X() << ' ' << p.Y() << "\n";
+  }
   os << "constraints " << constraints_.size() << "\n";
   for (const auto& k : constraints_)
   {
@@ -766,6 +904,7 @@ void Sketch::deserialize(const std::string& data)
 {
   curves_.clear();
   constraints_.clear();
+  points_.clear();
   // Defaults: XY plane at origin
   m_ax2 = gp_Ax2(gp_Pnt(0,0,0), gp::DZ(), gp::DX());
   m_planeId = 0;
@@ -789,6 +928,20 @@ void Sketch::deserialize(const std::string& data)
       }
     }
   }
+  // Optionally points block may follow directly after curves
+  if (is >> head >> n && head == "points")
+  {
+    for (std::size_t i = 0; i < n; ++i)
+    {
+      char typ; is >> typ;
+      if (typ == 'P')
+      {
+        double x,y; is >> x >> y;
+        addPoint(gp_Pnt2d(x,y));
+      }
+    }
+  }
+
   if (is >> head >> n && head == "constraints")
   {
     for (std::size_t i = 0; i < n; ++i)

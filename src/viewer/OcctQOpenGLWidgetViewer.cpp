@@ -44,6 +44,7 @@
 
 #include <BRep_Builder.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeVertex.hxx>
 #include <TopoDS_Compound.hxx>
 #include <TopoDS_Wire.hxx>
 
@@ -52,6 +53,7 @@
 #include <TColStd_IndexedDataMapOfStringString.hxx>
 #include <TCollection_AsciiString.hxx>
 #include <AIS_AnimationCamera.hxx>
+#include <Prs3d_PointAspect.hxx>
 
 class OcctQtFrameBuffer : public OpenGl_FrameBuffer
 {
@@ -1001,6 +1003,28 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketc
     }
   }
 
+  // Add point markers (as TopoDS_Vertex) into the same compound
+  if (!sketch->points().empty())
+  {
+    const gp_Ax2 ax = sketch->plane();
+    const gp_Pnt  O  = ax.Location();
+    const gp_Dir  Xd = ax.XDirection();
+    const gp_Dir  Yd = ax.YDirection();
+    auto toPnt = [&](const gp_Pnt2d& p) {
+      const double u = p.X();
+      const double v = p.Y();
+      gp_Vec vx(Xd.XYZ()); vx.Multiply(u);
+      gp_Vec vy(Yd.XYZ()); vy.Multiply(v);
+      return O.Translated(vx + vy);
+    };
+    for (const auto& p2d : sketch->points())
+    {
+      const gp_Pnt p3d = toPnt(p2d);
+      TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p3d);
+      builder.Add(comp, v);
+    }
+  }
+
   Handle(AIS_Shape) ais = new AIS_Shape(comp);
   // Fixed sketch colors: semi-transparent light blue fill, saturated blue contours
   const Quantity_Color kFillCol(0.55, 0.80, 1.0, Quantity_TOC_sRGB);   // light blue
@@ -1025,6 +1049,9 @@ Handle(AIS_Shape) OcctQOpenGLWidgetViewer::addSketch(const std::shared_ptr<Sketc
   drw->SetWireAspect(edgeAspect);
   drw->SetFaceBoundaryDraw(Standard_True);
   drw->SetFaceBoundaryAspect(edgeAspect);
+  // Visible point markers for sketch points
+  Handle(Prs3d_PointAspect) pAsp = new Prs3d_PointAspect(Aspect_TOM_O, kEdgeCol, 4.0);
+  drw->SetPointAspect(pAsp);
   ais->SetAttributes(drw);
   // Apply transparency at AIS level as well
   ais->SetTransparency(kAlpha);

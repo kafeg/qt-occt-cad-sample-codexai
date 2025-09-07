@@ -103,6 +103,9 @@ public:
   CurveId addLineAuto(const gp_Pnt2d& a, const gp_Pnt2d& b, double tol = 1.0e-6);
   CurveId addArc(const gp_Pnt2d& center, const gp_Pnt2d& a, const gp_Pnt2d& b, bool clockwise);
 
+  // Points (auxiliary markers), e.g., intersections for future dragging
+  int addPoint(const gp_Pnt2d& p);
+
   // Add constraints
   void addCoincident(const EndpointRef& a, const EndpointRef& b);
 
@@ -128,6 +131,7 @@ public:
   // Access
   const std::vector<Curve>& curves() const { return curves_; }
   const std::vector<Constraint>& constraints() const { return constraints_; }
+  const std::vector<gp_Pnt2d>& points() const { return points_; }
 
 private:
   // Endpoint index into a flattened list (each curve contributes two endpoints)
@@ -143,6 +147,7 @@ private:
 private:
   std::vector<Curve> curves_{};
   std::vector<Constraint> constraints_{};
+  std::vector<gp_Pnt2d> points_{}; // auxiliary sketch points (e.g., intersections)
 
   // mutable because computeWires groups by endpoint clusters without mutating geometry
   mutable std::vector<std::size_t> uf_parent_{};
