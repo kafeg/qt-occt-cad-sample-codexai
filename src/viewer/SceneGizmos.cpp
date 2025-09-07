@@ -127,8 +127,12 @@ void SceneGizmos::reinstall(const Handle(AIS_InteractiveContext)& ctx)
   // Re-display created items
   if (!m_bgAxisX.IsNull()) ctx->Display(m_bgAxisX, Standard_False);
   if (!m_bgAxisY.IsNull()) ctx->Display(m_bgAxisY, Standard_False);
+  // Keep background gizmos non-selectable to avoid accidental picks/crashes
+  if (!m_bgAxisX.IsNull()) ctx->Deactivate(m_bgAxisX);
+  if (!m_bgAxisY.IsNull()) ctx->Deactivate(m_bgAxisY);
   // no overlay planes to reinstall
   if (!m_bgOriginSprite.IsNull()) ctx->Display(m_bgOriginSprite, Standard_False);
+  if (!m_bgOriginSprite.IsNull()) ctx->Deactivate(m_bgOriginSprite);
 }
 
 void SceneGizmos::erase(const Handle(AIS_InteractiveContext)& ctx)
@@ -171,6 +175,9 @@ void SceneGizmos::setAxisExtents(const Handle(AIS_InteractiveContext)& ctx, Stan
   m_bgAxisY = newY;
   ctx->Display(m_bgAxisX, Standard_False);
   ctx->Display(m_bgAxisY, Standard_False);
+  // Explicitly disable selection for background axes
+  ctx->Deactivate(m_bgAxisX);
+  ctx->Deactivate(m_bgAxisY);
 }
 
 // trihedron visibility controls removed

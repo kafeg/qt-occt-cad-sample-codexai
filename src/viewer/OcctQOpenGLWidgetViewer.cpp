@@ -411,7 +411,17 @@ void OcctQOpenGLWidgetViewer::mouseReleaseEvent(QMouseEvent* theEvent)
     m_context->ClearSelected(false);
     if (!det.IsNull())
     {
-      m_context->AddOrRemoveSelected(det, false);
+      // Ignore background gizmos (axes, origin sprite) in selection
+      bool isBgGizmo = false;
+      if (m_gizmos)
+      {
+        if (det == m_gizmos->bgAxisX() || det == m_gizmos->bgAxisY())
+          isBgGizmo = true;
+      }
+      if (!isBgGizmo)
+      {
+        m_context->AddOrRemoveSelected(det, false);
+      }
     }
   }
   else
