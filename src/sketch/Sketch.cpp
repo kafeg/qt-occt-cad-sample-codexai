@@ -209,26 +209,7 @@ Sketch::CurveId Sketch::addLineAuto(const gp_Pnt2d& aIn, const gp_Pnt2d& bIn, do
     snapToNearest(a, snapA, a);
     snapToNearest(b, snapB, b);
   }
-  // Also snap to existing sketch points (auxiliary markers)
-  if (!points_.empty())
-  {
-    auto snapToPointIfNear = [&](gp_Pnt2d& p){
-      double bestD2 = std::numeric_limits<double>::infinity();
-      int bestIdx = -1;
-      for (int i = 0; i < static_cast<int>(points_.size()); ++i)
-      {
-        const gp_Pnt2d& q = points_[static_cast<std::size_t>(i)];
-        double d2 = dist2(p, q);
-        if (d2 < bestD2) { bestD2 = d2; bestIdx = i; }
-      }
-      if (bestIdx >= 0 && bestD2 <= tol*tol)
-      {
-        p = points_[static_cast<std::size_t>(bestIdx)];
-      }
-    };
-    snapToPointIfNear(a);
-    snapToPointIfNear(b);
-  }
+  // Do not snap to auxiliary sketch points; keep only endpoint snapping to existing curve endpoints
 
   // Add the line (possibly with snapped endpoints)
   const CurveId newId = addLine(a, b);
