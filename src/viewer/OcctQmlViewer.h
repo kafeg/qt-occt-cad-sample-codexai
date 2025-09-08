@@ -60,6 +60,7 @@ protected: // input handling (forwarded to AIS_ViewController)
   void mouseMoveEvent(QMouseEvent* e) override;
   void mouseReleaseEvent(QMouseEvent* e) override;
   void wheelEvent(QWheelEvent* e) override;
+  void hoverMoveEvent(QHoverEvent* e) override;
 
 private:
   // Called by the renderer thread via synchronize() to update UI-visible GL info
@@ -78,23 +79,23 @@ private:
   bool                      m_clearRequested = false;
   bool                      m_resetRequested = false;
   double                    m_resetDistance  = 1.2;
+  bool                      m_fitRequested   = false; // request FitAll
+  bool                      m_clickSelectPending = false; // single-click selection request
   std::shared_ptr<Datum>    m_datum;
   QString                   m_glInfo;
   // Optional helpers
   Handle(AIS_InteractiveObject) m_grid; // FiniteGrid instance
   std::unique_ptr<class SceneGizmos> m_gizmos;
 
-  // Simple navigation state mirrored to render thread (fallback to match widget UX)
+  // Basic click bookkeeping for selection thresholding
   mutable QPoint m_lastPosPx;        // last mouse pos in device px
   mutable QPoint m_currPosPx;        // current mouse pos in device px
-  mutable bool   m_rotActive = false;
-  mutable bool   m_rotStartPending = false;
-  mutable bool   m_panActive = false;
   mutable bool   m_leftDown = false;
   mutable QPoint m_pressPosPx;       // press pos (for drag threshold)
   static constexpr int kDragThresholdPx = 4;
 
   // Pull and clear input state snapshot for render thread
+  // Deprecated fallback input path removed; kept for ABI stability no-op
   void pullInput(bool& rotStart, bool& rotActive, bool& panActive,
                  QPoint& currPos, QPoint& lastPos) const;
 
@@ -103,6 +104,8 @@ public: // internal helper for renderer to pull state
                    bool& outDoClear,
                    bool& outDoReset,
                    double& outResetDist,
+                   bool& outDoFitAll,
+                   bool& outDoClickSelect,
                    std::shared_ptr<Datum>& outDatum,
                    QString& outGlInfo) const;
 
@@ -123,6 +126,7 @@ public: // Renderer implementation
     void resetViewToOriginInternal(double distance);
     void updateWindowSizeFromFbo();
     void initViewDefaults();
+    void handleSingleClickSelection();
 
   private:
     // OCCT handles
@@ -132,11 +136,14 @@ public: // Renderer implementation
     Handle(AIS_ViewCube)           m_viewCube;
     Handle(AIS_InteractiveObject)  m_grid;
     std::unique_ptr<class SceneGizmos> m_gizmos;
+    NCollection_Sequence<Handle(AIS_Shape)> m_bodies; // track bodies for clearBodies()
 
     // Cached state from item
     std::vector<PendingShape> m_toAdd;
     bool                      m_doClear = false;
     bool                      m_doReset = false;
+    bool                      m_doFitAll = false;
+    bool                      m_doClickSelect = false;
     double                    m_resetDistance = 1.2;
     std::shared_ptr<Datum>    m_datum;
 

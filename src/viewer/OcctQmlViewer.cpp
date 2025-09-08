@@ -49,6 +49,8 @@ static void dumpGlInfoString(const Handle(V3d_View)& view, QString& out)
 OcctQmlViewer::OcctQmlViewer(QQuickItem* parent)
   : QQuickFramebufferObject(parent)
 {
+  // Ensure resources from viewer.qrc are registered (static library case)
+  Q_INIT_RESOURCE(viewer);
   setFlag(ItemHasContents, true);
   setAcceptHoverEvents(true);
   setAcceptedMouseButtons(Qt::AllButtons);
@@ -115,10 +117,11 @@ void OcctQmlViewer::updateGlInfoFromRenderer(const QString& info)
 void OcctQmlViewer::pullInput(bool& rotStart, bool& rotActive, bool& panActive,
                               QPoint& currPos, QPoint& lastPos) const
 {
+  // Deprecated path (no-op) — AIS_ViewController handles navigation fully
   QMutexLocker lock(&m_mutex);
-  rotStart  = m_rotStartPending; m_rotStartPending = false;
-  rotActive = m_rotActive;
-  panActive = m_panActive;
+  rotStart  = false;
+  rotActive = false;
+  panActive = false;
   currPos   = m_currPosPx;
   lastPos   = m_lastPosPx;
 }
@@ -127,6 +130,15 @@ void OcctQmlViewer::pullInput(bool& rotStart, bool& rotActive, bool& panActive,
 
 void OcctQmlViewer::keyPressEvent(QKeyEvent* e)
 {
+  // Mirror widget viewer: support Fit-All on 'F'
+  if (e->key() == Qt::Key_F)
+  {
+    QMutexLocker lock(&m_mutex);
+    m_fitRequested = true;
+    update();
+    e->accept();
+    return;
+  }
   QQuickFramebufferObject::keyPressEvent(e);
 }
 
@@ -152,24 +164,8 @@ void OcctQmlViewer::mousePressEvent(QMouseEvent* e)
     QMutexLocker lock(&m_mutex);
     m_currPosPx = m_lastPosPx = QPoint(int(pt.x() * pr), int(pt.y() * pr));
     m_pressPosPx = m_currPosPx;
-    if (e->button() == Qt::RightButton || (e->button() == Qt::LeftButton && (mods & Aspect_VKeyFlags_ALT)))
-    {
-      m_rotActive = true;
-      m_rotStartPending = true;
-    }
-    else if (e->button() == Qt::MiddleButton)
-    {
-      m_panActive = true;
-    }
-    else if (e->button() == Qt::LeftButton)
-    {
-      // Defer decision: if это был drag, включим орбиту; короткий клик оставим на selection/ViewCube
-      m_leftDown = true;
-      m_rotActive = false;
-      m_rotStartPending = false;
-    }
+    if (e->button() == Qt::LeftButton) m_leftDown = true;
   }
-  grabMouse();
   e->accept();
 }
 
@@ -190,15 +186,6 @@ void OcctQmlViewer::mouseMoveEvent(QMouseEvent* e)
   {
     QMutexLocker lock(&m_mutex);
     m_currPosPx = QPoint(int(pt.x() * pr), int(pt.y() * pr));
-    if (m_leftDown && !m_panActive && !m_rotActive)
-    {
-      const QPoint d = m_currPosPx - m_pressPosPx;
-      if (std::abs(d.x()) > kDragThresholdPx || std::abs(d.y()) > kDragThresholdPx)
-      {
-        m_rotActive = true;
-        m_rotStartPending = true;
-      }
-    }
   }
   e->accept();
 }
@@ -218,11 +205,17 @@ void OcctQmlViewer::mouseReleaseEvent(QMouseEvent* e)
   {
     QMutexLocker lock(&m_mutex);
     m_lastPosPx = m_currPosPx = QPoint(int(pt.x() * pr), int(pt.y() * pr));
-    m_rotActive = false;
-    m_panActive = false;
+    // Single-click selection on left button (ignore if it was a drag)
+    if (m_leftDown && e->button() == Qt::LeftButton)
+    {
+      const QPoint d = m_currPosPx - m_pressPosPx;
+      if (std::abs(d.x()) <= kDragThresholdPx && std::abs(d.y()) <= kDragThresholdPx)
+      {
+        m_clickSelectPending = true;
+      }
+    }
     m_leftDown = false;
   }
-  ungrabMouse();
   e->accept();
 }
 
@@ -239,10 +232,26 @@ void OcctQmlViewer::wheelEvent(QWheelEvent* e)
   e->accept();
 }
 
+void OcctQmlViewer::hoverMoveEvent(QHoverEvent* e)
+{
+  const qreal pr = qmlDevicePixelRatio(this);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  const QPointF pt = e->position();
+#else
+  const QPointF pt = e->posF();
+#endif
+  const Graphic3d_Vec2i p(int(pt.x() * pr), int(pt.y() * pr));
+  if (UpdateMousePosition(p, Aspect_VKeyMouse_NONE, Aspect_VKeyFlags_NONE, false))
+    update();
+  e->accept();
+}
+
 void OcctQmlViewer::takePending(std::vector<PendingShape>& outShapes,
                                 bool& outDoClear,
                                 bool& outDoReset,
                                 double& outResetDist,
+                                bool& outDoFitAll,
+                                bool& outDoClickSelect,
                                 std::shared_ptr<Datum>& outDatum,
                                 QString& outGlInfo) const
 {
@@ -251,6 +260,8 @@ void OcctQmlViewer::takePending(std::vector<PendingShape>& outShapes,
   outDoClear            = m_clearRequested;  const_cast<bool&>(m_clearRequested) = false;
   outDoReset            = m_resetRequested;  const_cast<bool&>(m_resetRequested) = false;
   outResetDist          = m_resetDistance;
+  outDoFitAll           = m_fitRequested;    const_cast<bool&>(m_fitRequested) = false;
+  outDoClickSelect      = m_clickSelectPending; const_cast<bool&>(m_clickSelectPending) = false;
   outDatum              = m_datum;
   outGlInfo             = m_glInfo;
 }
@@ -272,10 +283,14 @@ QOpenGLFramebufferObject* OcctQmlViewer::RendererImpl::createFramebufferObject(c
 void OcctQmlViewer::RendererImpl::synchronize(QQuickFramebufferObject* item)
 {
   auto* v = static_cast<OcctQmlViewer*>(item);
-  v->takePending(m_toAdd, m_doClear, m_doReset, m_resetDistance, m_datum, m_glInfo);
+  v->takePending(m_toAdd, m_doClear, m_doReset, m_resetDistance, m_doFitAll, m_doClickSelect, m_datum, m_glInfo);
   // Push GL info gathered on the render thread back to the item for QML binding
   v->updateGlInfoFromRenderer(m_glInfo);
   m_owner = v;
+  if (!m_viewCube.IsNull() && m_owner)
+  {
+    m_viewCube->SetViewAnimation(m_owner->ViewAnimation());
+  }
 }
 
 void OcctQmlViewer::RendererImpl::ensureOcctContext()
@@ -336,6 +351,7 @@ void OcctQmlViewer::RendererImpl::ensureOcctContext()
   if (m_viewCube.IsNull())
   {
     m_viewCube = new AIS_ViewCube();
+    if (m_owner) m_viewCube->SetViewAnimation(m_owner->ViewAnimation());
     m_viewCube->SetFixedAnimationLoop(false);
     m_viewCube->SetAutoStartAnimation(true);
     m_viewCube->SetSize(60.0);
@@ -345,7 +361,7 @@ void OcctQmlViewer::RendererImpl::ensureOcctContext()
     if (!m_context.IsNull())
     {
       m_context->Display(m_viewCube, 0, -1, false);
-      m_context->SetZLayer(m_viewCube, Graphic3d_ZLayerId_Topmost);
+      // Keep default Z-layer, like the widget viewer. TransformPersistence keeps it on top.
     }
   }
 
@@ -410,12 +426,23 @@ void OcctQmlViewer::RendererImpl::applyPending()
     m_toAdd.clear();
     m_doClear = false;
     m_doReset = false;
+    m_doFitAll = false;
+    m_doClickSelect = false;
     return;
   }
 
   if (m_doClear)
   {
-    m_context->RemoveAll(false);
+    // Erase only tracked bodies, keep grid/viewcube/gizmos
+    for (NCollection_Sequence<Handle(AIS_Shape)>::Iterator it(m_bodies); it.More(); it.Next())
+    {
+      const Handle(AIS_Shape)& aBody = it.Value();
+      if (!aBody.IsNull() && m_context->IsDisplayed(aBody))
+      {
+        m_context->Erase(aBody, false);
+      }
+    }
+    m_bodies.Clear();
     m_doClear = false;
   }
   // Ensure gizmos follow datum
@@ -424,11 +451,16 @@ void OcctQmlViewer::RendererImpl::applyPending()
     if (!m_gizmos) m_gizmos = std::make_unique<SceneGizmos>();
     m_gizmos->erase(m_context);
     m_gizmos->install(m_context, m_datum, Standard_True);
+    if (!m_gizmos->bgAxisX().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisX(), Graphic3d_ZLayerId_Default);
+    if (!m_gizmos->bgAxisY().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisY(), Graphic3d_ZLayerId_Default);
   }
   for (const PendingShape& op : m_toAdd)
   {
     Handle(AIS_Shape) ais = new AIS_Shape(op.shape);
     m_context->Display(ais, op.dispMode, 0, false);
+    // Draw bodies last among 3D content, consistent with widget viewer
+    m_context->SetZLayer(ais, Graphic3d_ZLayerId_Top);
+    m_bodies.Append(ais);
   }
   m_toAdd.clear();
 
@@ -436,6 +468,13 @@ void OcctQmlViewer::RendererImpl::applyPending()
   {
     resetViewToOriginInternal(m_resetDistance);
     m_doReset = false;
+  }
+  if (m_doFitAll)
+  {
+    if (m_gizmos) m_gizmos->erase(m_context);
+    m_view->FitAll(0.01, false);
+    if (m_gizmos) m_gizmos->reinstall(m_context);
+    m_doFitAll = false;
   }
 }
 
@@ -467,26 +506,35 @@ void OcctQmlViewer::RendererImpl::render()
   {
     Handle(V3d_View) aView = m_view;
     m_owner->FlushViewEvents(m_context, aView, true);
-    // Fallback manual navigation to match widget UX
-    bool rotStart=false, rotActive=false, panActive=false; QPoint curr, last;
-    m_owner->pullInput(rotStart, rotActive, panActive, curr, last);
-    if (!m_view.IsNull())
+    // Handle single-click selection identical to widget viewer
+    if (m_doClickSelect)
     {
-      if (rotStart)
+      // Perform single-select and signal
+      if (m_context->HasDetected())
       {
-        m_view->StartRotation(curr.x(), curr.y());
+        Handle(AIS_Shape) det = Handle(AIS_Shape)::DownCast(m_context->DetectedInteractive());
+        m_context->ClearSelected(false);
+        if (!det.IsNull())
+        {
+          bool isBgGizmo = false;
+          if (m_gizmos)
+          {
+            if (det == m_gizmos->bgAxisX() || det == m_gizmos->bgAxisY())
+              isBgGizmo = true;
+          }
+          if (!isBgGizmo)
+          {
+            m_context->AddOrRemoveSelected(det, false);
+          }
+        }
       }
-      if (rotActive)
+      else
       {
-        m_view->Rotation(curr.x(), curr.y());
+        m_context->ClearSelected(false);
       }
-      else if (panActive)
-      {
-        const int dx = curr.x() - last.x();
-        const int dy = curr.y() - last.y();
-        if (dx != 0 || dy != 0)
-          m_view->Pan(dx, dy);
-      }
+      if (!m_view.IsNull()) { m_context->UpdateCurrentViewer(); m_view->Invalidate(); }
+      QMetaObject::invokeMethod(m_owner, "selectionChanged", Qt::QueuedConnection);
+      m_doClickSelect = false;
     }
   }
 
