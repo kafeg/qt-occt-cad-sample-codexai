@@ -1,8 +1,10 @@
 add_library(ui STATIC
     MainWindow.cpp
     MainWindow.h
-    TabPage.cpp
-    TabPage.h
+    TabPageWidget.cpp
+    TabPageWidget.h
+    TabPageModel.cpp
+    TabPageModel.h
     DocumentTreePanel.cpp
     DocumentTreePanel.h
     FeatureHistoryPanel.cpp

@@ -2,7 +2,7 @@
 
 #include <QApplication>
 
-#include <TabPage.h>
+#include <TabPageWidget.h>
 #include <Document.h>
 #include <BoxFeature.h>
 #include <MoveFeature.h>
@@ -41,7 +41,7 @@ TEST(UI_Move, ConfirmCombinedRotationAddsSingleMoveWithCorrectDelta)
     static int argc = 0; static QApplication app(argc, nullptr); (void)app;
   }
 
-  TabPage page;
+  TabPageWidget page;
   Document& doc = page.doc();
 
   // Create a box and sync viewer
@@ -72,4 +72,3 @@ TEST(UI_Move, ConfirmCombinedRotationAddsSingleMoveWithCorrectDelta)
   EXPECT_NEAR(c0.Y(), c1.Y(), 1.0e-7);
   EXPECT_NEAR(c0.Z(), c1.Z(), 1.0e-7);
 }
-

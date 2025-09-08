@@ -10,13 +10,13 @@
 
 class QTreeWidget;
 class QTreeWidgetItem;
-class TabPage;
+class TabPageWidget;
 
 class DocumentTreePanel : public QWidget
 {
   Q_OBJECT
 public:
-  explicit DocumentTreePanel(TabPage* page, QWidget* parent = nullptr);
+  explicit DocumentTreePanel(TabPageWidget* page, QWidget* parent = nullptr);
 
   // Rebuild the tree from the current Document state
   void refreshFromDocument();
@@ -36,6 +36,6 @@ private:
   QString itemDisplayText(const Handle(DocumentItem)& it) const;
 
 private:
-  TabPage*     m_page = nullptr;
+  TabPageWidget* m_page = nullptr;
   QTreeWidget* m_tree = nullptr;
 };

@@ -1,6 +1,6 @@
 #include "FeatureHistoryPanel.h"
 
-#include "TabPage.h"
+#include "TabPageWidget.h"
 
 #include <BoxFeature.h>
 #include <CylinderFeature.h>
@@ -23,7 +23,7 @@
 #include <AIS_Shape.hxx>
 #include <AppSettings.h>
 
-FeatureHistoryPanel::FeatureHistoryPanel(TabPage* page, QWidget* parent)
+FeatureHistoryPanel::FeatureHistoryPanel(TabPageWidget* page, QWidget* parent)
   : QWidget(parent), m_page(page)
 {
   auto* lay = new QVBoxLayout(this);

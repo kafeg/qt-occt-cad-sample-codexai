@@ -11,13 +11,13 @@
 
 class QListWidget;
 class QPushButton;
-class TabPage;
+class TabPageWidget;
 
 class FeatureHistoryPanel : public QWidget
 {
   Q_OBJECT
 public:
-  explicit FeatureHistoryPanel(TabPage* page, QWidget* parent = nullptr);
+  explicit FeatureHistoryPanel(TabPageWidget* page, QWidget* parent = nullptr);
 
   // Rebuild the list from the current Document state
   void refreshFromDocument();
@@ -46,7 +46,7 @@ private:
   QString itemDisplayText(const Handle(DocumentItem)& it) const;
 
 private:
-  TabPage*     m_page = nullptr;
+  TabPageWidget* m_page = nullptr;
   QListWidget* m_list = nullptr;
   QPushButton* m_btnRemove = nullptr;
   // Row -> Item handle mapping for current list state

@@ -29,7 +29,7 @@
 // model/viewer headers for sync helpers
 #include <Feature.h>
 #include <PlaneFeature.h>
-#include "TabPage.h"
+#include "TabPageWidget.h"
 
 MainWindow::MainWindow()
 {
@@ -84,7 +84,7 @@ void MainWindow::createMenuBar()
     file->addAction(split);
     // Toggle split view: enable/disable subview composer and manage subviews
     connect(split, &QAction::triggered, [this]() {
-      TabPage* page = currentPage(); if (!page) return;
+      TabPageWidget* page = currentPage(); if (!page) return;
       auto* viewer = page->viewer();
       if (!viewer->View()->Subviews().IsEmpty())
       {
@@ -139,7 +139,7 @@ void MainWindow::createMenuBar()
     m_actCompleteSketch->setEnabled(false);
     file->addAction(m_actCompleteSketch);
     connect(m_actCompleteSketch, &QAction::triggered, [this]() {
-      TabPage* p = currentPage(); if (!p) return; auto* v = p->viewer(); if (!v) return;
+      TabPageWidget* p = currentPage(); if (!p) return; auto* v = p->viewer(); if (!v) return;
       if (v->hasActiveSketchEdit()) v->clearSketchEditMode(true);
       updateActionStates();
     });
@@ -149,7 +149,7 @@ void MainWindow::createMenuBar()
     actMove->setText("Move");
     file->addAction(actMove);
     connect(actMove, &QAction::triggered, [this]() {
-      TabPage* p = currentPage(); if (!p) return;
+      TabPageWidget* p = currentPage(); if (!p) return;
       auto* v = p->viewer();
       if (v && v->isManipulatorActive()) p->confirmMove(); else p->activateMove();
       updateActionStates();
@@ -158,7 +158,7 @@ void MainWindow::createMenuBar()
     m_actCancelMove->setText("Cancel Move");
     m_actCancelMove->setEnabled(false);
     file->addAction(m_actCancelMove);
-    connect(m_actCancelMove, &QAction::triggered, [this]() { TabPage* p = currentPage(); if (p) p->cancelMove(); updateActionStates(); });
+    connect(m_actCancelMove, &QAction::triggered, [this]() { TabPageWidget* p = currentPage(); if (p) p->cancelMove(); updateActionStates(); });
   }
   {
     QAction* quit = new QAction(file);
@@ -207,7 +207,7 @@ void MainWindow::createToolBar()
     m_actCompleteSketch = new QAction("Complete Sketch", tb);
     m_actCompleteSketch->setEnabled(false);
     connect(m_actCompleteSketch, &QAction::triggered, [this]() {
-      TabPage* p = currentPage(); if (!p) return; auto* v = p->viewer(); if (!v) return;
+      TabPageWidget* p = currentPage(); if (!p) return; auto* v = p->viewer(); if (!v) return;
       if (v->hasActiveSketchEdit()) v->clearSketchEditMode(true);
       updateActionStates();
     });
@@ -216,7 +216,7 @@ void MainWindow::createToolBar()
 
   QAction* actMove = new QAction("Move", tb);
   connect(actMove, &QAction::triggered, [this]() {
-    TabPage* p = currentPage(); if (!p) return; auto* v = p->viewer();
+    TabPageWidget* p = currentPage(); if (!p) return; auto* v = p->viewer();
     if (v && v->isManipulatorActive()) p->confirmMove(); else p->activateMove();
     updateActionStates();
   });
@@ -225,13 +225,13 @@ void MainWindow::createToolBar()
   {
     m_actCancelMove = new QAction("Cancel Move", tb);
     m_actCancelMove->setEnabled(false);
-    connect(m_actCancelMove, &QAction::triggered, [this]() { TabPage* p = currentPage(); if (p) p->cancelMove(); updateActionStates(); });
+    connect(m_actCancelMove, &QAction::triggered, [this]() { TabPageWidget* p = currentPage(); if (p) p->cancelMove(); updateActionStates(); });
   }
   tb->addAction(m_actCancelMove);
 
   QAction* actAbout = new QAction("About", tb);
   connect(actAbout, &QAction::triggered, [this]() {
-    TabPage* page = currentPage(); if (!page) return;
+    TabPageWidget* page = currentPage(); if (!page) return;
     auto* viewer = page->viewer();
     QMessageBox::information(0,
                              "About",
@@ -245,7 +245,7 @@ void MainWindow::createToolBar()
 
 void MainWindow::updateActionStates()
 {
-  TabPage* p = currentPage();
+  TabPageWidget* p = currentPage();
   OcctQOpenGLWidgetViewer* v = p ? p->viewer() : nullptr;
   const bool sketchActive = v && v->hasActiveSketchEdit();
   const bool moveActive   = v && v->isManipulatorActive();
@@ -255,7 +255,7 @@ void MainWindow::updateActionStates()
 
 void MainWindow::connectViewerSignals()
 {
-  TabPage* p = currentPage(); if (!p) return;
+  TabPageWidget* p = currentPage(); if (!p) return;
   OcctQOpenGLWidgetViewer* v = p->viewer(); if (!v) return;
   // Disconnect previous connections by using QObject::connect with context 'this' and auto disconnection is fine on viewer destruction; no stored handles used here
   // Update on manipulator finish and sketch edit mode changes
@@ -266,7 +266,7 @@ void MainWindow::connectViewerSignals()
 
 void MainWindow::addBox()
 {
-  TabPage* page = currentPage(); if (!page) return;
+  TabPageWidget* page = currentPage(); if (!page) return;
   CreateBoxDialog dlg(this);
   if (dlg.exec() != QDialog::Accepted) return;
 
@@ -278,7 +278,7 @@ void MainWindow::addBox()
 
 void MainWindow::addCylinder()
 {
-  TabPage* page = currentPage(); if (!page) return;
+  TabPageWidget* page = currentPage(); if (!page) return;
   CreateCylinderDialog dlg(this);
   if (dlg.exec() != QDialog::Accepted) return;
 
@@ -290,7 +290,7 @@ void MainWindow::addCylinder()
 
 void MainWindow::addExtrude()
 {
-  TabPage* page = currentPage(); if (!page) return;
+  TabPageWidget* page = currentPage(); if (!page) return;
 
   // Ensure there is at least one sketch to pick; if none, create a sample rectangle sketch
   if (page->doc().sketches().empty())
@@ -331,7 +331,7 @@ void MainWindow::addExtrude()
 
 void MainWindow::addSketch()
 {
-  TabPage* page = currentPage(); if (!page) return;
+  TabPageWidget* page = currentPage(); if (!page) return;
   auto& doc = page->doc();
 
   // Build plane names from document planes
@@ -372,20 +372,20 @@ void MainWindow::addSketch()
 
 void MainWindow::syncViewerFromDoc(bool toUpdate)
 {
-  TabPage* page = currentPage(); if (!page) return;
+  TabPageWidget* page = currentPage(); if (!page) return;
   page->syncViewerFromDoc(toUpdate);
 }
 
 void MainWindow::addNewTab()
 {
-  auto* page = new TabPage(this);
+  auto* page = new TabPageWidget(this);
   int idx = m_tabs->addTab(page, QString("Untitled %1").arg(m_tabs->count() + 1));
   m_tabs->setCurrentIndex(idx);
   // Initialize empty history list
   page->refreshFeatureList();
 }
 
-TabPage* MainWindow::currentPage() const
+TabPageWidget* MainWindow::currentPage() const
 {
-  return qobject_cast<TabPage*>(m_tabs ? m_tabs->currentWidget() : nullptr);
+  return qobject_cast<TabPageWidget*>(m_tabs ? m_tabs->currentWidget() : nullptr);
 }

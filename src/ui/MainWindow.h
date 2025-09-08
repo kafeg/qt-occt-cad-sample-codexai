@@ -12,7 +12,7 @@
 class Document;
 class OcctQOpenGLWidgetViewer;
 class QTabWidget;
-class TabPage;
+class TabPageWidget;
 
 // Main app window: manages tabs, menu/toolbars, and sync to viewer
 class MainWindow : public QMainWindow
@@ -35,10 +35,10 @@ private:
   void syncViewerFromDoc(bool toUpdate = true); // Rebuild AIS bodies from Document
   void addNewTab();                 // Add a new tab page
 
-  TabPage* currentPage() const;
+  TabPageWidget* currentPage() const;
 
 private:
-  QTabWidget* m_tabs = nullptr; // App tabs; each holds a TabPage
+  QTabWidget* m_tabs = nullptr; // App tabs; each holds a TabPageWidget
   QAction*    m_actCompleteSketch = nullptr;
   QAction*    m_actCancelMove = nullptr;
 };

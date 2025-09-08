@@ -1,6 +1,6 @@
 #include "DocumentTreePanel.h"
 
-#include "TabPage.h"
+#include "TabPageWidget.h"
 #include <OcctQOpenGLWidgetViewer.h>
 
 #include <BoxFeature.h>
@@ -23,7 +23,7 @@
 #include <QSignalBlocker>
 #include <Standard_WarningsRestore.hxx>
 
-DocumentTreePanel::DocumentTreePanel(TabPage* page, QWidget* parent)
+DocumentTreePanel::DocumentTreePanel(TabPageWidget* page, QWidget* parent)
   : QWidget(parent), m_page(page)
 {
   auto* lay = new QVBoxLayout(this);
