@@ -6,6 +6,8 @@
 #include <QQmlApplicationEngine>
 #include <QSurfaceFormat>
 #include <QQuickStyle>
+#include <QQuickWindow>
+#include <QSGRendererInterface>
 #include <QScreen>
 #include <QResource>
 #include <QDir>
@@ -18,6 +20,11 @@
 
 int runQmlApp(int argc, char** argv)
 {
+  // Force Qt Quick to use OpenGL for the scene graph so it matches OCCT
+  // (Qt 6 defaults to Metal on macOS which breaks FBO-based OpenGL rendering)
+  QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+  qputenv("QSG_RHI_BACKEND", QByteArray("opengl"));
+
   QGuiApplication app(argc, argv);
 
   QCoreApplication::setApplicationName("Parametric CAD Skeleton (QML)");

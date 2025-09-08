@@ -9,7 +9,9 @@
 #include <Standard_WarningsRestore.hxx>
 
 #include <AIS_InteractiveContext.hxx>
+#include <AIS_ViewController.hxx>
 #include <AIS_Shape.hxx>
+#include <AIS_ViewCube.hxx>
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
 #include <TopoDS_Shape.hxx>
@@ -21,7 +23,7 @@
 class Datum;
 
 // QML-facing viewer. Renders into a Qt Quick FBO and manages an OCCT context.
-class OcctQmlViewer : public QQuickFramebufferObject
+class OcctQmlViewer : public QQuickFramebufferObject, public AIS_ViewController
 {
   Q_OBJECT
   Q_PROPERTY(QString glInfo READ glInfo NOTIFY glInfoChanged)
@@ -52,7 +54,17 @@ signals:
   void selectionChanged();
   void glInfoChanged();
 
+protected: // input handling (forwarded to AIS_ViewController)
+  void keyPressEvent(QKeyEvent* e) override;
+  void mousePressEvent(QMouseEvent* e) override;
+  void mouseMoveEvent(QMouseEvent* e) override;
+  void mouseReleaseEvent(QMouseEvent* e) override;
+  void wheelEvent(QWheelEvent* e) override;
+
 private:
+  // Called by the renderer thread via synchronize() to update UI-visible GL info
+  void updateGlInfoFromRenderer(const QString& info);
+
   struct PendingShape
   {
     TopoDS_Shape     shape;
@@ -68,6 +80,23 @@ private:
   double                    m_resetDistance  = 1.2;
   std::shared_ptr<Datum>    m_datum;
   QString                   m_glInfo;
+  // Optional helpers
+  Handle(AIS_InteractiveObject) m_grid; // FiniteGrid instance
+  std::unique_ptr<class SceneGizmos> m_gizmos;
+
+  // Simple navigation state mirrored to render thread (fallback to match widget UX)
+  mutable QPoint m_lastPosPx;        // last mouse pos in device px
+  mutable QPoint m_currPosPx;        // current mouse pos in device px
+  mutable bool   m_rotActive = false;
+  mutable bool   m_rotStartPending = false;
+  mutable bool   m_panActive = false;
+  mutable bool   m_leftDown = false;
+  mutable QPoint m_pressPosPx;       // press pos (for drag threshold)
+  static constexpr int kDragThresholdPx = 4;
+
+  // Pull and clear input state snapshot for render thread
+  void pullInput(bool& rotStart, bool& rotActive, bool& panActive,
+                 QPoint& currPos, QPoint& lastPos) const;
 
 public: // internal helper for renderer to pull state
   void takePending(std::vector<PendingShape>& outShapes,
@@ -100,6 +129,9 @@ public: // Renderer implementation
     Handle(V3d_Viewer)             m_viewer;
     Handle(V3d_View)               m_view;
     Handle(AIS_InteractiveContext) m_context;
+    Handle(AIS_ViewCube)           m_viewCube;
+    Handle(AIS_InteractiveObject)  m_grid;
+    std::unique_ptr<class SceneGizmos> m_gizmos;
 
     // Cached state from item
     std::vector<PendingShape> m_toAdd;
@@ -110,8 +142,11 @@ public: // Renderer implementation
 
     // GL info string (updated after first context bind)
     QString m_glInfo;
+    OcctQmlViewer* m_owner = nullptr; // back-ref for event flushing
   };
+
+  // Grant renderer access to private helpers
+  friend class RendererImpl;
 };
 
 #endif // _OcctQmlViewer_HeaderFile
-

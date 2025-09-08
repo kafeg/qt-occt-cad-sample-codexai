@@ -69,6 +69,7 @@ ApplicationWindow {
                     OcctViewer {
                         id: occt
                         anchors.fill: parent
+                        focus: true
                     }
                 }
 

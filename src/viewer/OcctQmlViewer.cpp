@@ -22,6 +22,10 @@
 #include <TColStd_IndexedDataMapOfStringString.hxx>
 
 #include <AIS_ViewCube.hxx>
+#include "OcctGlTools.h"
+#include "FiniteGrid.h"
+#include "SceneGizmos.h"
+#include "OcctQtTools.h"
 
 namespace {
 static void dumpGlInfoString(const Handle(V3d_View)& view, QString& out)
@@ -46,6 +50,12 @@ OcctQmlViewer::OcctQmlViewer(QQuickItem* parent)
   : QQuickFramebufferObject(parent)
 {
   setFlag(ItemHasContents, true);
+  setAcceptHoverEvents(true);
+  setAcceptedMouseButtons(Qt::AllButtons);
+  setFlag(ItemIsFocusScope, true);
+  setFocus(true);
+  // Ensure first frame gets scheduled even without external triggers
+  update();
 }
 
 OcctQmlViewer::~OcctQmlViewer() = default;
@@ -94,6 +104,141 @@ void OcctQmlViewer::setDatum(const std::shared_ptr<Datum>& d)
   update();
 }
 
+void OcctQmlViewer::updateGlInfoFromRenderer(const QString& info)
+{
+  if (m_glInfo == info)
+    return;
+  m_glInfo = info;
+  emit glInfoChanged();
+}
+
+void OcctQmlViewer::pullInput(bool& rotStart, bool& rotActive, bool& panActive,
+                              QPoint& currPos, QPoint& lastPos) const
+{
+  QMutexLocker lock(&m_mutex);
+  rotStart  = m_rotStartPending; m_rotStartPending = false;
+  rotActive = m_rotActive;
+  panActive = m_panActive;
+  currPos   = m_currPosPx;
+  lastPos   = m_lastPosPx;
+}
+
+// ================= Input handling (main thread) =================
+
+void OcctQmlViewer::keyPressEvent(QKeyEvent* e)
+{
+  QQuickFramebufferObject::keyPressEvent(e);
+}
+
+static inline qreal qmlDevicePixelRatio(const QQuickItem* it)
+{
+  if (auto* w = it->window()) return w->devicePixelRatio();
+  return 1.0;
+}
+
+void OcctQmlViewer::mousePressEvent(QMouseEvent* e)
+{
+  const qreal pr = qmlDevicePixelRatio(this);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+  const QPointF pt = e->position();
+#else
+  const QPointF pt = e->posF();
+#endif
+  const Graphic3d_Vec2i p(int(pt.x() * pr), int(pt.y() * pr));
+  const Aspect_VKeyFlags mods = OcctQtTools::qtMouseModifiers2VKeys(e->modifiers());
+  if (UpdateMouseButtons(p, OcctQtTools::qtMouseButtons2VKeys(e->buttons()), mods, false))
+    update();
+  {
+    QMutexLocker lock(&m_mutex);
+    m_currPosPx = m_lastPosPx = QPoint(int(pt.x() * pr), int(pt.y() * pr));
+    m_pressPosPx = m_currPosPx;
+    if (e->button() == Qt::RightButton || (e->button() == Qt::LeftButton && (mods & Aspect_VKeyFlags_ALT)))
+    {
+      m_rotActive = true;
+      m_rotStartPending = true;
+    }
+    else if (e->button() == Qt::MiddleButton)
+    {
+      m_panActive = true;
+    }
+    else if (e->button() == Qt::LeftButton)
+    {
+      // Defer decision: if это был drag, включим орбиту; короткий клик оставим на selection/ViewCube
+      m_leftDown = true;
+      m_rotActive = false;
+      m_rotStartPending = false;
+    }
+  }
+  grabMouse();
+  e->accept();
+}
+
+void OcctQmlViewer::mouseMoveEvent(QMouseEvent* e)
+{
+  const qreal pr = qmlDevicePixelRatio(this);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+  const QPointF pt = e->position();
+#else
+  const QPointF pt = e->posF();
+#endif
+  const Graphic3d_Vec2i p(int(pt.x() * pr), int(pt.y() * pr));
+  if (UpdateMousePosition(p,
+                          OcctQtTools::qtMouseButtons2VKeys(e->buttons()),
+                          OcctQtTools::qtMouseModifiers2VKeys(e->modifiers()),
+                          false))
+    update();
+  {
+    QMutexLocker lock(&m_mutex);
+    m_currPosPx = QPoint(int(pt.x() * pr), int(pt.y() * pr));
+    if (m_leftDown && !m_panActive && !m_rotActive)
+    {
+      const QPoint d = m_currPosPx - m_pressPosPx;
+      if (std::abs(d.x()) > kDragThresholdPx || std::abs(d.y()) > kDragThresholdPx)
+      {
+        m_rotActive = true;
+        m_rotStartPending = true;
+      }
+    }
+  }
+  e->accept();
+}
+
+void OcctQmlViewer::mouseReleaseEvent(QMouseEvent* e)
+{
+  const qreal pr = qmlDevicePixelRatio(this);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+  const QPointF pt = e->position();
+#else
+  const QPointF pt = e->posF();
+#endif
+  const Graphic3d_Vec2i p(int(pt.x() * pr), int(pt.y() * pr));
+  const Aspect_VKeyFlags mods = OcctQtTools::qtMouseModifiers2VKeys(e->modifiers());
+  if (UpdateMouseButtons(p, OcctQtTools::qtMouseButtons2VKeys(e->buttons()), mods, false))
+    update();
+  {
+    QMutexLocker lock(&m_mutex);
+    m_lastPosPx = m_currPosPx = QPoint(int(pt.x() * pr), int(pt.y() * pr));
+    m_rotActive = false;
+    m_panActive = false;
+    m_leftDown = false;
+  }
+  ungrabMouse();
+  e->accept();
+}
+
+void OcctQmlViewer::wheelEvent(QWheelEvent* e)
+{
+  const qreal pr = qmlDevicePixelRatio(this);
+  const Graphic3d_Vec2i p(int(e->position().x() * pr), int(e->position().y() * pr));
+  // Normalize wheel delta to "steps" (120 per detent); fall back to pixelDelta if needed
+  double steps = 0.0;
+  if (!e->angleDelta().isNull()) steps = e->angleDelta().y() / 120.0;
+  else if (!e->pixelDelta().isNull()) steps = e->pixelDelta().y() / 60.0;
+  if (UpdateZoom(Aspect_ScrollDelta(p, steps)))
+    update();
+  e->accept();
+}
+
 void OcctQmlViewer::takePending(std::vector<PendingShape>& outShapes,
                                 bool& outDoClear,
                                 bool& outDoReset,
@@ -118,8 +263,9 @@ OcctQmlViewer::RendererImpl::~RendererImpl() = default;
 QOpenGLFramebufferObject* OcctQmlViewer::RendererImpl::createFramebufferObject(const QSize& size)
 {
   QOpenGLFramebufferObjectFormat fmt;
-  fmt.setAttachment(QOpenGLFramebufferObject::Depth);
-  fmt.setSamples(4);
+  // Use combined depth-stencil for broadest compatibility; avoid MSAA here
+  // since some RHI/driver combos with Qt Quick + CoreProfile ignore it.
+  fmt.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
   return new QOpenGLFramebufferObject(size, fmt);
 }
 
@@ -127,6 +273,9 @@ void OcctQmlViewer::RendererImpl::synchronize(QQuickFramebufferObject* item)
 {
   auto* v = static_cast<OcctQmlViewer*>(item);
   v->takePending(m_toAdd, m_doClear, m_doReset, m_resetDistance, m_datum, m_glInfo);
+  // Push GL info gathered on the render thread back to the item for QML binding
+  v->updateGlInfoFromRenderer(m_glInfo);
+  m_owner = v;
 }
 
 void OcctQmlViewer::RendererImpl::ensureOcctContext()
@@ -182,6 +331,34 @@ void OcctQmlViewer::RendererImpl::ensureOcctContext()
 
   // Populate GL info once
   dumpGlInfoString(m_view, m_glInfo);
+
+  // Minimal on-screen gizmo so the user sees the viewer is alive
+  if (m_viewCube.IsNull())
+  {
+    m_viewCube = new AIS_ViewCube();
+    m_viewCube->SetFixedAnimationLoop(false);
+    m_viewCube->SetAutoStartAnimation(true);
+    m_viewCube->SetSize(60.0);
+    m_viewCube->SetBoxColor(Quantity_NOC_GRAY70);
+    m_viewCube->TransformPersistence()->SetCorner2d(Aspect_TOTP_RIGHT_UPPER);
+    m_viewCube->TransformPersistence()->SetOffset2d(Graphic3d_Vec2i(80, 80));
+    if (!m_context.IsNull())
+    {
+      m_context->Display(m_viewCube, 0, -1, false);
+      m_context->SetZLayer(m_viewCube, Graphic3d_ZLayerId_Topmost);
+    }
+  }
+
+  // Display a simple finite grid and gizmos if datum is provided
+  if (m_grid.IsNull())
+  {
+    m_grid = new FiniteGrid();
+    if (!m_context.IsNull())
+    {
+      m_context->Display(m_grid, Standard_False);
+      m_context->SetZLayer(m_grid, Graphic3d_ZLayerId_Default);
+    }
+  }
 }
 
 void OcctQmlViewer::RendererImpl::initViewDefaults()
@@ -241,6 +418,13 @@ void OcctQmlViewer::RendererImpl::applyPending()
     m_context->RemoveAll(false);
     m_doClear = false;
   }
+  // Ensure gizmos follow datum
+  if (m_datum)
+  {
+    if (!m_gizmos) m_gizmos = std::make_unique<SceneGizmos>();
+    m_gizmos->erase(m_context);
+    m_gizmos->install(m_context, m_datum, Standard_True);
+  }
   for (const PendingShape& op : m_toAdd)
   {
     Handle(AIS_Shape) ais = new AIS_Shape(op.shape);
@@ -259,29 +443,79 @@ void OcctQmlViewer::RendererImpl::render()
 {
   ensureOcctContext();
 
-  // Wrap current FBO as OCCT default
-  Handle(OpenGl_Context) aGlCtx = new OpenGl_Context();
-  if (aGlCtx->Init(true))
+  // Wrap current Qt FBO as OCCT default using the driver's shared GL context
+  if (!m_view.IsNull())
   {
-    Handle(OpenGl_FrameBuffer) aDefaultFbo = aGlCtx->DefaultFrameBuffer();
-    if (aDefaultFbo.IsNull())
+    Handle(OpenGl_Context) aGlCtx = OcctGlTools::GetGlContext(m_view);
+    if (!aGlCtx.IsNull())
     {
-      aDefaultFbo = new OpenGl_FrameBuffer();
-      aGlCtx->SetDefaultFrameBuffer(aDefaultFbo);
+      Handle(OpenGl_FrameBuffer) aDefaultFbo = aGlCtx->DefaultFrameBuffer();
+      if (aDefaultFbo.IsNull())
+      {
+        aDefaultFbo = new OpenGl_FrameBuffer();
+        aGlCtx->SetDefaultFrameBuffer(aDefaultFbo);
+      }
+      if (aDefaultFbo->InitWrapper(aGlCtx))
+      {
+        // Keep OCCT view size in sync with Qt FBO
+        updateWindowSizeFromFbo();
+      }
     }
-    aDefaultFbo->InitWrapper(aGlCtx);
+  }
+  // Apply any pending view controller events from UI thread BEFORE drawing
+  if (m_owner)
+  {
+    Handle(V3d_View) aView = m_view;
+    m_owner->FlushViewEvents(m_context, aView, true);
+    // Fallback manual navigation to match widget UX
+    bool rotStart=false, rotActive=false, panActive=false; QPoint curr, last;
+    m_owner->pullInput(rotStart, rotActive, panActive, curr, last);
+    if (!m_view.IsNull())
+    {
+      if (rotStart)
+      {
+        m_view->StartRotation(curr.x(), curr.y());
+      }
+      if (rotActive)
+      {
+        m_view->Rotation(curr.x(), curr.y());
+      }
+      else if (panActive)
+      {
+        const int dx = curr.x() - last.x();
+        const int dy = curr.y() - last.y();
+        if (dx != 0 || dy != 0)
+          m_view->Pan(dx, dy);
+      }
+    }
   }
 
-  updateWindowSizeFromFbo();
   applyPending();
 
   if (!m_view.IsNull())
   {
+    // Visual fallback: clear to light gray to prove FBO is visible
+    if (QOpenGLContext* ctx = QOpenGLContext::currentContext())
+    {
+      QOpenGLFunctions* f = ctx->functions();
+      f->glViewport(0, 0, framebufferObject()->width(), framebufferObject()->height());
+      f->glClearColor(0.95f, 0.95f, 0.95f, 1.0f);
+      f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
     m_view->InvalidateImmediate();
+    // Keep grid in sync with current view extents
+    if (!m_grid.IsNull())
+    {
+      Handle(FiniteGrid) grid = Handle(FiniteGrid)::DownCast(m_grid);
+      if (!grid.IsNull())
+      {
+        grid->updateFromView(m_view);
+        m_context->Redisplay(grid, Standard_False);
+      }
+    }
     if (!m_context.IsNull()) m_context->UpdateCurrentViewer();
     m_view->Redraw();
   }
 
   update(); // request next frame if needed
 }
-
