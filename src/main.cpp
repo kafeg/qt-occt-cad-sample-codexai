@@ -10,8 +10,25 @@
 
 #include <Standard_Version.hxx>
 
+// Declaration provided by src/main_qml.cpp
+int runQmlApp(int argc, char** argv);
+
 int main(int argc, char** argv)
 {
+  // Runtime switch: --qml or CAD_USE_QML=1 launches the QML UI
+  bool useQml = true;//qEnvironmentVariableIsSet("CAD_USE_QML");
+  for (int i = 1; i < argc; ++i)
+  {
+    if (QString::fromLocal8Bit(argv[i]) == "--qml")
+    {
+      useQml = true;
+      break;
+    }
+  }
+  if (useQml) {
+    return runQmlApp(argc, argv);
+  }
+
   QApplication app(argc, argv);
 
   QCoreApplication::setApplicationName("Parametric CAD Skeleton");
