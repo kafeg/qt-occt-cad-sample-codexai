@@ -70,6 +70,6 @@
   - Learning Paths & Tutorials: https://www.autodesk.com/learn/paths/learn-fusion-360 — Guided lessons on sketches, constraints, and solid features analogous to our planned sketch module and primitives.
 
 ## Notes for Agents
-- Prefer real, local versions over guesses. Use the headers installed by vcpkg in `build/vcpkg_installed/<triplet>/include/opencascade/` to confirm OCCT APIs and enums.
-- Baseline in this repo: OpenCascade 7.9.1, Qt 6.9.1 — target these directly; avoid version guards unless explicitly requested.
+- Prefer real, local versions over guesses. Use the headers installed by vcpkg in `build/vcpkg_installed/<triplet>/include/opencascade/` to confirm OCCT APIs and enums. Also `build/vcpkg_installed/<triplet>/include` for Qt and other libs related sources.
+- Baseline in this repo: OpenCascade 7.9.1, Qt 6.9.1 (Qt Declarative, Qt Quick Controls 2) — target these directly; avoid version guards unless explicitly requested.
 - No network assumptions; rely on local docs/code. Keep changes minimal and respect the code style.

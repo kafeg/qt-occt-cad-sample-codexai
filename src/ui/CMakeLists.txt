@@ -32,5 +32,5 @@ add_library(ui STATIC
     dialog/SettingsDialog.cpp
     dialog/SettingsDialog.h
 )
-target_link_libraries(ui PUBLIC viewer model sketch Qt6::Widgets Qt6::OpenGLWidgets)
+target_link_libraries(ui PUBLIC viewer model sketch Qt6::Widgets Qt6::OpenGLWidgets Qt6::Qml Qt6::Quick Qt6::QuickControls2)
 target_include_directories(ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
