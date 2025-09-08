@@ -5,6 +5,9 @@
 
 #include <gp_Pnt.hxx>
 #include <gp_Dir.hxx>
+#include <Quantity_Color.hxx>
+
+class AIS_Shape; // fwd decl to avoid heavy include in header
 
 class PlaneFeature;
 DEFINE_STANDARD_HANDLE(PlaneFeature, Feature)
@@ -53,6 +56,16 @@ public:
 
   // Feature API
   void execute() override;
+
+  // Default visual style for all datum planes
+  static Quantity_Color defaultColor()
+  {
+    // Unified orange tone in sRGB
+    return Quantity_Color(Quantity_NOC_ORANGE);
+  }
+
+  // Apply visual style to an AIS shape (color + transparency)
+  void applyStyle(const Handle(AIS_Shape)& ais) const;
 
   // DocumentItem
   Kind kind() const override { return Kind::PlaneFeature; }

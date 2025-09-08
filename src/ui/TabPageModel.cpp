@@ -100,13 +100,8 @@ void TabPageModel::syncViewerFromDoc(bool toUpdate)
     Handle(PlaneFeature) pf = Handle(PlaneFeature)::DownCast(it.Value());
     if (pf.IsNull() || pf->isSuppressed()) continue;
     Handle(AIS_Shape) body = v->addShape(pf->shape(), AIS_Shaded, 0, false);
-    // Color code by name suffix X/Y/Z (names set in initializer)
-    TCollection_AsciiString nm = pf->name();
-    Quantity_Color col(0.85, 0.85, 0.85, Quantity_TOC_sRGB);
-    if (nm.Search("Plane XY") != -1) col = Quantity_Color(0.90, 0.90, 0.90, Quantity_TOC_sRGB);
-    else if (nm.Search("Plane XZ") != -1) col = Quantity_Color(0.90, 0.90, 0.90, Quantity_TOC_sRGB);
-    else if (nm.Search("Plane YZ") != -1) col = Quantity_Color(0.90, 0.90, 0.90, Quantity_TOC_sRGB);
-    body->SetColor(col);
+    // Style is defined by PlaneFeature (keeps models consistent)
+    pf->applyStyle(body);
     if (!v->Context().IsNull())
     {
       v->Context()->SetZLayer(body, Graphic3d_ZLayerId_Top);

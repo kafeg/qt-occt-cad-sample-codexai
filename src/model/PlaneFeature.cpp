@@ -5,6 +5,7 @@
 #include <Geom_Plane.hxx>
 #include <gp_Ax3.hxx>
 #include <gp_Vec.hxx>
+#include <AIS_Shape.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(PlaneFeature, Feature)
 
@@ -60,4 +61,11 @@ void PlaneFeature::execute()
   Handle(Geom_Plane) plane = new Geom_Plane(ax);
   // Make rectangular face in plane UV: [-s, s] x [-s, s]
   m_shape = BRepBuilderAPI_MakeFace(Handle(Geom_Surface)(plane), -s, s, -s, s, 1.0e-7);
+}
+
+void PlaneFeature::applyStyle(const Handle(AIS_Shape)& ais) const
+{
+  if (ais.IsNull()) return;
+  ais->SetColor(PlaneFeature::defaultColor());
+  ais->SetTransparency((Standard_ShortReal)transparency());
 }
