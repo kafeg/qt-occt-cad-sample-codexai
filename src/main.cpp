@@ -15,15 +15,21 @@ int runQmlApp(int argc, char** argv);
 
 int main(int argc, char** argv)
 {
-  // Runtime switch: --qml or CAD_USE_QML=1 launches the QML UI
-  bool useQml = true;//qEnvironmentVariableIsSet("CAD_USE_QML");
+  // Default to QML UI; allow overrides via CLI and env
+  bool useQml = true;
+  // Env override: CAD_USE_QML=0/1 (or true/false)
+  if (qEnvironmentVariableIsSet("CAD_USE_QML"))
+  {
+    const QString v = qEnvironmentVariable("CAD_USE_QML").toLower();
+    if (v == "0" || v == "false" || v == "off") useQml = false;
+    else if (v == "1" || v == "true" || v == "on") useQml = true;
+  }
+  // CLI override: --qml or --widgets
   for (int i = 1; i < argc; ++i)
   {
-    if (QString::fromLocal8Bit(argv[i]) == "--qml")
-    {
-      useQml = true;
-      break;
-    }
+    const QString arg = QString::fromLocal8Bit(argv[i]);
+    if (arg == "--qml") useQml = true;
+    else if (arg == "--widgets") useQml = false;
   }
   if (useQml) {
     return runQmlApp(argc, argv);

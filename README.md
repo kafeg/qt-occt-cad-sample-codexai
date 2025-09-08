@@ -54,7 +54,7 @@ cmake --preset default
 cmake --build --preset default
 ```
 
-- Run (Unix): `./build/src/cad-app`
+- Run (default QML): `./build/src/cad-app`
 - Tests: `ctest --preset default` (or `ctest --test-dir build`)
 
 The `default` preset builds for the `arm64-osx` triplet and relies on `vcpkg.json` to provide `qtbase`, `opencascade`, and `gtest`. Use `--preset linux` or `--preset windows` to select triplets and out-of-source dirs.
@@ -68,3 +68,24 @@ The `default` preset builds for the `arm64-osx` triplet and relies on `vcpkg.jso
 - View → Split Views (menu action “Split Views”): toggles two subviews side‑by‑side.
 - Toolbar: Add Box, Add Cylinder, Add Extrude, Move, background slider; Test toolbar with Clear All and Add Sample.
 - Add Sample: inserts 3 boxes and 3 cylinders; cylinders are offset in +Y; layout uses transient AIS local transforms only.
+
+## UI Variants
+
+- **Default (QML UI):** Modern QML-based shell using `OcctQmlViewer`.
+  - Run: `./build/src/cad-app` (defaults to QML), or `./build/src/cad-app --qml`, or `CAD_USE_QML=1 ./build/src/cad-app`.
+  - Status: prototype shell and integrated 3D viewer; panels and commands are scaffolds and not yet wired into the document/model pipeline.
+- **Classic (Widgets UI):** Qt Widgets `MainWindow` with `OcctQOpenGLWidgetViewer` and full command panels.
+  - Run: `./build/src/cad-app --widgets`, or `CAD_USE_QML=0 ./build/src/cad-app`.
+  - Status: feature dialogs, document timeline, manipulator-driven Move, split views, and test toolbar are functional.
+
+### Known Limitations (QML)
+
+- **Commands:** Create Box/Cylinder/Extrude and Move commands are not connected to the document yet.
+- **Panels:** Browser/Constraints/Parameters are placeholders pending data wiring.
+- **Timeline:** Visual scaffold only; no timeline interactions.
+
+## Shared Code Guidelines
+
+- **Neutral interfaces:** When writing shared models/controllers (e.g., `src/ui/TabPageModel.h:1`), avoid hard dependencies on Widgets types; prefer `QObject*` and virtual interfaces so the same logic works in both QML and Widgets shells.
+- **Viewer coupling:** Access viewer functionality through abstract/neutral API or via `QObject` with runtime casting inside `.cpp` files (keep headers free of Widgets/QQuick types).
+- **Serialization and model:** Keep all geometry/document logic in `src/core`, `src/model`, and `src/doc` independent of UI, so both UIs can reuse it unchanged.
