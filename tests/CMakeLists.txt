@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 find_package(GTest CONFIG REQUIRED)
 find_package(OpenCASCADE REQUIRED)
 
-add_executable(occt-qopenglwidget-tests
+add_executable(vibecad-tests
   common/sanity_test.cpp
   common/occt_test.cpp
   features/box_feature_test.cpp
@@ -22,9 +22,9 @@ add_executable(occt-qopenglwidget-tests
 )
 
 # Allow tests to include headers within tests/ (e.g. common/test_utils.h)
-target_include_directories(occt-qopenglwidget-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(vibecad-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(occt-qopenglwidget-tests PRIVATE
+target_link_libraries(vibecad-tests PRIVATE
   GTest::gtest
   GTest::gtest_main
   sketch
@@ -34,4 +34,4 @@ target_link_libraries(occt-qopenglwidget-tests PRIVATE
   ${OpenCASCADE_LIBRARIES}
 )
 
-add_test(NAME all_tests COMMAND occt-qopenglwidget-tests)
+add_test(NAME all_tests COMMAND vibecad-tests)

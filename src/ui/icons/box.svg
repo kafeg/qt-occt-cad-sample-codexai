@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#6aa0ff"/>
+      <stop offset="1" stop-color="#2e6bd9"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="#1a3a75" stroke-width="2">
+    <path fill="url(#g)" d="M8 20l24-12 24 12v24L32 56 8 44z"/>
+    <path d="M32 8v24"/>
+    <path d="M8 20l24 12 24-12"/>
+  </g>
+  <title>Box</title>
+</svg>
+

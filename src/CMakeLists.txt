@@ -5,4 +5,6 @@ add_subdirectory(core)
 add_subdirectory(doc)
 add_subdirectory(model)
 add_subdirectory(sketch)
-## UI and viewer removed; only core libraries are built for now
+## UI and viewer
+add_subdirectory(viewer)
+add_subdirectory(ui)

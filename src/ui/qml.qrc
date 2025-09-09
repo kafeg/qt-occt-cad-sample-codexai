@@ -1,0 +1,8 @@
+<RCC>
+  <qresource prefix="/ui">
+    <file>qml/main.qml</file>
+    <file>icons/box.svg</file>
+    <file>icons/cylinder.svg</file>
+  </qresource>
+</RCC>
+
