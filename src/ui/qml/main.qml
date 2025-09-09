@@ -26,18 +26,17 @@ ApplicationWindow {
 
     ListModel { id: tabsModel }
 
-    Column {
+    ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
         RowLayout {
             id: tabsRow
-            width: parent.width
+            Layout.fillWidth: true
             spacing: 4
             TabBar {
                 id: tabBar
                 Layout.fillWidth: true
-                currentIndex: stack.currentIndex
                 Repeater {
                     model: tabsModel
                     TabButton { text: model.title }
@@ -53,15 +52,14 @@ ApplicationWindow {
 
         StackLayout {
             id: stack
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: undefined
-            anchors.bottom: parent.bottom
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             currentIndex: tabBar.currentIndex
             Repeater {
                 model: tabsModel
                 Item {
-                    anchors.fill: parent
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
                     DocumentTab { anchors.fill: parent }
                 }
             }

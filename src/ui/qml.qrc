@@ -2,6 +2,10 @@
   <qresource prefix="/ui">
     <file>qml/main.qml</file>
     <file>qml/DocumentTab.qml</file>
+    <file>qml/ToolBarArea.qml</file>
+    <file>qml/DocumentBrowser.qml</file>
+    <file>qml/OcctView.qml</file>
+    <file>qml/ParametersPane.qml</file>
     <file>icons/box.svg</file>
     <file>icons/cylinder.svg</file>
   </qresource>
