@@ -1,11 +1,11 @@
-# Repository Guidelines
+# Repository Guidelines (Short)
 
 ## Project Structure & Module Organization
 - `src/core`: Kernel API wrappers over OCCT primitives/booleans (no Qt deps). Exposed: `makeBox`, `makeCylinder`, `fuse`.
 - `src/doc`: `DocumentItem` base with ids and minimal serialization API (string blob); registry support in `Document` for cross‑references.
 - `src/model`: `Feature` (parameter map, serialization), `Document` (ordered items, recompute, registry), primitives/features: `BoxFeature`, `CylinderFeature`, `ExtrudeFeature`, `MoveFeature`.
-- `src/viewer`: `OcctQOpenGLWidgetViewer` (rendering, input, grid auto‑step, view cube, axes/trihedron, split views, manipulator, sketch overlay mode).
-- `src/ui`: `MainWindow`, `TabPage`, panels (`FeatureHistoryPanel`, `DocumentTreePanel`), commands (`CreateBoxCommand`, `CreateCylinderCommand`, `CreateExtrudeCommand`, `MoveCommand`) and dialogs.
+- `src/viewer`: `OcctQOpenGLWidgetViewer` planned viewer and helpers (to be integrated with the QML shell later).
+- `src/ui`: QML UI shell and components (tabs, toolbar, browser, parameters, timeline). Commands/dialogs are placeholders in the QML variant.
 - `src/sketch`: Sketch data/serialization and viewer integration; used by `ExtrudeFeature` by id.
 - `src/main.cpp`: Qt app entry. Executable name: `cad-app`.
 - `tests/`: GoogleTest unit tests, including model, sketch, serialization, and UI integration.
@@ -13,12 +13,12 @@
 - `vcpkg/`, `vcpkg.json`: Manifest dependencies (`qtbase`, `opencascade`, `gtest`).
 - `.clang-format`: Enforced C++ style (OCCT-leaning, Microsoft base).
 
-## Build, Test, and Development Commands
-- Configure: `cmake --preset default` (uses Ninja, `build/`, `arm64-osx` triplet by default).
-- Build: `cmake --build --preset default` (or `cmake --build build`).
-- Run: `./build/src/cad-app`.
-- Tests: `ctest --preset default` (or `ctest --test-dir build`).
-- Presets: use `--preset linux` or `--preset windows` to select triplets and out-of-source dirs.
+## Build, Test, and Run
+- Configure: `cmake --preset default` (Ninja, `build/`, default triplet)
+- Build: `cmake --build --preset default`
+- Run: `./build/src/cad-app`
+- Tests: `ctest --preset default`
+- Presets: `--preset linux` or `--preset windows` as needed
 
 ## Coding Style & Naming Conventions
 - C++17, 2-space indent, 120-column limit, no tabs; pointer/reference alignment left.
@@ -47,12 +47,13 @@
 - `MoveFeature`: params `SourceId`, exact `gp_Trsf` (+ decomposed Tx/Ty/Tz and Rx/Ry/Rz for readability); moves source and typically suppresses it.
 - New features follow the same pattern: add params in `Feature::ParamKey` if common, implement `execute()` via `KernelAPI`/OCCT, add UI command+dialog if interactive.
 
-## UI Actions
-- File/Toolbar: `Add Box`, `Add Cylinder`, `Add Extrude` open dialogs and push features, then `Document::recompute()` and viewer sync.
-- Move tool: `Move` activates an `AIS_Manipulator` on the selected body; Confirm commits a `MoveFeature`, Cancel discards temporary transforms.
-- Split Views: `Split Views` toggles two subviews; viewer tracks active subview and updates input routing.
-- Sketch overlay: viewer supports toggling a sketch into an edit overlay (Topmost w/o depth) for editing contexts.
-- Test toolbar: `Clear All`, `Add Sample` (adds 3 boxes and 3 cylinders; cylinders row offset along +Y). Local transforms applied via AIS for layout only.
+## QML UI (Flat) — Brief
+- Tabs at top: independent documents; plus to add new tab.
+- Toolbar tabs: Solid (New Sketch, Extrude), Sketch (Point, Line).
+- Left: Document Browser (Origin, Bodies, Sketches) with space for future panels.
+- Center: OCCT view placeholder (to be replaced with integrated viewer).
+- Right: Parameters pane with OK/Cancel; switches by mode (Solid/Sketch).
+- Bottom: Timeline bar with feature chips (visual only).
 
 ## External Learning Resources
 
@@ -70,6 +71,6 @@
   - Learning Paths & Tutorials: https://www.autodesk.com/learn/paths/learn-fusion-360 — Guided lessons on sketches, constraints, and solid features analogous to our planned sketch module and primitives.
 
 ## Notes for Agents
-- Prefer real, local versions over guesses. Use the headers installed by vcpkg in `build/vcpkg_installed/<triplet>/include/opencascade/` to confirm OCCT APIs and enums. Also `build/vcpkg_installed/<triplet>/include` for Qt and other libs related sources.
-- Baseline in this repo: OpenCascade 7.9.1, Qt 6.9.1 (Qt Declarative, Qt Quick Controls 2) — target these directly; avoid version guards unless explicitly requested.
-- No network assumptions; rely on local docs/code. Keep changes minimal and respect the code style.
+- Prefer local headers from `build/vcpkg_installed/<triplet>/include/` to confirm OCCT/Qt APIs.
+- Baseline: OCCT 7.9.1, Qt 6.9.1.
+- No network assumptions; keep changes minimal and respect code style.

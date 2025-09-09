@@ -6,6 +6,7 @@
     <file>qml/DocumentBrowser.qml</file>
     <file>qml/OcctView.qml</file>
     <file>qml/ParametersPane.qml</file>
+    <file>qml/TimelineBar.qml</file>
     <file>icons/box.svg</file>
     <file>icons/cylinder.svg</file>
   </qresource>

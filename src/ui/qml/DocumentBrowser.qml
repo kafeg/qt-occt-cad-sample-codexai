@@ -4,29 +4,51 @@ import QtQuick.Layouts
 
 Pane {
     id: root
-    implicitWidth: 240
-    implicitHeight: 280
+    implicitWidth: 260
+    implicitHeight: 320
+    background: Rectangle { color: "#25272a"; border.color: "#2f3236" }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 6
+        spacing: 8
 
-        Label {
-            text: qsTr("Document Browser")
-            font.bold: true
-        }
+        Label { text: qsTr("Browser"); font.bold: true; color: "#e6e6e6" }
 
-        // Placeholder content
-        Frame {
+        // Sections: Origin, Bodies, Sketches
+        ColumnLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-
-            Label {
-                anchors.centerIn: parent
-                text: qsTr("No items")
-                color: "#666"
+            spacing: 4
+            Label { text: qsTr("Origin"); color: "#9aa0a6" }
+            Repeater {
+                model: 1
+                Label { text: "• XY, XZ, YZ planes"; color: "#cfd3d6" }
             }
         }
+
+        Rectangle { height: 1; color: "#2f3236"; Layout.fillWidth: true }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            Label { text: qsTr("Bodies"); color: "#9aa0a6" }
+            Repeater {
+                model: 3
+                Label { text: "Body " + (index+1); color: "#cfd3d6" }
+            }
+        }
+
+        Rectangle { height: 1; color: "#2f3236"; Layout.fillWidth: true }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            Label { text: qsTr("Sketches"); color: "#9aa0a6" }
+            Repeater {
+                model: 2
+                Label { text: "Sketch " + (index+1); color: "#cfd3d6" }
+            }
+        }
+
+        Item { Layout.fillHeight: true }
     }
 }
-

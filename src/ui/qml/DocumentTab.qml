@@ -5,6 +5,7 @@ import QtQuick.Layouts
 Item {
     id: root
     anchors.fill: parent
+    property int mode: 0 // 0: Solid, 1: Sketch
 
     ColumnLayout {
         id: column
@@ -16,6 +17,7 @@ Item {
             id: toolbar
             Layout.fillWidth: true
             Layout.preferredHeight: implicitHeight
+            onModeChanged: root.mode = toolbar.mode
         }
 
         // Main content area with three zones: left, center, right
@@ -64,7 +66,15 @@ Item {
                 Layout.minimumWidth: 220
                 Layout.maximumWidth: 480
                 Layout.fillHeight: true
+                mode: root.mode
             }
+        }
+
+        // Bottom timeline bar
+        TimelineBar {
+            id: timeline
+            Layout.fillWidth: true
+            Layout.preferredHeight: 80
         }
     }
 }
