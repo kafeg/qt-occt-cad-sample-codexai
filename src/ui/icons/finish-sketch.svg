@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
   <g fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Plane -->
-    <path d="M14 48l18-10 18 10-18 10z"/>
-    <!-- Check mark -->
-    <path d="M20 38l6 6 16-16" stroke="#4a90e2" stroke-width="2"/>
+    <!-- Outer bounding box -->
+    <rect x="8" y="8" width="48" height="48" rx="2" ry="2"/>
+    
+    <!-- Inner sketch shape - square with curved corner (same as new-sketch) -->
+    <path d="M20 20h16v16h-8c-4 0-8-4-8-8z"/>
+    
+    <!-- Check mark for "finish" -->
+    <g stroke="#4a90e2" stroke-width="3.5">
+      <path d="M42 42l6 6 8-8"/>
+    </g>
   </g>
   <title>Finish Sketch</title>
 </svg>

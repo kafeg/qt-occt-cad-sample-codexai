@@ -163,7 +163,8 @@ ToolBar {
                 Repeater {
                     model: [
                         { name: qsTr("New Sketch"), icon: "qrc:/ui/icons/new-sketch.svg" },
-                        { name: qsTr("Extrude"), icon: "qrc:/ui/icons/extrude.svg" }
+                        { name: qsTr("Extrude"), icon: "qrc:/ui/icons/extrude.svg" },
+                        { name: qsTr("Revolve"), icon: "qrc:/ui/icons/revolve.svg" }
                     ]
                     
                     ToolButton {
@@ -209,8 +210,8 @@ ToolBar {
                     contentItem: Image {
                         anchors.centerIn: parent
                         source: "qrc:/ui/icons/finish-sketch.svg"
-                        sourceSize.width: 28
-                        sourceSize.height: 28
+                        sourceSize.width: 40
+                        sourceSize.height: 40
                         fillMode: Image.PreserveAspectFit
                     }
                     ToolTip.visible: hovered
