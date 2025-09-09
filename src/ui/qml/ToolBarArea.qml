@@ -106,8 +106,8 @@ ToolBar {
                     contentItem: Image {
                         anchors.centerIn: parent
                         source: "qrc:/ui/icons/mode-solid.svg"
-                        sourceSize.width: 20
-                        sourceSize.height: 20
+                        sourceSize.width: 32
+                        sourceSize.height: 32
                         fillMode: Image.PreserveAspectFit
                     }
                     
@@ -135,8 +135,8 @@ ToolBar {
                     contentItem: Image {
                         anchors.centerIn: parent
                         source: "qrc:/ui/icons/mode-sketch.svg"
-                        sourceSize.width: 20
-                        sourceSize.height: 20
+                        sourceSize.width: 32
+                        sourceSize.height: 32
                         fillMode: Image.PreserveAspectFit
                     }
                     
@@ -177,8 +177,8 @@ ToolBar {
                         contentItem: Image {
                             anchors.centerIn: parent
                             source: modelData.icon
-                            sourceSize.width: 28
-                            sourceSize.height: 28
+                            sourceSize.width: 40
+                            sourceSize.height: 40
                             fillMode: Image.PreserveAspectFit
                         }
                         ToolTip.visible: hovered
@@ -235,8 +235,8 @@ ToolBar {
                         contentItem: Image {
                             anchors.centerIn: parent
                             source: modelData.icon
-                            sourceSize.width: 28
-                            sourceSize.height: 28
+                            sourceSize.width: 40
+                            sourceSize.height: 40
                             fillMode: Image.PreserveAspectFit
                         }
                         ToolTip.visible: hovered

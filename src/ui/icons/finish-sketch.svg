@@ -1,16 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="fkg" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#a3ffc8"/>
-      <stop offset="1" stop-color="#37b37a"/>
-    </linearGradient>
-  </defs>
-  <g fill="none" stroke="#0f5a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <!-- Plane -->
-    <path d="M12 46l20-10 20 10-20 10z" fill="url(#fkg)"/>
+    <path d="M14 48l18-10 18 10-18 10z"/>
     <!-- Check mark -->
-    <path d="M18 36l8 8 20-20" stroke="#0f8a5a"/>
+    <path d="M20 38l6 6 16-16" stroke="#4a90e2" stroke-width="2"/>
   </g>
   <title>Finish Sketch</title>
 </svg>

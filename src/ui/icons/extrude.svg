@@ -1,20 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="exg" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#7fb1ff"/>
-      <stop offset="1" stop-color="#2e6bd9"/>
-    </linearGradient>
-  </defs>
-  <g fill="none" stroke="#1a3a75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <!-- Sketch profile -->
-    <path d="M14 44l18-8 18 8-18 8z"/>
+    <path d="M16 46l16-8 16 8-16 8z"/>
     <!-- Extrude arrow -->
-    <path d="M32 40v-18"/>
-    <path d="M28 24l4-6 4 6z" fill="#1a3a75" stroke="none"/>
-    <!-- Resulting prism -->
-    <path d="M14 44l18-8 18 8-18 8z" fill="url(#exg)" opacity="0.2"/>
-    <path d="M32 24l18 8v12l-18 8-18-8V32z" fill="url(#exg)" opacity="0.7"/>
+    <path d="M32 42v-16"/>
+    <path d="M28 28l4-4 4 4z" fill="#ffffff"/>
+    <!-- Resulting prism outline -->
+    <path d="M16 46l16-8 16 8-16 8z"/>
+    <path d="M32 30l16 8v12l-16 8-16-8V38z"/>
+    <!-- Top face highlight -->
+    <path d="M16 46l16-8 16 8-16 8z" fill="#4a90e2" opacity="0.3"/>
   </g>
   <title>Extrude</title>
 </svg>

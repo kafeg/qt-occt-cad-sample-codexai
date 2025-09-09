@@ -1,18 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="ms" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#7fb1ff"/>
-      <stop offset="1" stop-color="#2e6bd9"/>
-    </linearGradient>
-  </defs>
-  <g fill="none" stroke="#1f3f78" stroke-width="2">
-    <!-- Cube top -->
-    <path d="M12 22l20-10 20 10-20 10z" fill="url(#ms)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Cube top face -->
+    <path d="M16 20l16-8 16 8-16 8z"/>
     <!-- Left face -->
-    <path d="M12 22v20l20 10V32z" fill="url(#ms)"/>
+    <path d="M16 20v16l16 8V28z"/>
     <!-- Right face -->
-    <path d="M52 22v20L32 52V32z" fill="url(#ms)"/>
+    <path d="M48 20v16L32 44V28z"/>
+    <!-- Top face highlight -->
+    <path d="M16 20l16-8 16 8-16 8z" fill="#4a90e2" opacity="0.3"/>
   </g>
   <title>Mode: Solid</title>
   <desc>Cube symbol representing solid modeling mode</desc>

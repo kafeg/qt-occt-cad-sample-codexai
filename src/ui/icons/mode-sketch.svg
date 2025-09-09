@@ -1,20 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="mk" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#a3ffc8"/>
-      <stop offset="1" stop-color="#37b37a"/>
-    </linearGradient>
-  </defs>
-  <g fill="none" stroke="#0f5a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <!-- Bezier-like curve -->
-    <path d="M10 42C18 26 34 26 54 18"/>
-    <circle cx="10" cy="42" r="3" fill="#0f5a3a" stroke="none"/>
-    <circle cx="54" cy="18" r="3" fill="#0f5a3a" stroke="none"/>
+    <path d="M12 44C20 28 36 28 56 20"/>
+    <circle cx="12" cy="44" r="2" fill="#ffffff"/>
+    <circle cx="56" cy="20" r="2" fill="#ffffff"/>
     <!-- Pencil -->
-    <g transform="rotate(-30 42 42)">
-      <rect x="34" y="36" width="16" height="8" rx="1" ry="1" fill="url(#mk)"/>
-      <path d="M50 36l6 4-6 4z" fill="#e3c29b" stroke="#0f5a3a"/>
+    <g transform="rotate(-30 44 44)">
+      <rect x="36" y="38" width="16" height="6" rx="1" ry="1" fill="#4a90e2" opacity="0.3"/>
+      <path d="M52 38l4 3-4 3z" fill="#ffffff"/>
     </g>
   </g>
   <title>Mode: Sketch</title>
