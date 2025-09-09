@@ -614,16 +614,15 @@ std::vector<Sketch::Wire> Sketch::computeWires(double tol) const
 
 std::vector<Sketch::OrderedPath> Sketch::computeOrderedPaths(double tol) const
 {
-  // Build mapping: cluster -> list of (curveId, endIndex)
+  // Establish unions consistently, then build wires and cluster references using that UF state.
   const std::size_t n = curves_.size();
+
+  // Build wires first; this also ensures uf_parent_ is initialized and unions are applied
+  // (computeWires performs geometry-based clustering if needed).
+  const auto wires = computeWires(tol);
+
+  // Build mapping: cluster -> list of (curveId, endIndex) using the current UF state
   std::unordered_map<std::size_t, std::vector<std::pair<int, int>>> clusterRefs;
-
-  // Ensure union-find reflects current coincidences
-  if (uf_parent_.size() != n * 2)
-  {
-    const_cast<Sketch*>(this)->ufInit(n * 2);
-  }
-
   for (int cid = 0; cid < static_cast<int>(n); ++cid)
   {
     for (int e = 0; e < 2; ++e)
@@ -633,9 +632,6 @@ std::vector<Sketch::OrderedPath> Sketch::computeOrderedPaths(double tol) const
       clusterRefs[rep].push_back({cid, e});
     }
   }
-
-  // Build wires first (connected sets of curves)
-  const auto wires = computeWires(tol);
 
   // For each wire, create one or more ordered paths that cover all its curves
   std::vector<OrderedPath> paths;
