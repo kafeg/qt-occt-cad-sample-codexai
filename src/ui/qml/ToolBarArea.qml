@@ -92,9 +92,8 @@ ToolBar {
                 // Solid mode button
                 ToolButton {
                     id: solidBtn
-                    checkable: true
+                    checkable: false // acts as an indicator only
                     checked: root.mode === 0
-                    onClicked: root.mode = 0
                     hoverEnabled: true
                     ButtonGroup.group: modeGroup
                     Accessible.name: qsTr("Solid")
@@ -102,7 +101,7 @@ ToolBar {
                     height: parent.height
                     width: parent.height
                     
-                    background: Rectangle { color: solidBtn.checked ? root.theme.toolbarTabBg : root.theme.toolbarTabOn; radius: 0; border.color: "transparent" }
+                    background: Rectangle { color: root.mode === 0 ? root.theme.toolbarTabBg : root.theme.toolbarTabOn; radius: 0; border.color: "transparent" }
                     
                     contentItem: Image {
                         anchors.centerIn: parent
@@ -122,9 +121,8 @@ ToolBar {
                 // Sketch mode button
                 ToolButton {
                     id: sketchBtn
-                    checkable: true
+                    checkable: false // acts as an indicator only
                     checked: root.mode === 1
-                    onClicked: root.mode = 1
                     hoverEnabled: true
                     ButtonGroup.group: modeGroup
                     Accessible.name: qsTr("Sketch")
@@ -132,7 +130,7 @@ ToolBar {
                     height: parent.height
                     width: parent.height
                     
-                    background: Rectangle { color: sketchBtn.checked ? root.theme.toolbarTabBg : root.theme.toolbarTabOn; radius: 0; border.color: "transparent" }
+                    background: Rectangle { color: root.mode === 1 ? root.theme.toolbarTabBg : root.theme.toolbarTabOn; radius: 0; border.color: "transparent" }
                     
                     contentItem: Image {
                         anchors.centerIn: parent
@@ -180,6 +178,11 @@ ToolBar {
                             color: root.theme.text
                             padding: 8
                         }
+                        onClicked: {
+                            if (modelData.name === qsTr("New Sketch")) {
+                                root.mode = 1
+                            }
+                        }
                     }
                 }
             }
@@ -189,6 +192,21 @@ ToolBar {
                 id: sketchTools
                 spacing: 4
                 
+                // Finish Sketch button
+                ToolButton {
+                    text: qsTr("Finish Sketch")
+                    background: Rectangle {
+                        color: "transparent"
+                        radius: 0
+                    }
+                    contentItem: Label {
+                        text: parent.text
+                        color: root.theme.text
+                        padding: 8
+                    }
+                    onClicked: root.mode = 0
+                }
+
                 Repeater {
                     model: [
                         { name: qsTr("Point") },
