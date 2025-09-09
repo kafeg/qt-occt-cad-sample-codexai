@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ms" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#7fb1ff"/>
+      <stop offset="1" stop-color="#2e6bd9"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="#1f3f78" stroke-width="2">
+    <!-- Cube top -->
+    <path d="M12 22l20-10 20 10-20 10z" fill="url(#ms)"/>
+    <!-- Left face -->
+    <path d="M12 22v20l20 10V32z" fill="url(#ms)"/>
+    <!-- Right face -->
+    <path d="M52 22v20L32 52V32z" fill="url(#ms)"/>
+  </g>
+  <title>Mode: Solid</title>
+  <desc>Cube symbol representing solid modeling mode</desc>
+</svg>
+
