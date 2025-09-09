@@ -1,5 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 ApplicationWindow {
     id: root
@@ -8,15 +9,62 @@ ApplicationWindow {
     height: 600
     title: qsTr("vibecad")
 
+    property int tabCounter: 0
+
+    // No header; tabs start immediately at the top
+
+    function addDocumentTab() {
+        tabCounter += 1
+        tabsModel.append({ title: qsTr("Document ") + tabCounter })
+        tabBar.currentIndex = tabsModel.count - 1
+    }
+
+    Component.onCompleted: {
+        // Open one default tab at startup
+        addDocumentTab()
+    }
+
+    ListModel { id: tabsModel }
+
     Column {
-        anchors.centerIn: parent
-        spacing: 12
-        Label { text: "Welcome to vibecad (stub UI)" }
-        Row {
-            spacing: 8
-            Image { source: "qrc:/ui/icons/box.svg"; width: 32; height: 32; fillMode: Image.PreserveAspectFit }
-            Image { source: "qrc:/ui/icons/cylinder.svg"; width: 32; height: 32; fillMode: Image.PreserveAspectFit }
+        anchors.fill: parent
+        spacing: 0
+
+        RowLayout {
+            id: tabsRow
+            width: parent.width
+            spacing: 4
+            TabBar {
+                id: tabBar
+                Layout.fillWidth: true
+                currentIndex: stack.currentIndex
+                Repeater {
+                    model: tabsModel
+                    TabButton { text: model.title }
+                }
+            }
+            ToolButton {
+                id: addTabButton
+                text: "+"
+                Accessible.name: qsTr("Add Tab")
+                onClicked: addDocumentTab()
+            }
         }
-        Button { text: "OK"; onClicked: Qt.quit() }
+
+        StackLayout {
+            id: stack
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: undefined
+            anchors.bottom: parent.bottom
+            currentIndex: tabBar.currentIndex
+            Repeater {
+                model: tabsModel
+                Item {
+                    anchors.fill: parent
+                    DocumentTab { anchors.fill: parent }
+                }
+            }
+        }
     }
 }

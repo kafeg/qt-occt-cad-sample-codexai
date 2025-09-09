@@ -1,9 +1,16 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QLibraryInfo>
+#include <QScreen>
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
+
+    // Exit gracefully if no screens are available (headless environment)
+    if (QGuiApplication::screens().isEmpty()) {
+        qCritical("No screens available. Are you running headless?");
+        return 2;
+    }
 
     QQmlApplicationEngine engine;
     // Help the engine find Qt's QML modules when running from the build tree
