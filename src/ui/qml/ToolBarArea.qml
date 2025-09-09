@@ -162,22 +162,27 @@ ToolBar {
                 
                 Repeater {
                     model: [
-                        { name: qsTr("New Sketch"), icon: "qrc:/ui/icons/box.svg" },
-                        { name: qsTr("Extrude"), icon: "qrc:/ui/icons/cylinder.svg" }
+                        { name: qsTr("New Sketch"), icon: "qrc:/ui/icons/new-sketch.svg" },
+                        { name: qsTr("Extrude"), icon: "qrc:/ui/icons/extrude.svg" }
                     ]
                     
                     ToolButton {
                         text: modelData.name
-                        icon.source: modelData.icon
+                        width: parent.height
+                        height: parent.height
                         background: Rectangle { 
                             color: "transparent"
                             radius: 0 
                         }
-                        contentItem: Label { 
-                            text: parent.text
-                            color: root.theme.text
-                            padding: 8
+                        contentItem: Image {
+                            anchors.centerIn: parent
+                            source: modelData.icon
+                            sourceSize.width: 28
+                            sourceSize.height: 28
+                            fillMode: Image.PreserveAspectFit
                         }
+                        ToolTip.visible: hovered
+                        ToolTip.text: modelData.name
                         onClicked: {
                             if (modelData.name === qsTr("New Sketch")) {
                                 root.mode = 1
@@ -195,35 +200,47 @@ ToolBar {
                 // Finish Sketch button
                 ToolButton {
                     text: qsTr("Finish Sketch")
+                    width: parent.height
+                    height: parent.height
                     background: Rectangle {
                         color: "transparent"
                         radius: 0
                     }
-                    contentItem: Label {
-                        text: parent.text
-                        color: root.theme.text
-                        padding: 8
+                    contentItem: Image {
+                        anchors.centerIn: parent
+                        source: "qrc:/ui/icons/finish-sketch.svg"
+                        sourceSize.width: 28
+                        sourceSize.height: 28
+                        fillMode: Image.PreserveAspectFit
                     }
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Finish Sketch")
                     onClicked: root.mode = 0
                 }
 
                 Repeater {
                     model: [
-                        { name: qsTr("Point") },
-                        { name: qsTr("Line") }
+                        { name: qsTr("Point"), icon: "qrc:/ui/icons/sketch-point.svg" },
+                        { name: qsTr("Line"), icon: "qrc:/ui/icons/sketch-line.svg" }
                     ]
                     
                     ToolButton {
                         text: modelData.name
+                        width: parent.height
+                        height: parent.height
                         background: Rectangle { 
                             color: "transparent"
                             radius: 0 
                         }
-                        contentItem: Label { 
-                            text: parent.text
-                            color: root.theme.text
-                            padding: 8
+                        contentItem: Image {
+                            anchors.centerIn: parent
+                            source: modelData.icon
+                            sourceSize.width: 28
+                            sourceSize.height: 28
+                            fillMode: Image.PreserveAspectFit
                         }
+                        ToolTip.visible: hovered
+                        ToolTip.text: modelData.name
                     }
                 }
             }
