@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="slg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#a3ffc8"/>
+      <stop offset="1" stop-color="#37b37a"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="#0f5a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Endpoints -->
+    <circle cx="14" cy="46" r="4" fill="url(#slg)" stroke="#0f5a3a"/>
+    <circle cx="50" cy="18" r="4" fill="url(#slg)" stroke="#0f5a3a"/>
+    <!-- Line segment -->
+    <path d="M18 42L46 22"/>
+  </g>
+  <title>Sketch Line</title>
+</svg>
+
+
