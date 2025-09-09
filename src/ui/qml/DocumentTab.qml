@@ -6,8 +6,6 @@ Item {
     id: root
     anchors.fill: parent
     property int mode: 0 // 0: Solid, 1: Sketch
-    property bool leftPanelCollapsed: false
-    property bool rightPanelCollapsed: false
     readonly property Theme theme: Theme {}
 
     ColumnLayout {
@@ -33,9 +31,9 @@ Item {
             // Left: Document browser + future panels container
             Rectangle {
                 id: leftPaneContainer
-                Layout.preferredWidth: root.leftPanelCollapsed ? 40 : 260
-                Layout.minimumWidth: root.leftPanelCollapsed ? 40 : 220
-                Layout.maximumWidth: root.leftPanelCollapsed ? 40 : 420
+                Layout.preferredWidth: 260
+                Layout.minimumWidth: 220
+                Layout.maximumWidth: 420
                 Layout.fillHeight: true
                 color: theme.panelBg
                 border.color: theme.border
@@ -47,53 +45,10 @@ Item {
                     anchors.margins: 1
                     spacing: 2
 
-                    // Left panel header with collapse button
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 32
-                        color: theme.panelMuted
-                        border.color: theme.divider
-                        border.width: 1
-                        
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            spacing: 8
-                            
-                            Label {
-                                text: qsTr("Left Panel")
-                                font.bold: true
-                                color: theme.textMuted
-                                Layout.fillWidth: true
-                                visible: !root.leftPanelCollapsed
-                            }
-                            
-                            ToolButton {
-                                id: leftCollapseButton
-                                text: root.leftPanelCollapsed ? "▶" : "▼"
-                                implicitWidth: 20
-                                implicitHeight: 20
-                                onClicked: root.leftPanelCollapsed = !root.leftPanelCollapsed
-                                background: Rectangle { 
-                                    color: leftCollapseButton.down ? theme.panelBg : "transparent"
-                                    radius: 2
-                                }
-                                contentItem: Text {
-                                    text: parent.text
-                                    color: theme.textMuted
-                                    font.pixelSize: 12
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                        }
-                    }
-
-                    // Collapsible content
+                    // Content
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        visible: !root.leftPanelCollapsed
                         spacing: 2
 
                         DocumentBrowser {
@@ -131,9 +86,9 @@ Item {
             // Right: Parameters pane
             Rectangle {
                 id: rightPaneContainer
-                Layout.preferredWidth: root.rightPanelCollapsed ? 40 : 300
-                Layout.minimumWidth: root.rightPanelCollapsed ? 40 : 220
-                Layout.maximumWidth: root.rightPanelCollapsed ? 40 : 480
+                Layout.preferredWidth: 300
+                Layout.minimumWidth: 220
+                Layout.maximumWidth: 480
                 Layout.fillHeight: true
                 color: theme.panelBg
                 border.color: theme.border
@@ -144,54 +99,11 @@ Item {
                     anchors.margins: 1
                     spacing: 2
 
-                    // Right panel header with collapse button
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 32
-                        color: theme.panelMuted
-                        border.color: theme.divider
-                        border.width: 1
-                        
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            spacing: 8
-                            
-                            Label {
-                                text: qsTr("Right Panel")
-                                font.bold: true
-                                color: theme.textMuted
-                                Layout.fillWidth: true
-                                visible: !root.rightPanelCollapsed
-                            }
-                            
-                            ToolButton {
-                                id: rightCollapseButton
-                                text: root.rightPanelCollapsed ? "▶" : "▼"
-                                implicitWidth: 20
-                                implicitHeight: 20
-                                onClicked: root.rightPanelCollapsed = !root.rightPanelCollapsed
-                                background: Rectangle { 
-                                    color: rightCollapseButton.down ? theme.panelBg : "transparent"
-                                    radius: 2
-                                }
-                                contentItem: Text {
-                                    text: parent.text
-                                    color: theme.textMuted
-                                    font.pixelSize: 12
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                        }
-                    }
-
-                    // Collapsible content
+                    // Content
                     ParametersPane {
                         id: parametersPane
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        visible: !root.rightPanelCollapsed
                         mode: root.mode
                     }
                 }
