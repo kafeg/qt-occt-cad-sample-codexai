@@ -2,6 +2,87 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+
+import QtQuick 6.5
+import QtQuick.Controls 6.5
+import QtQuick.Layouts
+import QtQuick.Shapes
+
+// ApplicationWindow {
+//     width: 800
+//     height: 120
+//     visible: true
+//     color: "#1a1d22"
+
+//     ToolBar {
+//         id: toolbar
+//         anchors.fill: parent
+//         background: Rectangle { color: "#121418" }
+
+//         RowLayout {
+//             anchors.fill: parent
+//             spacing: 0
+
+//             // --- Left block with arrow ---
+//             Item {
+//                 Layout.preferredWidth: 300
+//                 Layout.fillHeight: true
+
+//                 Rectangle {
+//                     id: leftBlock
+//                     anchors.fill: parent
+//                     anchors.rightMargin: 20
+//                     color: "#232830"
+//                 }
+
+//                 // Arrow
+//             Canvas {
+//                 anchors.fill: parent
+//                 onPaint: {
+//                     var ctx = getContext("2d");
+//                     ctx.reset();
+//                     ctx.fillStyle = "#232830";
+//                     ctx.beginPath();
+//                     ctx.moveTo(0, 0);
+//                     ctx.lineTo(width - 20, 0);
+//                     ctx.lineTo(width, height/2);
+//                     ctx.lineTo(width - 20, height);
+//                     ctx.lineTo(0, height);
+//                     ctx.closePath();
+//                     ctx.fill();
+//                 }
+//             }
+
+//                 Row {
+//                     anchors.centerIn: parent
+//                     spacing: 8
+
+//                     Button { text: "Solid" }
+//                     Button { text: "Sketch" }
+//                 }
+//             }
+
+//             // --- Right block ---
+//             Item {
+//                 Layout.fillWidth: true
+//                 Layout.fillHeight: true
+//                 Rectangle {
+//                     anchors.fill: parent
+//                     color: "#121418"
+//                 }
+
+//                 Row {
+//                     anchors.centerIn: parent
+//                     spacing: 8
+
+//                     Button { text: "Tool A" }
+//                     Button { text: "Tool B" }
+//                 }
+//             }
+//         }
+//     }
+// }
+
 ApplicationWindow {
     id: root
     visible: true
