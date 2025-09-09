@@ -7,16 +7,29 @@ Pane {
     implicitWidth: 300
     property int mode: 0 // 0: Solid, 1: Sketch
     readonly property Theme theme: Theme {}
-    background: Rectangle { color: theme.panelBg; border.color: theme.border; radius: 0 }
+    background: Rectangle { color: theme.panelBg; border.color: "transparent"; radius: 0 }
 
     ColumnLayout {
         anchors.fill: parent
         spacing: 6
 
-        Label {
-            text: root.mode === 0 ? qsTr("Solid Parameters") : qsTr("Sketch Parameters")
-            font.bold: true
-            color: theme.text
+        // Header with separator
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            
+            Label {
+                text: root.mode === 0 ? qsTr("Solid Parameters") : qsTr("Sketch Parameters")
+                font.bold: true
+                color: theme.textMuted
+                Layout.fillWidth: true
+            }
+            
+            Rectangle { 
+                height: 1; 
+                color: theme.divider; 
+                Layout.fillWidth: true 
+            }
         }
 
         StackLayout {

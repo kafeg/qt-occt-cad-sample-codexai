@@ -29,27 +29,36 @@ Item {
             spacing: 0
 
             // Left: Document browser + future panels container
-            ColumnLayout {
-                id: leftPane
+            Rectangle {
+                id: leftPaneContainer
                 Layout.preferredWidth: 260
                 Layout.minimumWidth: 220
                 Layout.maximumWidth: 420
                 Layout.fillHeight: true
-                spacing: 2
+                color: theme.panelBg
+                border.color: theme.border
+                border.width: 1
+                
+                ColumnLayout {
+                    id: leftPane
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    spacing: 2
 
-                DocumentBrowser {
-                    id: documentBrowser
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 280
-                }
+                    DocumentBrowser {
+                        id: documentBrowser
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 280
+                    }
 
-                // Empty container reserved for future panels (e.g., Comments)
-                Pane {
-                    id: extraPanelsContainer
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Accessible.name: qsTr("Extra Panels Container")
-                    background: Rectangle { color: theme.panelBg; border.color: theme.border; radius: 0 }
+                    // Empty container reserved for future panels (e.g., Comments)
+                    Pane {
+                        id: extraPanelsContainer
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Accessible.name: qsTr("Extra Panels Container")
+                        background: Rectangle { color: theme.panelBg; border.color: "transparent"; radius: 0 }
+                    }
                 }
             }
 
@@ -68,13 +77,22 @@ Item {
             Rectangle { width: 1; color: theme.divider; Layout.fillHeight: true }
 
             // Right: Parameters pane
-            ParametersPane {
-                id: parametersPane
+            Rectangle {
+                id: rightPaneContainer
                 Layout.preferredWidth: 300
                 Layout.minimumWidth: 220
                 Layout.maximumWidth: 480
                 Layout.fillHeight: true
-                mode: root.mode
+                color: theme.panelBg
+                border.color: theme.border
+                border.width: 1
+                
+                ParametersPane {
+                    id: parametersPane
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    mode: root.mode
+                }
             }
         }
 

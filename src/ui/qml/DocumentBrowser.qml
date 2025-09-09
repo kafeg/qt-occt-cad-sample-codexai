@@ -7,13 +7,30 @@ Pane {
     implicitWidth: 260
     implicitHeight: 320
     readonly property Theme theme: Theme {}
-    background: Rectangle { color: theme.panelBg; border.color: theme.border; radius: 0 }
+    background: Rectangle { color: theme.panelBg; border.color: "transparent"; radius: 0 }
 
     ColumnLayout {
         anchors.fill: parent
         spacing: 6
 
-        Label { text: qsTr("Browser"); font.bold: true; color: theme.text }
+        // Header with separator
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            
+            Label { 
+                text: qsTr("Browser"); 
+                font.bold: true; 
+                color: theme.textMuted;
+                Layout.fillWidth: true
+            }
+            
+            Rectangle { 
+                height: 1; 
+                color: theme.divider; 
+                Layout.fillWidth: true 
+            }
+        }
 
         // Sections: Origin, Bodies, Sketches
         ColumnLayout {
