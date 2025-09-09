@@ -6,6 +6,7 @@ Item {
     id: root
     anchors.fill: parent
     property int mode: 0 // 0: Solid, 1: Sketch
+    readonly property Theme theme: Theme {}
 
     ColumnLayout {
         id: column
@@ -25,7 +26,7 @@ Item {
             id: contentRow
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 6
+            spacing: 0
 
             // Left: Document browser + future panels container
             ColumnLayout {
@@ -34,7 +35,7 @@ Item {
                 Layout.minimumWidth: 220
                 Layout.maximumWidth: 420
                 Layout.fillHeight: true
-                spacing: 6
+                spacing: 2
 
                 DocumentBrowser {
                     id: documentBrowser
@@ -48,8 +49,12 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Accessible.name: qsTr("Extra Panels Container")
+                    background: Rectangle { color: theme.panelBg; border.color: theme.border; radius: 0 }
                 }
             }
+
+            // Vertical divider
+            Rectangle { width: 1; color: theme.divider; Layout.fillHeight: true }
 
             // Center: OCCT view placeholder (main viewport)
             OcctView {
@@ -58,6 +63,9 @@ Item {
                 Layout.fillHeight: true
                 focus: true
             }
+
+            // Vertical divider
+            Rectangle { width: 1; color: theme.divider; Layout.fillHeight: true }
 
             // Right: Parameters pane
             ParametersPane {
@@ -75,6 +83,8 @@ Item {
             id: timeline
             Layout.fillWidth: true
             Layout.preferredHeight: 80
+            // top divider
+            topPadding: 0
         }
     }
 }

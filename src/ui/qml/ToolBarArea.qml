@@ -6,28 +6,32 @@ ToolBar {
     id: root
     property int mode: 0 // 0: Solid, 1: Sketch
 
-    background: Rectangle { color: "#2a2c2f"; border.color: "#2f3236"; height: 56 }
+    // Local theme instance (flat palette)
+    readonly property Theme theme: Theme {}
+
+    background: Rectangle { color: theme.toolbarBg; border.color: theme.border; height: 56; radius: 0 }
 
     RowLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: 4
         // Mode tabs
         TabBar {
             id: modeTabs
             implicitHeight: 40
             currentIndex: root.mode
             onCurrentIndexChanged: root.mode = currentIndex
+            background: Rectangle { color: "transparent" }
             TabButton {
                 text: qsTr("Solid")
                 implicitHeight: 40
-                background: Rectangle { color: modeTabs.currentIndex === 0 ? "#1e1f22" : "#2a2c2f"; radius: 6; border.color: "#3a3d42" }
-                contentItem: Label { text: parent.text; color: "#e6e6e6"; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: modeTabs.currentIndex === 0 ? theme.toolbarTabOn : theme.toolbarTabBg; radius: 0; border.color: theme.border }
+                contentItem: Label { text: parent.text; color: theme.text; verticalAlignment: Text.AlignVCenter; padding: 12 }
             }
             TabButton {
                 text: qsTr("Sketch")
                 implicitHeight: 40
-                background: Rectangle { color: modeTabs.currentIndex === 1 ? "#1e1f22" : "#2a2c2f"; radius: 6; border.color: "#3a3d42" }
-                contentItem: Label { text: parent.text; color: "#e6e6e6"; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: modeTabs.currentIndex === 1 ? theme.toolbarTabOn : theme.toolbarTabBg; radius: 0; border.color: theme.border }
+                contentItem: Label { text: parent.text; color: theme.text; verticalAlignment: Text.AlignVCenter; padding: 12 }
             }
         }
 
@@ -40,29 +44,33 @@ ToolBar {
 
             // Solid tools
             RowLayout {
-                spacing: 6
+                spacing: 4
                 ToolButton {
                     text: qsTr("New Sketch")
                     icon.source: "qrc:/ui/icons/box.svg" // placeholder icon
-                    background: Rectangle { color: "#3a3d42"; radius: 6 }
+                    background: Rectangle { color: "transparent"; radius: 0 }
+                    contentItem: Label { text: parent.text; color: theme.text; padding: 8 }
                 }
                 ToolButton {
                     text: qsTr("Extrude")
                     icon.source: "qrc:/ui/icons/cylinder.svg" // placeholder icon
-                    background: Rectangle { color: "#3a3d42"; radius: 6 }
+                    background: Rectangle { color: "transparent"; radius: 0 }
+                    contentItem: Label { text: parent.text; color: theme.text; padding: 8 }
                 }
             }
 
             // Sketch tools
             RowLayout {
-                spacing: 6
+                spacing: 4
                 ToolButton {
                     text: qsTr("Point")
-                    background: Rectangle { color: "#3a3d42"; radius: 6 }
+                    background: Rectangle { color: "transparent"; radius: 0 }
+                    contentItem: Label { text: parent.text; color: theme.text; padding: 8 }
                 }
                 ToolButton {
                     text: qsTr("Line")
-                    background: Rectangle { color: "#3a3d42"; radius: 6 }
+                    background: Rectangle { color: "transparent"; radius: 0 }
+                    contentItem: Label { text: parent.text; color: theme.text; padding: 8 }
                 }
             }
         }

@@ -5,13 +5,14 @@ import QtQuick.Layouts
 Pane {
     id: root
     implicitHeight: 80
-    background: Rectangle { color: "#202225"; border.color: "#2f3236" }
+    readonly property Theme theme: Theme {}
+    background: Rectangle { color: theme.panelBg; border.color: theme.border }
 
     ColumnLayout {
         anchors.fill: parent
         spacing: 6
 
-        Label { text: qsTr("Timeline"); font.bold: true; color: "#e6e6e6" }
+        Label { text: qsTr("Timeline"); font.bold: true; color: theme.text }
 
         ListView {
             id: timelineView
@@ -23,17 +24,16 @@ Pane {
             delegate: Rectangle {
                 width: 140
                 height: 36
-                radius: 6
-                color: "#2a2c2f"
-                border.color: "#3a3d42"
+                radius: 0
+                color: theme.chipBg
+                border.color: theme.border
                 Label {
                     anchors.centerIn: parent
                     text: "Feature " + (index+1)
-                    color: "#cfd3d6"
+                    color: theme.text
                 }
             }
             clip: true
         }
     }
 }
-

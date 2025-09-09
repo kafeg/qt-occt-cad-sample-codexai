@@ -6,17 +6,17 @@ Pane {
     id: root
     implicitWidth: 300
     property int mode: 0 // 0: Solid, 1: Sketch
-
-    background: Rectangle { color: "#25272a"; border.color: "#2f3236" }
+    readonly property Theme theme: Theme {}
+    background: Rectangle { color: theme.panelBg; border.color: theme.border; radius: 0 }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: 6
 
         Label {
             text: root.mode === 0 ? qsTr("Solid Parameters") : qsTr("Sketch Parameters")
             font.bold: true
-            color: "#e6e6e6"
+            color: theme.text
         }
 
         StackLayout {
@@ -31,33 +31,57 @@ Pane {
                 Frame {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    background: Rectangle { color: "#2a2c2f"; border.color: "#3a3d42"; radius: 6 }
-                    Label { anchors.centerIn: parent; text: qsTr("Select object(s) and set Extrude params"); color: "#bbb" }
+                    background: Rectangle { color: theme.panelMuted; border.color: theme.border; radius: 0 }
+                    Label { anchors.centerIn: parent; text: qsTr("Select object(s) and set Extrude params"); color: theme.textMuted }
                 }
                 RowLayout {
                     Layout.alignment: Qt.AlignRight
-                    spacing: 8
-                    Button { text: qsTr("Cancel"); background: Rectangle { color: "#3a3d42"; radius: 6 } }
-                    Button { text: qsTr("OK"); background: Rectangle { color: "#4c8bf5"; radius: 6 } }
+                    spacing: 6
+                    Button {
+                        text: qsTr("Cancel")
+                        background: Rectangle { color: theme.panelMuted; radius: 0 }
+                        contentItem: Label { text: parent.text; color: theme.text }
+                    }
+                    Button {
+                        text: qsTr("OK")
+                        background: Rectangle { color: theme.accent; radius: 0 }
+                        contentItem: Label { text: parent.text; color: "white" }
+                    }
                 }
             }
 
             // Sketch parameters
             ColumnLayout {
                 spacing: 6
-                CheckBox { text: qsTr("Show sketch grid") }
-                CheckBox { text: qsTr("Snap to grid") }
+                CheckBox {
+                    text: qsTr("Show sketch grid")
+                    contentItem: Label { text: parent.text; color: theme.text }
+                    indicator: Rectangle { implicitWidth: 16; implicitHeight: 16; color: theme.panelMuted; border.color: theme.border }
+                }
+                CheckBox {
+                    text: qsTr("Snap to grid")
+                    contentItem: Label { text: parent.text; color: theme.text }
+                    indicator: Rectangle { implicitWidth: 16; implicitHeight: 16; color: theme.panelMuted; border.color: theme.border }
+                }
                 Frame {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    background: Rectangle { color: "#2a2c2f"; border.color: "#3a3d42"; radius: 6 }
-                    Label { anchors.centerIn: parent; text: qsTr("Select tool: point/line, edit constraints"); color: "#bbb" }
+                    background: Rectangle { color: theme.panelMuted; border.color: theme.border; radius: 0 }
+                    Label { anchors.centerIn: parent; text: qsTr("Select tool: point/line, edit constraints"); color: theme.textMuted }
                 }
                 RowLayout {
                     Layout.alignment: Qt.AlignRight
-                    spacing: 8
-                    Button { text: qsTr("Cancel"); background: Rectangle { color: "#3a3d42"; radius: 6 } }
-                    Button { text: qsTr("OK"); background: Rectangle { color: "#4c8bf5"; radius: 6 } }
+                    spacing: 6
+                    Button {
+                        text: qsTr("Cancel")
+                        background: Rectangle { color: theme.panelMuted; radius: 0 }
+                        contentItem: Label { text: parent.text; color: theme.text }
+                    }
+                    Button {
+                        text: qsTr("OK")
+                        background: Rectangle { color: theme.accent; radius: 0 }
+                        contentItem: Label { text: parent.text; color: "white" }
+                    }
                 }
             }
         }

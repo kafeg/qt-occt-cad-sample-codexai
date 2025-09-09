@@ -8,6 +8,9 @@ ApplicationWindow {
     width: 1200
     height: 760
     title: qsTr("VibeCAD")
+    // Local theme instance and window base color
+    readonly property Theme theme: Theme {}
+    color: theme.windowBg
 
     property int tabCounter: 0
 
@@ -43,69 +46,78 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
+        // Tabs row with flat background
+        Rectangle {
             id: tabsRow
             Layout.fillWidth: true
-            spacing: 6
-            TabBar {
-                id: tabBar
-                implicitHeight: 44 // taller tabs
-                Layout.fillWidth: true
-                Repeater {
-                    model: tabsModel
-                    TabButton {
-                        text: model.title
-                        implicitHeight: 44
-                        padding: 12
-                        font.bold: tabBar.currentIndex === index
-                        background: Rectangle {
-                            color: tabBar.currentIndex === index ? "#1e1f22" : "#2a2c2f"
-                            radius: 6
-                            border.color: tabBar.currentIndex === index ? "#3a3d42" : "#2f3236"
-                        }
-                        contentItem: RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 8
-                            Label {
-                                Layout.fillWidth: true
-                                text: parent.parent.text
-                                color: "#e6e6e6"
-                                verticalAlignment: Text.AlignVCenter
-                                elide: Text.ElideRight
+            height: 44
+            color: theme.tabBg
+            border.color: theme.border
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 2
+                TabBar {
+                    id: tabBar
+                    implicitHeight: 44
+                    Layout.fillWidth: true
+                    background: Rectangle { color: "transparent" }
+                    Repeater {
+                        model: tabsModel
+                        TabButton {
+                            text: model.title
+                            implicitHeight: 44
+                            padding: 0
+                            background: Rectangle {
+                                color: tabBar.currentIndex === index ? theme.tabActiveBg : theme.tabBg
+                                border.color: theme.border
+                                radius: 0
                             }
-                            ToolButton {
-                                id: closeBtn
-                                Accessible.name: qsTr("Close Tab")
-                                text: "✕"
-                                implicitWidth: 22
-                                implicitHeight: 22
-                                padding: 0
-                                onClicked: closeDocumentTab(index)
-                                enabled: tabsModel.count > 1
-                                background: Rectangle {
-                                    radius: 4
-                                    color: closeBtn.down ? "#3a3d42" : "transparent"
-                                    border.color: enabled ? "#3a3d42" : "#2f3236"
-                                }
-                                contentItem: Label {
-                                    text: parent.text
-                                    color: enabled ? "#cfd3d6" : "#6b6f75"
-                                    horizontalAlignment: Text.AlignHCenter
+                            contentItem: RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 8
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: parent.parent.text
+                                    color: theme.text
                                     verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                }
+                                ToolButton {
+                                    id: closeBtn
+                                    Accessible.name: qsTr("Close Tab")
+                                    text: "✕"
+                                    implicitWidth: 20
+                                    implicitHeight: 20
+                                    padding: 0
+                                    onClicked: closeDocumentTab(index)
+                                    enabled: tabsModel.count > 1
+                                    background: Rectangle {
+                                        radius: 0
+                                        color: closeBtn.down ? theme.panelMuted : "transparent"
+                                        border.color: enabled ? theme.border : theme.divider
+                                    }
+                                    contentItem: Label {
+                                        text: parent.text
+                                        color: enabled ? theme.textMuted : theme.textWeak
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-            ToolButton {
-                id: addTabButton
-                text: "+"
-                Accessible.name: qsTr("Add Tab")
-                onClicked: addDocumentTab()
-                background: Rectangle { color: "#2a2c2f"; radius: 6; border.color: "#2f3236" }
-                contentItem: Label { text: parent.text; color: "#e6e6e6"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                ToolButton {
+                    id: addTabButton
+                    text: "+"
+                    Accessible.name: qsTr("Add Tab")
+                    onClicked: addDocumentTab()
+                    implicitWidth: 36
+                    background: Rectangle { color: theme.tabBg; border.color: theme.border; radius: 0 }
+                    contentItem: Label { text: parent.text; color: theme.text; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                }
             }
         }
 
