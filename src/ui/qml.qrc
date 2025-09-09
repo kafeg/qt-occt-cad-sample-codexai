@@ -10,5 +10,7 @@
     <file>qml/Theme.qml</file>
     <file>icons/box.svg</file>
     <file>icons/cylinder.svg</file>
+    <file>icons/mode-solid.svg</file>
+    <file>icons/mode-sketch.svg</file>
   </qresource>
 </RCC>

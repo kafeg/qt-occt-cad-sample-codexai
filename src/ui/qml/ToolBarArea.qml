@@ -14,24 +14,105 @@ ToolBar {
     RowLayout {
         anchors.fill: parent
         spacing: 4
-        // Mode tabs
-        TabBar {
-            id: modeTabs
+        // Mode segmented control (icons + tooltips)
+        Rectangle {
+            id: modeSegment
             implicitHeight: 40
-            currentIndex: root.mode
-            onCurrentIndexChanged: root.mode = currentIndex
-            background: Rectangle { color: "transparent" }
-            TabButton {
-                text: qsTr("Solid")
-                implicitHeight: 40
-                background: Rectangle { color: modeTabs.currentIndex === 0 ? theme.toolbarTabOn : theme.toolbarTabBg; radius: 0; border.color: theme.border }
-                contentItem: Label { text: parent.text; color: theme.text; verticalAlignment: Text.AlignVCenter; padding: 12 }
+            implicitWidth: segRow.implicitWidth
+            color: theme.toolbarTabOn // slightly lighter than toolbar for emphasis
+            border.color: theme.border
+            radius: 0
+            Row {
+                id: segRow
+                spacing: 0
+                anchors.fill: parent
+
+                // Solid
+                ToolButton {
+                    id: solidBtn
+                    checkable: true
+                    checked: root.mode === 0
+                    onClicked: root.mode = 0
+                    hoverEnabled: true
+                    Accessible.name: qsTr("Solid")
+                    implicitHeight: parent.height
+                    implicitWidth: 48
+                    background: Rectangle {
+                        color: solidBtn.checked ? theme.toolbarTabOn : theme.toolbarTabBg
+                        radius: 0
+                        border.color: "transparent"
+                    }
+                    contentItem: Image {
+                        anchors.centerIn: parent
+                        source: "qrc:/ui/icons/mode-solid.svg"
+                        sourceSize.width: 20
+                        sourceSize.height: 20
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Solid")
+                }
+
+                // Divider between segments
+                Rectangle { width: 1; color: theme.border; anchors.top: parent.top; anchors.bottom: parent.bottom }
+
+                // Sketch
+                ToolButton {
+                    id: sketchBtn
+                    checkable: true
+                    checked: root.mode === 1
+                    onClicked: root.mode = 1
+                    hoverEnabled: true
+                    Accessible.name: qsTr("Sketch")
+                    implicitHeight: parent.height
+                    implicitWidth: 48
+                    background: Rectangle {
+                        color: sketchBtn.checked ? theme.toolbarTabOn : theme.toolbarTabBg
+                        radius: 0
+                        border.color: "transparent"
+                    }
+                    contentItem: Image {
+                        anchors.centerIn: parent
+                        source: "qrc:/ui/icons/mode-sketch.svg"
+                        sourceSize.width: 20
+                        sourceSize.height: 20
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Sketch")
+                }
             }
-            TabButton {
-                text: qsTr("Sketch")
-                implicitHeight: 40
-                background: Rectangle { color: modeTabs.currentIndex === 1 ? theme.toolbarTabOn : theme.toolbarTabBg; radius: 0; border.color: theme.border }
-                contentItem: Label { text: parent.text; color: theme.text; verticalAlignment: Text.AlignVCenter; padding: 12 }
+        }
+
+        // Arrow pointer indicating linked tool group
+        Item {
+            id: segArrow
+            width: 12
+            height: modeSegment.implicitHeight
+            Layout.alignment: Qt.AlignVCenter
+            Canvas {
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                width: 12
+                height: 16
+                onPaint: {
+                    var ctx = getContext('2d');
+                    ctx.clearRect(0, 0, width, height);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(0, height);
+                    ctx.lineTo(width, height/2);
+                    ctx.closePath();
+                    ctx.fillStyle = modeSegment.color;
+                    ctx.fill();
+                    // subtle edge line
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(0, height);
+                    ctx.strokeStyle = theme.border;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
             }
         }
 
@@ -40,7 +121,7 @@ ToolBar {
             id: toolGroups
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-            currentIndex: modeTabs.currentIndex
+            currentIndex: root.mode
 
             // Solid tools
             RowLayout {
