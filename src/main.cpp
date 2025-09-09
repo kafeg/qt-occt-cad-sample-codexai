@@ -16,7 +16,7 @@ int runQmlApp(int argc, char** argv);
 int main(int argc, char** argv)
 {
   // Default to QML UI; allow overrides via CLI and env
-  bool useQml = false;
+  bool useQml = true;
   // Env override: CAD_USE_QML=0/1 (or true/false)
   if (qEnvironmentVariableIsSet("CAD_USE_QML"))
   {
