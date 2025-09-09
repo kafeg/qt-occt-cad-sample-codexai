@@ -5,7 +5,6 @@ import QtQuick.Layouts
 Pane {
     id: root
     implicitWidth: 260
-    implicitHeight: 320
     property bool collapsed: false
     readonly property Theme theme: Theme {}
     background: Rectangle { color: theme.panelBg; border.color: "transparent"; radius: 0 }
@@ -61,7 +60,6 @@ Pane {
         // Collapsible content
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
             visible: !root.collapsed
             spacing: 4
             
@@ -99,8 +97,6 @@ Pane {
                     Label { text: "Sketch " + (index+1); color: theme.text }
                 }
             }
-
-            Item { Layout.fillHeight: true }
         }
     }
 }

@@ -48,13 +48,11 @@ Item {
                     // Content
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
                         spacing: 2
 
                         DocumentBrowser {
                             id: documentBrowser
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 280
                         }
 
                         // Empty container reserved for future panels (e.g., Comments)
@@ -103,7 +101,6 @@ Item {
                     ParametersPane {
                         id: parametersPane
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
                         mode: root.mode
                     }
                 }
