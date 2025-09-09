@@ -65,6 +65,7 @@ ApplicationWindow {
                     Repeater {
                         model: tabsModel
                         TabButton {
+                            id: tab
                             text: model.title
                             implicitHeight: 44
                             padding: 0
@@ -73,24 +74,21 @@ ApplicationWindow {
                                 border.color: theme.border
                                 radius: 0
                             }
-                            contentItem: RowLayout {
+                            contentItem: Item {
                                 anchors.fill: parent
-                                anchors.margins: 10
-                                spacing: 8
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: parent.parent.text
-                                    color: theme.text
-                                    verticalAlignment: Text.AlignVCenter
-                                    elide: Text.ElideRight
-                                }
+                                readonly property int sideMargin: 10
+
+                                // Close button pinned to the right, centered vertically
                                 ToolButton {
                                     id: closeBtn
                                     Accessible.name: qsTr("Close Tab")
                                     text: "✕"
-                                    implicitWidth: 20
-                                    implicitHeight: 20
+                                    implicitWidth: 24
+                                    implicitHeight: 24
                                     padding: 0
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: parent.sideMargin
+                                    anchors.verticalCenter: parent.verticalCenter
                                     onClicked: closeDocumentTab(index)
                                     enabled: tabsModel.count > 1
                                     background: Rectangle {
@@ -98,12 +96,28 @@ ApplicationWindow {
                                         color: closeBtn.down ? theme.panelMuted : "transparent"
                                         border.color: enabled ? theme.border : theme.divider
                                     }
-                                    contentItem: Label {
+                                    contentItem: Text {
                                         text: parent.text
                                         color: enabled ? theme.textMuted : theme.textWeak
+                                        font.pixelSize: theme.tabIconSize
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                     }
+                                }
+
+                                // Centered tab title within remaining space (excludes close button)
+                                Text {
+                                    text: tab.text
+                                    color: theme.text
+                                    font.pixelSize: theme.tabFontSize
+                                    elide: Text.ElideRight
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.right: closeBtn.left
+                                    anchors.leftMargin: parent.sideMargin
+                                    anchors.rightMargin: parent.sideMargin
                                 }
                             }
                         }
