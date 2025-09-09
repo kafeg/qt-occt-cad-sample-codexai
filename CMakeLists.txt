@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets OpenGLWidgets Qml Quick QuickControls2)
+# Qt Widgets/QML removed; no Qt required at top-level
 find_package(OpenCASCADE REQUIRED)
 
 add_subdirectory(src)
