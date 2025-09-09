@@ -11,6 +11,8 @@
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_ViewController.hxx>
 #include <AIS_Shape.hxx>
+#include <AIS_Manipulator.hxx>
+#include <gp_Trsf.hxx>
 #include <AIS_ViewCube.hxx>
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
@@ -39,6 +41,12 @@ public:
 public slots:
   void resetViewToOrigin(double distance = 1.2);
   void clearBodies();
+  // Manipulator API parity (selection-based in QML):
+  // Displays a manipulator attached to the first selected body.
+  void showManipulatorOnSelection();
+  void confirmManipulator();
+  void cancelManipulator();
+  bool isManipulatorActive() const;
 
 public: // C++ API (non-QML) for adding shapes and datum
   Handle(AIS_Shape) addShape(const TopoDS_Shape& theShape,
@@ -53,14 +61,14 @@ public:
 signals:
   void selectionChanged();
   void glInfoChanged();
+  void manipulatorFinished(const gp_Trsf& trsf);
 
-protected: // input handling (forwarded to AIS_ViewController)
-  void keyPressEvent(QKeyEvent* e) override;
-  void mousePressEvent(QMouseEvent* e) override;
-  void mouseMoveEvent(QMouseEvent* e) override;
-  void mouseReleaseEvent(QMouseEvent* e) override;
-  void wheelEvent(QWheelEvent* e) override;
-  void hoverMoveEvent(QHoverEvent* e) override;
+protected:
+  virtual void keyPressEvent(QKeyEvent* theEvent) override;       // fit-all helper
+  virtual void mousePressEvent(QMouseEvent* theEvent) override;   // delegate to AIS_ViewController
+  virtual void mouseReleaseEvent(QMouseEvent* theEvent) override; // single-select on click
+  virtual void mouseMoveEvent(QMouseEvent* theEvent) override;    // orbit/pan/rotate
+  virtual void wheelEvent(QWheelEvent* theEvent) override;        // zoom + subviews
 
 private:
   // Called by the renderer thread via synchronize() to update UI-visible GL info
@@ -81,6 +89,12 @@ private:
   double                    m_resetDistance  = 1.2;
   bool                      m_fitRequested   = false; // request FitAll
   bool                      m_clickSelectPending = false; // single-click selection request
+  bool                      m_leftPressPending = false;   // signal left press to renderer
+  bool                      m_leftReleasePending = false; // signal left release to renderer
+  // Manipulator requests from UI thread
+  bool                      m_reqShowManipOnSel = false;
+  bool                      m_reqConfirmManip   = false;
+  bool                      m_reqCancelManip    = false;
   std::shared_ptr<Datum>    m_datum;
   QString                   m_glInfo;
   // Optional helpers
@@ -106,6 +120,11 @@ public: // internal helper for renderer to pull state
                    double& outResetDist,
                    bool& outDoFitAll,
                    bool& outDoClickSelect,
+                   bool& outLeftPress,
+                   bool& outLeftRelease,
+                   bool& outReqShowManipOnSel,
+                   bool& outReqConfirmManip,
+                   bool& outReqCancelManip,
                    std::shared_ptr<Datum>& outDatum,
                    QString& outGlInfo) const;
 
@@ -127,6 +146,9 @@ public: // Renderer implementation
     void updateWindowSizeFromFbo();
     void initViewDefaults();
     void handleSingleClickSelection();
+    void handleManipulatorLifecycle();
+    void showManipulatorOnSelectionInternal();
+    void hideManipulatorInternal();
 
   private:
     // OCCT handles
@@ -135,6 +157,7 @@ public: // Renderer implementation
     Handle(AIS_InteractiveContext) m_context;
     Handle(AIS_ViewCube)           m_viewCube;
     Handle(AIS_InteractiveObject)  m_grid;
+    Handle(AIS_Manipulator)        m_manip;
     std::unique_ptr<class SceneGizmos> m_gizmos;
     NCollection_Sequence<Handle(AIS_Shape)> m_bodies; // track bodies for clearBodies()
 
@@ -144,12 +167,22 @@ public: // Renderer implementation
     bool                      m_doReset = false;
     bool                      m_doFitAll = false;
     bool                      m_doClickSelect = false;
+    bool                      m_leftPress = false;
+    bool                      m_leftRelease = false;
+    bool                      m_reqShowManipOnSel = false;
+    bool                      m_reqConfirmManip = false;
+    bool                      m_reqCancelManip = false;
     double                    m_resetDistance = 1.2;
     std::shared_ptr<Datum>    m_datum;
 
     // GL info string (updated after first context bind)
     QString m_glInfo;
     OcctQmlViewer* m_owner = nullptr; // back-ref for event flushing
+
+    // Manipulator state
+    bool   m_isManipDragging = false;
+    gp_Trsf m_lastManipDelta;
+    gp_Trsf m_manipAccumTrsf;
   };
 
   // Grant renderer access to private helpers

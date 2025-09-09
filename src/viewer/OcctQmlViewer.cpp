@@ -16,6 +16,8 @@
 #include <Graphic3d_Camera.hxx>
 #include <Graphic3d_RenderingParams.hxx>
 #include <Graphic3d_ZLayerSettings.hxx>
+#include <Graphic3d_DisplayPriority.hxx>
+#include <Prs3d_TypeOfHighlight.hxx>
 #include <Message.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Quantity_Color.hxx>
@@ -26,6 +28,8 @@
 #include "FiniteGrid.h"
 #include "SceneGizmos.h"
 #include "OcctQtTools.h"
+#include "CustomManipulator.h"
+#include <QApplication>
 
 namespace {
 static void dumpGlInfoString(const Handle(V3d_View)& view, QString& out)
@@ -82,6 +86,35 @@ void OcctQmlViewer::clearBodies()
   update();
 }
 
+void OcctQmlViewer::showManipulatorOnSelection()
+{
+  QMutexLocker lock(&m_mutex);
+  m_reqShowManipOnSel = true;
+  update();
+}
+
+void OcctQmlViewer::confirmManipulator()
+{
+  QMutexLocker lock(&m_mutex);
+  m_reqConfirmManip = true;
+  update();
+}
+
+void OcctQmlViewer::cancelManipulator()
+{
+  QMutexLocker lock(&m_mutex);
+  m_reqCancelManip = true;
+  update();
+}
+
+bool OcctQmlViewer::isManipulatorActive() const
+{
+  // Render-thread object; expose last known via a cheap condition: we can’t query handle here, so return true if any pending or dragging state
+  QMutexLocker lock(&m_mutex);
+  // This is a heuristic for UI enabling; real state is managed on renderer
+  return m_reqShowManipOnSel || m_reqConfirmManip || m_reqCancelManip; 
+}
+
 Handle(AIS_Shape) OcctQmlViewer::addShape(const TopoDS_Shape& theShape,
                                           AIS_DisplayMode    theDispMode,
                                           Standard_Integer   theDispPriority,
@@ -128,18 +161,24 @@ void OcctQmlViewer::pullInput(bool& rotStart, bool& rotActive, bool& panActive,
 
 // ================= Input handling (main thread) =================
 
-void OcctQmlViewer::keyPressEvent(QKeyEvent* e)
+void OcctQmlViewer::keyPressEvent(QKeyEvent* theEvent)
 {
-  // Mirror widget viewer: support Fit-All on 'F'
-  if (e->key() == Qt::Key_F)
+  if (m_view.IsNull()) return;
+  const Aspect_VKey aKey = OcctQtTools::qtKey2VKey(theEvent->key());
+  switch (aKey)
   {
-    QMutexLocker lock(&m_mutex);
-    m_fitRequested = true;
-    update();
-    e->accept();
-    return;
+    case Aspect_VKey_Escape: QApplication::exit(); return;
+    case Aspect_VKey_F: {
+      // Fit-all; temporarily erase gizmos to avoid overdraw artifacts
+      if (m_gizmos) m_gizmos->erase(m_context);
+      m_view->FitAll(0.01, false);
+      if (m_gizmos) m_gizmos->reinstall(m_context);
+      update();
+      return;
+    }
+    default: break;
   }
-  QQuickFramebufferObject::keyPressEvent(e);
+  QQuickFramebufferObject::keyPressEvent(theEvent);
 }
 
 static inline qreal qmlDevicePixelRatio(const QQuickItem* it)
@@ -165,6 +204,7 @@ void OcctQmlViewer::mousePressEvent(QMouseEvent* e)
     m_currPosPx = m_lastPosPx = QPoint(int(pt.x() * pr), int(pt.y() * pr));
     m_pressPosPx = m_currPosPx;
     if (e->button() == Qt::LeftButton) m_leftDown = true;
+    if (e->button() == Qt::LeftButton) m_leftPressPending = true;
   }
   e->accept();
 }
@@ -215,6 +255,7 @@ void OcctQmlViewer::mouseReleaseEvent(QMouseEvent* e)
       }
     }
     m_leftDown = false;
+    if (e->button() == Qt::LeftButton) m_leftReleasePending = true;
   }
   e->accept();
 }
@@ -252,6 +293,11 @@ void OcctQmlViewer::takePending(std::vector<PendingShape>& outShapes,
                                 double& outResetDist,
                                 bool& outDoFitAll,
                                 bool& outDoClickSelect,
+                                bool& outLeftPress,
+                                bool& outLeftRelease,
+                                bool& outReqShowManipOnSel,
+                                bool& outReqConfirmManip,
+                                bool& outReqCancelManip,
                                 std::shared_ptr<Datum>& outDatum,
                                 QString& outGlInfo) const
 {
@@ -262,6 +308,11 @@ void OcctQmlViewer::takePending(std::vector<PendingShape>& outShapes,
   outResetDist          = m_resetDistance;
   outDoFitAll           = m_fitRequested;    const_cast<bool&>(m_fitRequested) = false;
   outDoClickSelect      = m_clickSelectPending; const_cast<bool&>(m_clickSelectPending) = false;
+  outLeftPress          = m_leftPressPending;   const_cast<bool&>(m_leftPressPending) = false;
+  outLeftRelease        = m_leftReleasePending; const_cast<bool&>(m_leftReleasePending) = false;
+  outReqShowManipOnSel  = m_reqShowManipOnSel;  const_cast<bool&>(m_reqShowManipOnSel) = false;
+  outReqConfirmManip    = m_reqConfirmManip;    const_cast<bool&>(m_reqConfirmManip) = false;
+  outReqCancelManip     = m_reqCancelManip;     const_cast<bool&>(m_reqCancelManip) = false;
   outDatum              = m_datum;
   outGlInfo             = m_glInfo;
 }
@@ -283,7 +334,9 @@ QOpenGLFramebufferObject* OcctQmlViewer::RendererImpl::createFramebufferObject(c
 void OcctQmlViewer::RendererImpl::synchronize(QQuickFramebufferObject* item)
 {
   auto* v = static_cast<OcctQmlViewer*>(item);
-  v->takePending(m_toAdd, m_doClear, m_doReset, m_resetDistance, m_doFitAll, m_doClickSelect, m_datum, m_glInfo);
+  v->takePending(m_toAdd, m_doClear, m_doReset, m_resetDistance, m_doFitAll, m_doClickSelect,
+                 m_leftPress, m_leftRelease, m_reqShowManipOnSel, m_reqConfirmManip, m_reqCancelManip,
+                 m_datum, m_glInfo);
   // Push GL info gathered on the render thread back to the item for QML binding
   v->updateGlInfoFromRenderer(m_glInfo);
   m_owner = v;
@@ -373,6 +426,24 @@ void OcctQmlViewer::RendererImpl::ensureOcctContext()
     {
       m_context->Display(m_grid, Standard_False);
       m_context->SetZLayer(m_grid, Graphic3d_ZLayerId_Default);
+    }
+  }
+
+  // Selection/Highlight styles closer to widget viewer
+  {
+    Handle(Prs3d_Drawer) aSel = m_context->SelectionStyle();
+    if (!aSel.IsNull())
+    {
+      aSel->SetColor(Quantity_NOC_ORANGE);
+      aSel->SetDisplayMode(AIS_Shaded);
+      aSel->SetTransparency(0.2f);
+    }
+    Handle(Prs3d_Drawer) aDyn = m_context->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic);
+    if (!aDyn.IsNull())
+    {
+      aDyn->SetColor(Quantity_NOC_CYAN1);
+      aDyn->SetDisplayMode(AIS_Shaded);
+      aDyn->SetTransparency(0.7f);
     }
   }
 }
@@ -536,6 +607,57 @@ void OcctQmlViewer::RendererImpl::render()
       QMetaObject::invokeMethod(m_owner, "selectionChanged", Qt::QueuedConnection);
       m_doClickSelect = false;
     }
+    // Manipulator show/confirm/cancel requests from UI
+    if (m_reqShowManipOnSel)
+    {
+      showManipulatorOnSelectionInternal();
+      m_reqShowManipOnSel = false;
+    }
+    if (m_reqCancelManip)
+    {
+      hideManipulatorInternal();
+      m_reqCancelManip = false;
+    }
+    if (m_reqConfirmManip)
+    {
+      if (!m_manip.IsNull())
+      {
+        QMetaObject::invokeMethod(m_owner, [this]() {
+          emit m_owner->manipulatorFinished(m_manipAccumTrsf);
+        }, Qt::QueuedConnection);
+      }
+      hideManipulatorInternal();
+      m_reqConfirmManip = false;
+    }
+    // Manipulator drag lifecycle driven by left press/release and detection
+    if (!m_manip.IsNull() && m_leftPress)
+    {
+      if (!m_context.IsNull() && m_context->HasDetected() && m_context->DetectedInteractive() == m_manip)
+      {
+        m_context->SelectDetected(AIS_SelectionScheme_Replace);
+        if (m_manip->HasActiveMode())
+        {
+          QPoint curr, last; bool rS=false,rA=false,pA=false; m_owner->pullInput(rS,rA,pA,curr,last);
+          m_isManipDragging = true;
+          m_lastManipDelta = gp_Trsf();
+          m_manip->StartTransform(curr.x(), curr.y(), m_view);
+        }
+      }
+      m_leftPress = false;
+    }
+    if (!m_manip.IsNull() && m_isManipDragging)
+    {
+      QPoint curr, last; bool rS=false,rA=false,pA=false; m_owner->pullInput(rS,rA,pA,curr,last);
+      m_lastManipDelta = m_manip->Transform(curr.x(), curr.y(), m_view);
+    }
+    if (!m_manip.IsNull() && m_leftRelease && m_isManipDragging)
+    {
+      m_manip->StopTransform(true);
+      m_manipAccumTrsf.PreMultiply(m_lastManipDelta);
+      m_isManipDragging = false;
+      m_manip->DeactivateCurrentMode();
+      m_leftRelease = false;
+    }
   }
 
   applyPending();
@@ -566,4 +688,51 @@ void OcctQmlViewer::RendererImpl::render()
   }
 
   update(); // request next frame if needed
+}
+
+void OcctQmlViewer::RendererImpl::showManipulatorOnSelectionInternal()
+{
+  if (m_context.IsNull()) return;
+  // Find first selected AIS_Shape
+  Handle(AIS_Shape) sel;
+  for (m_context->InitSelected(); m_context->MoreSelected(); m_context->NextSelected())
+  {
+    sel = Handle(AIS_Shape)::DownCast(m_context->SelectedInteractive());
+    if (!sel.IsNull()) break;
+  }
+  if (sel.IsNull()) return;
+  hideManipulatorInternal();
+  m_manip = new CustomManipulator();
+  m_manip->SetSkinMode(AIS_Manipulator::ManipulatorSkin_Shaded);
+  AIS_Manipulator::OptionsForAttach opts; opts.SetEnableModes(Standard_False);
+  m_manip->Attach(sel, opts);
+  // Disable scaling visuals and translation planes; allow translation + rotation
+  m_manip->SetPart(AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
+  m_manip->SetPart(0, AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
+  m_manip->SetPart(1, AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
+  m_manip->SetPart(2, AIS_ManipulatorMode::AIS_MM_Scaling, Standard_False);
+  m_manip->SetPart(AIS_ManipulatorMode::AIS_MM_TranslationPlane, Standard_False);
+  m_manip->SetPart(0, AIS_ManipulatorMode::AIS_MM_TranslationPlane, Standard_False);
+  m_manip->SetPart(1, AIS_ManipulatorMode::AIS_MM_TranslationPlane, Standard_False);
+  m_manip->SetPart(2, AIS_ManipulatorMode::AIS_MM_TranslationPlane, Standard_False);
+  m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Translation);
+  m_manip->EnableMode(AIS_ManipulatorMode::AIS_MM_Rotation);
+  m_manip->SetModeActivationOnDetection(Standard_False);
+  m_context->Display(m_manip, Standard_False);
+  m_context->SetZLayer(m_manip, Graphic3d_ZLayerId_Topmost);
+  m_context->SetDisplayPriority(m_manip, Graphic3d_DisplayPriority_Topmost);
+  m_lastManipDelta = gp_Trsf();
+  m_isManipDragging = false;
+  m_manipAccumTrsf = gp_Trsf();
+}
+
+void OcctQmlViewer::RendererImpl::hideManipulatorInternal()
+{
+  if (m_manip.IsNull()) return;
+  if (!m_context.IsNull() && m_context->IsDisplayed(m_manip))
+  {
+    m_context->Erase(m_manip, Standard_False);
+  }
+  m_manip->Detach();
+  m_manip.Nullify();
 }
