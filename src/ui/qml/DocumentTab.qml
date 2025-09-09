@@ -6,6 +6,8 @@ Item {
     id: root
     anchors.fill: parent
     property int mode: 0 // 0: Solid, 1: Sketch
+    property bool leftPanelCollapsed: false
+    property bool rightPanelCollapsed: false
     readonly property Theme theme: Theme {}
 
     ColumnLayout {
@@ -31,9 +33,9 @@ Item {
             // Left: Document browser + future panels container
             Rectangle {
                 id: leftPaneContainer
-                Layout.preferredWidth: 260
-                Layout.minimumWidth: 220
-                Layout.maximumWidth: 420
+                Layout.preferredWidth: root.leftPanelCollapsed ? 40 : 260
+                Layout.minimumWidth: root.leftPanelCollapsed ? 40 : 220
+                Layout.maximumWidth: root.leftPanelCollapsed ? 40 : 420
                 Layout.fillHeight: true
                 color: theme.panelBg
                 border.color: theme.border
@@ -45,19 +47,69 @@ Item {
                     anchors.margins: 1
                     spacing: 2
 
-                    DocumentBrowser {
-                        id: documentBrowser
+                    // Left panel header with collapse button
+                    Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 280
+                        height: 32
+                        color: theme.panelMuted
+                        border.color: theme.divider
+                        border.width: 1
+                        
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            spacing: 8
+                            
+                            Label {
+                                text: qsTr("Left Panel")
+                                font.bold: true
+                                color: theme.textMuted
+                                Layout.fillWidth: true
+                                visible: !root.leftPanelCollapsed
+                            }
+                            
+                            ToolButton {
+                                id: leftCollapseButton
+                                text: root.leftPanelCollapsed ? "▶" : "▼"
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                onClicked: root.leftPanelCollapsed = !root.leftPanelCollapsed
+                                background: Rectangle { 
+                                    color: leftCollapseButton.down ? theme.panelBg : "transparent"
+                                    radius: 2
+                                }
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: theme.textMuted
+                                    font.pixelSize: 12
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
                     }
 
-                    // Empty container reserved for future panels (e.g., Comments)
-                    Pane {
-                        id: extraPanelsContainer
+                    // Collapsible content
+                    ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        Accessible.name: qsTr("Extra Panels Container")
-                        background: Rectangle { color: theme.panelBg; border.color: "transparent"; radius: 0 }
+                        visible: !root.leftPanelCollapsed
+                        spacing: 2
+
+                        DocumentBrowser {
+                            id: documentBrowser
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 280
+                        }
+
+                        // Empty container reserved for future panels (e.g., Comments)
+                        Pane {
+                            id: extraPanelsContainer
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Accessible.name: qsTr("Extra Panels Container")
+                            background: Rectangle { color: theme.panelBg; border.color: "transparent"; radius: 0 }
+                        }
                     }
                 }
             }
@@ -79,19 +131,69 @@ Item {
             // Right: Parameters pane
             Rectangle {
                 id: rightPaneContainer
-                Layout.preferredWidth: 300
-                Layout.minimumWidth: 220
-                Layout.maximumWidth: 480
+                Layout.preferredWidth: root.rightPanelCollapsed ? 40 : 300
+                Layout.minimumWidth: root.rightPanelCollapsed ? 40 : 220
+                Layout.maximumWidth: root.rightPanelCollapsed ? 40 : 480
                 Layout.fillHeight: true
                 color: theme.panelBg
                 border.color: theme.border
                 border.width: 1
                 
-                ParametersPane {
-                    id: parametersPane
+                ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 1
-                    mode: root.mode
+                    spacing: 2
+
+                    // Right panel header with collapse button
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 32
+                        color: theme.panelMuted
+                        border.color: theme.divider
+                        border.width: 1
+                        
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            spacing: 8
+                            
+                            Label {
+                                text: qsTr("Right Panel")
+                                font.bold: true
+                                color: theme.textMuted
+                                Layout.fillWidth: true
+                                visible: !root.rightPanelCollapsed
+                            }
+                            
+                            ToolButton {
+                                id: rightCollapseButton
+                                text: root.rightPanelCollapsed ? "▶" : "▼"
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                onClicked: root.rightPanelCollapsed = !root.rightPanelCollapsed
+                                background: Rectangle { 
+                                    color: rightCollapseButton.down ? theme.panelBg : "transparent"
+                                    radius: 2
+                                }
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: theme.textMuted
+                                    font.pixelSize: 12
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
+                    }
+
+                    // Collapsible content
+                    ParametersPane {
+                        id: parametersPane
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        visible: !root.rightPanelCollapsed
+                        mode: root.mode
+                    }
                 }
             }
         }

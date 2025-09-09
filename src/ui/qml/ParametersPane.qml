@@ -6,6 +6,7 @@ Pane {
     id: root
     implicitWidth: 300
     property int mode: 0 // 0: Solid, 1: Sketch
+    property bool collapsed: false
     readonly property Theme theme: Theme {}
     background: Rectangle { color: theme.panelBg; border.color: "transparent"; radius: 0 }
 
@@ -13,16 +14,41 @@ Pane {
         anchors.fill: parent
         spacing: 6
 
-        // Header with separator
+        // Header with collapse button and separator
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 6
             
-            Label {
-                text: root.mode === 0 ? qsTr("Solid Parameters") : qsTr("Sketch Parameters")
-                font.bold: true
-                color: theme.textMuted
+            // Header row with title and collapse button
+            RowLayout {
                 Layout.fillWidth: true
+                spacing: 8
+                
+                Label {
+                    text: root.mode === 0 ? qsTr("Solid Parameters") : qsTr("Sketch Parameters")
+                    font.bold: true
+                    color: theme.textMuted
+                    Layout.fillWidth: true
+                }
+                
+                ToolButton {
+                    id: collapseButton
+                    text: root.collapsed ? "▶" : "▼"
+                    implicitWidth: 20
+                    implicitHeight: 20
+                    onClicked: root.collapsed = !root.collapsed
+                    background: Rectangle { 
+                        color: collapseButton.down ? theme.panelMuted : "transparent"
+                        radius: 2
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: theme.textMuted
+                        font.pixelSize: 12
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
             }
             
             Rectangle { 
@@ -32,11 +58,13 @@ Pane {
             }
         }
 
+        // Collapsible content
         StackLayout {
             id: paramsStack
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: root.mode
+            visible: !root.collapsed
 
             // Solid parameters
             ColumnLayout {
