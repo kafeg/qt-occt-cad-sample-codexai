@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
   <g fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Outer bounding box -->
-    <rect x="8" y="8" width="48" height="48" rx="2" ry="2"/>
+    <!-- Sketch plane -->
+    <rect x="12" y="12" width="40" height="40" rx="2" ry="2"/>
     
-    <!-- Inner sketch shape - square with curved corner -->
-    <path d="M20 20h16v16h-8c-4 0-8-4-8-8z"/>
+    <!-- Simple sketch elements -->
+    <rect x="16" y="16" width="8" height="6" rx="1" ry="1"/>
+    <circle cx="28" cy="20" r="2"/>
+    <path d="M32 20l6 6"/>
     
-    <!-- Plus sign for "new" -->
-    <g stroke="#4a90e2" stroke-width="3.5">
+    <!-- Large prominent plus sign for "new" -->
+    <g stroke="#4a90e2" stroke-width="4">
       <line x1="42" y1="42" x2="54" y2="42"/>
       <line x1="48" y1="36" x2="48" y2="48"/>
     </g>
