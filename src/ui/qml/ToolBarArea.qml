@@ -28,16 +28,23 @@ ToolBar {
     // === ToolBar settings ===
     height: toolbarHeight
     padding: 0
+    leftPadding: 0
+    rightPadding: 0
+    topPadding: 0
+    bottomPadding: 0
+    spacing: 0
     
     background: Rectangle { 
         color: theme.toolbarBg
         border.color: theme.border
+        border.width: 0
         height: toolbarHeight
         radius: 0 
     }
 
     RowLayout {
         anchors.fill: parent
+        anchors.margins: 0
         spacing: 0
 
         // === Mode selector with visual arrow ===
@@ -45,8 +52,15 @@ ToolBar {
             id: modeSelector
             Layout.preferredWidth: root.modeSelectorWidth
             Layout.fillHeight: true
+            Layout.leftMargin: 0
+            Layout.topMargin: 0
+            Layout.bottomMargin: 0
             
             // === Visual arrow ===
+            Rectangle {
+                anchors.fill: parent
+                color: root.theme.toolbarBg
+            }
             Canvas {
                 id: arrowCanvas
                 anchors.fill: parent
@@ -70,7 +84,6 @@ ToolBar {
             Row {
                 id: modeButtons
                 anchors.left: parent.left
-                anchors.leftMargin: 10
                 height: parent.height
                 spacing: 0
                 
@@ -86,9 +99,8 @@ ToolBar {
                     ButtonGroup.group: modeGroup
                     Accessible.name: qsTr("Solid")
                     
-                    height: 40
-                    width: 40
-                    anchors.verticalCenter: parent.verticalCenter
+                    height: parent.height
+                    width: parent.height
                     
                     background: Rectangle { color: solidBtn.checked ? root.theme.toolbarTabBg : root.theme.toolbarTabOn; radius: 0; border.color: "transparent" }
                     
@@ -117,9 +129,8 @@ ToolBar {
                     ButtonGroup.group: modeGroup
                     Accessible.name: qsTr("Sketch")
                     
-                    height: 40
-                    width: 40
-                    anchors.verticalCenter: parent.verticalCenter
+                    height: parent.height
+                    width: parent.height
                     
                     background: Rectangle { color: sketchBtn.checked ? root.theme.toolbarTabBg : root.theme.toolbarTabOn; radius: 0; border.color: "transparent" }
                     
@@ -141,7 +152,9 @@ ToolBar {
         StackLayout {
             id: toolGroups
             Layout.fillWidth: true
-            Layout.alignment: Qt.AlignVCenter
+            Layout.fillHeight: true
+            Layout.topMargin: 0
+            Layout.bottomMargin: 0
             currentIndex: root.mode
             
             // === Solid mode tools ===
