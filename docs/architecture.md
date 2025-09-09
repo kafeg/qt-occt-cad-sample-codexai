@@ -10,7 +10,7 @@ This repository implements a minimal, layered skeleton for a CAD application bas
 - Viewer (`src/viewer`): Planned OCCT viewer (`OcctQOpenGLWidgetViewer`) and helpers; integrated later with QML or Widgets.
 - UI (`src/ui/qml`): QML components and `main.qml` composing the shell; flat visual style.
 - Sketch (`src/sketch`): Sketch data/serialization; consumed by `ExtrudeFeature` by id.
-- Entry (`src/main.cpp`): Qt app bootstrap. Executable: `cad-app`.
+- Entry (`src/main.cpp`): Qt app bootstrap. Executable: `vibecad`.
 
 ## UI Layout (per Tab)
 

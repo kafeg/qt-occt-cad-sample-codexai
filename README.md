@@ -6,7 +6,7 @@ Basic, flat QML user interface for a CAD app built on Open CASCADE (OCCT) and Qt
 
 - Configure: `cmake --preset default`
 - Build: `cmake --build --preset default`
-- Run: `./build/src/cad-app`
+- Run: `./build/src/vibecad`
 - Tests: `ctest --preset default`
 
 Dependencies are provided via `vcpkg.json` (Qt 6, OCCT, GTest). Presets for Linux/Windows are included in `CMakePresets.json`.
@@ -33,7 +33,7 @@ Everything is implemented as separable QML components and assembled in `main.qml
 - `src/model`: `Feature`, `Document`, primitives (`BoxFeature`, `CylinderFeature`), features (`ExtrudeFeature`, `MoveFeature`).
 - `src/viewer`: Planned OCCT viewer (`OcctQOpenGLWidgetViewer`) and helpers.
 - `src/ui/qml`: QML components; `main.qml` assembles the UI.
-- `src/main.cpp`: App entry (executable `cad-app`).
-- `tests/`: GoogleTest suites.
+- `src/main.cpp`: App entry (executable `vibecad`).
+- `tests`: GoogleTest suites.
 
 See `docs/architecture.md` for a short module overview and data flow.

@@ -7,7 +7,7 @@
 - `src/viewer`: `OcctQOpenGLWidgetViewer` planned viewer and helpers (to be integrated with the QML shell later).
 - `src/ui`: QML UI shell and components (tabs, toolbar, browser, parameters, timeline). Commands/dialogs are placeholders in the QML variant.
 - `src/sketch`: Sketch data/serialization and viewer integration; used by `ExtrudeFeature` by id.
-- `src/main.cpp`: Qt app entry. Executable name: `cad-app`.
+- `src/main.cpp`: Qt app entry. Executable name: `vibecad`.
 - `tests/`: GoogleTest unit tests, including model, sketch, serialization, and UI integration.
 - `CMakeLists.txt`, `CMakePresets.json`: Top-level build and presets; tests via `CTest`.
 - `vcpkg/`, `vcpkg.json`: Manifest dependencies (`qtbase`, `opencascade`, `gtest`).
@@ -16,7 +16,7 @@
 ## Build, Test, and Run
 - Configure: `cmake --preset default` (Ninja, `build/`, default triplet)
 - Build: `cmake --build --preset default`
-- Run: `./build/src/cad-app`
+- Run: `./build/src/vibecad`
 - Tests: `ctest --preset default`
 - Presets: `--preset linux` or `--preset windows` as needed
 
