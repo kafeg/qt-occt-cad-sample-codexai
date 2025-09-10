@@ -409,6 +409,8 @@ void OcctQmlViewer::RendererImpl::ensureOcctContext()
     {
       m_context->Display(m_grid, Standard_False);
       m_context->SetZLayer(m_grid, Graphic3d_ZLayerId_Default);
+      // Make grid non-selectable to avoid accidental picks
+      m_context->Deactivate(m_grid);
     }
   }
 
@@ -490,8 +492,8 @@ void OcctQmlViewer::RendererImpl::applyPending()
     if (!m_gizmos) m_gizmos = std::make_unique<SceneGizmos>();
     m_gizmos->erase(m_context);
     m_gizmos->install(m_context, m_datum, Standard_True);
-    if (!m_gizmos->bgAxisX().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisX(), Graphic3d_ZLayerId_Default);                                                                                                           
-    if (!m_gizmos->bgAxisY().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisY(), Graphic3d_ZLayerId_Default);                                                                                                           
+    if (!m_gizmos->bgAxisX().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisX(), Graphic3d_ZLayerId_Default);                                                                                                             
+    if (!m_gizmos->bgAxisY().IsNull()) m_context->SetZLayer(m_gizmos->bgAxisY(), Graphic3d_ZLayerId_Default);                                                                                                             
   }
   for (const PendingShape& op : m_toAdd)
   {
@@ -551,20 +553,33 @@ void OcctQmlViewer::RendererImpl::render()
       // Perform single-select and signal
       if (m_context->HasDetected())
       {
-        Handle(AIS_Shape) det = Handle(AIS_Shape)::DownCast(m_context->DetectedInteractive());
-        m_context->ClearSelected(false);
-        if (!det.IsNull())
+        // Ignore clicks on helper gizmos (grid/axes) explicitly
+        Handle(AIS_InteractiveObject) picked = m_context->DetectedInteractive();
+        bool ignorePicked = false;
+        if (!picked.IsNull())
         {
-          bool isBgGizmo = false;
+          if (picked == m_grid || picked == m_viewCube)
+            ignorePicked = true;
+          if (picked == m_axisX || picked == m_axisY || picked == m_axisZ)
+            ignorePicked = true;
           if (m_gizmos)
           {
-            if (det == m_gizmos->bgAxisX() || det == m_gizmos->bgAxisY())
-              isBgGizmo = true;
+            if (picked == m_gizmos->bgAxisX() || picked == m_gizmos->bgAxisY())
+              ignorePicked = true;
           }
-          if (!isBgGizmo)
+        }
+        if (!ignorePicked)
+        {
+          Handle(AIS_Shape) det = Handle(AIS_Shape)::DownCast(picked);
+          m_context->ClearSelected(false);
+          if (!det.IsNull())
           {
             m_context->AddOrRemoveSelected(det, false);
           }
+        }
+        else
+        {
+          m_context->ClearSelected(false);
         }
       }
       else
@@ -645,4 +660,8 @@ void OcctQmlViewer::RendererImpl::createAxes()
   m_context->Display(m_axisX, Standard_False);
   m_context->Display(m_axisY, Standard_False);
   m_context->Display(m_axisZ, Standard_False);
+  // Make axes non-selectable to avoid clicks crashing selection path
+  m_context->Deactivate(m_axisX);
+  m_context->Deactivate(m_axisY);
+  m_context->Deactivate(m_axisZ);
 }

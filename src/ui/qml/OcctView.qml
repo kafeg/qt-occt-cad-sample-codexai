@@ -13,6 +13,15 @@ Item {
         
         focus: true
         
+        // When the viewer is ready and has a size, reset camera to origin
+        Component.onCompleted: {
+            if (width > 0 && height > 0) {
+                resetViewToOrigin(1.2)
+            }
+        }
+        onWidthChanged: if (width > 0 && height > 0) resetViewToOrigin(1.2)
+        onHeightChanged: if (width > 0 && height > 0) resetViewToOrigin(1.2)
+        
         onSelectionChanged: {
             console.log("Selection changed")
         }
