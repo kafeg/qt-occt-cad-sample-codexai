@@ -70,7 +70,18 @@ Pane {
                 Label { text: qsTr("Origin"); color: theme.textMuted }
                 Repeater {
                     model: 1
-                    Label { text: "• XY, XZ, YZ planes"; color: theme.text }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 20
+                        color: "transparent"
+                        Text { 
+                            text: "• XY, XZ, YZ planes"; 
+                            color: theme.text 
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: 8
+                        }
+                    }
                 }
             }
 
@@ -82,7 +93,30 @@ Pane {
                 Label { text: qsTr("Bodies"); color: theme.textMuted }
                 Repeater {
                     model: 3
-                    Label { text: "Body " + (index+1); color: theme.text }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 24
+                        color: mouseArea.containsMouse ? theme.panelMuted : "transparent"
+                        radius: 2
+                        
+                        Text { 
+                            text: "Body " + (index+1); 
+                            color: theme.text 
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: 8
+                        }
+                        
+                        MouseArea {
+                            id: mouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                console.log("Body " + (index+1) + " selected")
+                                // В будущем здесь будет логика выбора объекта
+                            }
+                        }
+                    }
                 }
             }
 
@@ -94,7 +128,30 @@ Pane {
                 Label { text: qsTr("Sketches"); color: theme.textMuted }
                 Repeater {
                     model: 2
-                    Label { text: "Sketch " + (index+1); color: theme.text }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 24
+                        color: mouseArea2.containsMouse ? theme.panelMuted : "transparent"
+                        radius: 2
+                        
+                        Text { 
+                            text: "Sketch " + (index+1); 
+                            color: theme.text 
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: 8
+                        }
+                        
+                        MouseArea {
+                            id: mouseArea2
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                console.log("Sketch " + (index+1) + " selected")
+                                // В будущем здесь будет логика выбора эскиза
+                            }
+                        }
+                    }
                 }
             }
         }

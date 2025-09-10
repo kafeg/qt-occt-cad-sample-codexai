@@ -72,25 +72,138 @@ Pane {
 
                 // Solid parameters
                 ColumnLayout {
-                    spacing: 6
-                    Frame {
+                    spacing: 8
+                    
+                    // Status message
+                    Rectangle {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        background: Rectangle { color: theme.panelMuted; border.color: theme.border; radius: 0 }
-                        Label { anchors.centerIn: parent; text: qsTr("Select object(s) and set Extrude params"); color: theme.textMuted }
+                        height: 40
+                        color: theme.panelMuted
+                        border.color: theme.border
+                        border.width: 1
+                        radius: 4
+                        
+                        Text {
+                            anchors.centerIn: parent
+                            text: qsTr("Select object(s) and set Extrude params")
+                            color: theme.textMuted
+                            font.pixelSize: 12
+                        }
                     }
+                    
+                    // Parameter controls (placeholder for future implementation)
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        
+                        // Distance parameter
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            
+                            Label {
+                                text: qsTr("Distance:")
+                                color: theme.text
+                                Layout.preferredWidth: 80
+                            }
+                            
+                            SpinBox {
+                                id: distanceSpinBox
+                                from: 0
+                                to: 1000
+                                value: 10
+                                stepSize: 1
+                                editable: true
+                                Layout.fillWidth: true
+                                
+                                background: Rectangle {
+                                    color: theme.panelBg
+                                    border.color: theme.border
+                                    border.width: 1
+                                    radius: 2
+                                }
+                                
+                                textFromValue: function(value, locale) {
+                                    return value + " mm"
+                                }
+                                
+                                valueFromText: function(text, locale) {
+                                    return parseInt(text.replace(" mm", "")) || 0
+                                }
+                            }
+                        }
+                        
+                        // Direction parameter
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            
+                            Label {
+                                text: qsTr("Direction:")
+                                color: theme.text
+                                Layout.preferredWidth: 80
+                            }
+                            
+                            ComboBox {
+                                id: directionComboBox
+                                model: ["Normal", "Reverse", "Both"]
+                                currentIndex: 0
+                                Layout.fillWidth: true
+                                
+                                background: Rectangle {
+                                    color: theme.panelBg
+                                    border.color: theme.border
+                                    border.width: 1
+                                    radius: 2
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Action buttons
                     RowLayout {
                         Layout.alignment: Qt.AlignRight
                         spacing: 6
+                        Layout.topMargin: 8
+                        
                         Button {
                             text: qsTr("Cancel")
-                            background: Rectangle { color: theme.panelMuted; radius: 0 }
-                            contentItem: Label { text: parent.text; color: theme.text }
+                            Layout.preferredWidth: 80
+                            background: Rectangle { 
+                                color: parent.pressed ? theme.panelMuted : theme.panelBg
+                                border.color: theme.border
+                                border.width: 1
+                                radius: 2
+                            }
+                            contentItem: Label { 
+                                text: parent.text
+                                color: theme.text
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                            onClicked: {
+                                console.log("Extrude operation cancelled")
+                                // Сброс параметров
+                                distanceSpinBox.value = 10
+                                directionComboBox.currentIndex = 0
+                            }
                         }
+                        
                         Button {
                             text: qsTr("OK")
-                            background: Rectangle { color: theme.accent; radius: 0 }
-                            contentItem: Label { text: parent.text; color: "white" }
+                            Layout.preferredWidth: 80
+                            background: Rectangle { 
+                                color: parent.pressed ? Qt.darker(theme.accent, 1.2) : theme.accent
+                                radius: 2
+                            }
+                            contentItem: Label { 
+                                text: parent.text
+                                color: "white"
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                            onClicked: {
+                                console.log("Extrude operation applied - Distance:", distanceSpinBox.value, "Direction:", directionComboBox.currentText)
+                                // В будущем здесь будет применение операции выдавливания
+                            }
                         }
                     }
                 }

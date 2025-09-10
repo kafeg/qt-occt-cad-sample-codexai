@@ -111,4 +111,7 @@ private:
   // Флаги инициализации
   bool m_initialized;
   bool m_needsUpdate;
+  
+  // Текущая операция для отображения в fallback режиме
+  QString m_currentOperation;
 };

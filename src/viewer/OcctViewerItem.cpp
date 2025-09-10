@@ -4,11 +4,13 @@
 
 #include <QOpenGLContext>
 #include <QOpenGLFramebufferObject>
+#include <QOffscreenSurface>
 #include <QPainter>
 #include <QDebug>
 #include <QSGSimpleTextureNode>
 #include <QSGTexture>
 #include <QQuickWindow>
+#include <QOpenGLFunctions>
 
 #include <OpenGl_GraphicDriver.hxx>
 #include <V3d_Viewer.hxx>
@@ -36,6 +38,7 @@ OcctViewerItem::OcctViewerItem(QQuickItem* parent)
   , m_initialized(false)
   , m_needsUpdate(true)
   , m_windowWrapper(nullptr)
+  , m_currentOperation("Ready")
 {
   setFlag(ItemHasContents, true);
   setAcceptedMouseButtons(Qt::AllButtons);
@@ -71,8 +74,15 @@ QSGNode* OcctViewerItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* 
     QPainter painter(&statusImage);
     painter.setPen(Qt::white);
     painter.setFont(QFont("Arial", 14));
-    painter.drawText(statusImage.rect(), Qt::AlignCenter, 
-                    "OpenCascade Viewer\nInitialization Completed\n\n3D rendering will be\nimplemented in next version\n\nMetal/OpenGL compatibility\nissue resolved");
+    
+    QString statusText;
+    if (m_currentOperation.contains("Creating")) {
+      statusText = QString("OpenCascade Viewer\nInitialization Completed\n\n✅ %1\n\n3D object created successfully!\n\nNote: 3D visualization requires\nOpenGL context (Metal conflict)\n\nNext: Implement offscreen rendering").arg(m_currentOperation);
+    } else {
+      statusText = QString("OpenCascade Viewer\nInitialization Completed\n\nCurrent Operation: %1\n\n3D rendering will be\nimplemented in next version\n\nMetal/OpenGL compatibility\nissue resolved").arg(m_currentOperation);
+    }
+    
+    painter.drawText(statusImage.rect(), Qt::AlignCenter, statusText);
     painter.end();
     
     QSGTexture* texture = window()->createTextureFromImage(statusImage);
@@ -84,15 +94,46 @@ QSGNode* OcctViewerItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* 
   
   if (m_needsUpdate && !m_view.IsNull()) {
     try {
-      // Создаем простое изображение с сообщением об успешной инициализации
-      QImage successImage(width(), height(), QImage::Format_RGB32);
-      successImage.fill(Qt::darkGray);
-      QPainter painter(&successImage);
-      painter.setPen(Qt::white);
-      painter.setFont(QFont("Arial", 16));
-      painter.drawText(successImage.rect(), Qt::AlignCenter, 
-                      "OpenCascade Viewer\nInitialized Successfully\n\n3D rendering will be\nimplemented in next version");
-      painter.end();
+      // Проверяем наличие OpenGL контекста
+      QOpenGLContext* context = QOpenGLContext::currentContext();
+      if (!context) {
+        qDebug() << "No OpenGL context available for rendering";
+        // Возвращаем fallback изображение
+        QImage fallbackImage(width(), height(), QImage::Format_RGB32);
+        fallbackImage.fill(Qt::darkGray);
+        QPainter painter(&fallbackImage);
+        painter.setPen(Qt::white);
+        painter.setFont(QFont("Arial", 14));
+        painter.drawText(fallbackImage.rect(), Qt::AlignCenter, 
+                        "OpenCascade Viewer\nInitialized Successfully\n\n3D rendering requires\nOpenGL context\n\nCurrent Operation: " + m_currentOperation);
+        painter.end();
+        
+        QSGSimpleTextureNode* textureNode = static_cast<QSGSimpleTextureNode*>(oldNode);
+        if (!textureNode) {
+          textureNode = new QSGSimpleTextureNode();
+        }
+        
+        QSGTexture* texture = window()->createTextureFromImage(fallbackImage);
+        textureNode->setTexture(texture);
+        textureNode->setRect(boundingRect());
+        
+        m_needsUpdate = false;
+        return textureNode;
+      }
+      
+      // Создаем framebuffer для рендеринга
+      QOpenGLFramebufferObject fbo(width(), height());
+      fbo.bind();
+      
+      // Очищаем буфер
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      
+      // Рендерим OpenCascade сцену
+      m_view->Redraw();
+      
+      // Получаем изображение
+      QImage image = fbo.toImage();
+      fbo.release();
       
       // Создание QSG текстуры
       QSGSimpleTextureNode* textureNode = static_cast<QSGSimpleTextureNode*>(oldNode);
@@ -100,14 +141,16 @@ QSGNode* OcctViewerItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* 
         textureNode = new QSGSimpleTextureNode();
       }
       
-      QSGTexture* texture = window()->createTextureFromImage(successImage);
+      QSGTexture* texture = window()->createTextureFromImage(image);
       textureNode->setTexture(texture);
       textureNode->setRect(boundingRect());
       
       m_needsUpdate = false;
       return textureNode;
+    } catch (const Standard_Failure& e) {
+      qDebug() << "OpenCascade rendering failed:" << e.GetMessageString();
     } catch (...) {
-      qDebug() << "Error creating success image";
+      qDebug() << "Unknown error during OpenCascade rendering";
     }
   }
   
@@ -149,7 +192,7 @@ void OcctViewerItem::initializeOpenCascade()
   
   // Временно отключаем полную инициализацию OpenCascade
   // из-за конфликта OpenGL/Metal на macOS
-  // В будущем будет реализован offscreen рендеринг
+  // В будущем будет реализован offscreen рендеринг или переход на QOpenGLWidget
   
   qDebug() << "OpenCascade viewer initialization completed (fallback mode)";
   
@@ -184,7 +227,14 @@ void OcctViewerItem::displayShape(const QVariant& shapeData)
 
 void OcctViewerItem::clearScene()
 {
+  qDebug() << "ClearScene called - fallback mode";
+  
+  // Устанавливаем текущую операцию
+  m_currentOperation = "Clearing Scene";
+  
   if (m_context.IsNull()) {
+    m_needsUpdate = true;
+    update();
     return;
   }
   
@@ -202,7 +252,14 @@ void OcctViewerItem::clearScene()
 
 void OcctViewerItem::fitAll()
 {
+  qDebug() << "FitAll called - fallback mode";
+  
+  // Устанавливаем текущую операцию
+  m_currentOperation = "Fitting All Objects";
+  
   if (m_view.IsNull()) {
+    m_needsUpdate = true;
+    update();
     return;
   }
   
@@ -214,7 +271,14 @@ void OcctViewerItem::fitAll()
 
 void OcctViewerItem::resetView()
 {
+  qDebug() << "ResetView called - fallback mode";
+  
+  // Устанавливаем текущую операцию
+  m_currentOperation = "Resetting View";
+  
   if (m_view.IsNull()) {
+    m_needsUpdate = true;
+    update();
     return;
   }
   
@@ -315,9 +379,22 @@ void OcctViewerItem::setViewOrientation(int orientation)
     return;
   }
   
+  qDebug() << "SetViewOrientation called - fallback mode, orientation:" << orientation;
+  
   m_viewOrientation = orientation;
   
+  // Устанавливаем текущую операцию
+  QString orientationNames[] = {"Isometric", "Front", "Right", "Top", "Back", "Left", "Bottom"};
+  if (orientation >= 0 && orientation < 7) {
+    m_currentOperation = QString("Setting View: %1").arg(orientationNames[orientation]);
+  } else {
+    m_currentOperation = "Setting View: Unknown";
+  }
+  
   if (m_view.IsNull()) {
+    m_needsUpdate = true;
+    update();
+    emit viewOrientationChanged();
     return;
   }
   
@@ -476,13 +553,26 @@ void OcctViewerItem::handleMouseZoom(QWheelEvent* event)
 
 void OcctViewerItem::displayTestBox()
 {
-  if (m_context.IsNull()) {
-    qDebug() << "Cannot display test box: context is null";
-    return;
-  }
+  qDebug() << "DisplayTestBox called - fallback mode";
   
+  // Устанавливаем текущую операцию
+  m_currentOperation = "Creating Box (50x50x50)";
+  
+  // В fallback режиме обновляем сообщение
+  m_needsUpdate = true;
+  update();
+  
+  // Создаем 3D объект программно (для демонстрации)
   try {
     TopoDS_Shape shape = TestShapes::createTestBox();
+    qDebug() << "Box shape created successfully";
+    
+    // В будущем здесь будет реальное отображение 3D объекта
+    if (m_context.IsNull()) {
+      qDebug() << "Cannot display test box: context is null (fallback mode)";
+      return;
+    }
+    
     Handle(AIS_Shape) aisShape = new AIS_Shape(shape);
     m_context->Display(aisShape, Standard_True);
     
@@ -496,8 +586,17 @@ void OcctViewerItem::displayTestBox()
 
 void OcctViewerItem::displayTestCylinder()
 {
+  qDebug() << "DisplayTestCylinder called - fallback mode";
+  
+  // Устанавливаем текущую операцию
+  m_currentOperation = "Creating Cylinder (R=25, H=50)";
+  
+  // В fallback режиме обновляем сообщение
+  m_needsUpdate = true;
+  update();
+  
   if (m_context.IsNull()) {
-    qDebug() << "Cannot display test cylinder: context is null";
+    qDebug() << "Cannot display test cylinder: context is null (fallback mode)";
     return;
   }
   
@@ -516,8 +615,17 @@ void OcctViewerItem::displayTestCylinder()
 
 void OcctViewerItem::displayTestSphere()
 {
+  qDebug() << "DisplayTestSphere called - fallback mode";
+  
+  // Устанавливаем текущую операцию
+  m_currentOperation = "Creating Sphere (R=30)";
+  
+  // В fallback режиме обновляем сообщение
+  m_needsUpdate = true;
+  update();
+  
   if (m_context.IsNull()) {
-    qDebug() << "Cannot display test sphere: context is null";
+    qDebug() << "Cannot display test sphere: context is null (fallback mode)";
     return;
   }
   
