@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QLibraryInfo>
 #include <QScreen>
+#include "viewer/ViewerTypes.h"
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
@@ -15,6 +16,9 @@ int main(int argc, char* argv[]) {
     QQmlApplicationEngine engine;
     // Help the engine find Qt's QML modules when running from the build tree
     engine.addImportPath(QLibraryInfo::path(QLibraryInfo::QmlImportsPath));
+    
+    // Register custom QML types
+    registerViewerTypes();
     const QUrl url(QStringLiteral("qrc:/ui/qml/main.qml"));
     QObject::connect(
         &engine,

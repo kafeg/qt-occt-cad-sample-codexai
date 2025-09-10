@@ -23,7 +23,9 @@ target_link_libraries(vibecad PRIVATE
     Qt6::Gui
     Qt6::Qml
     Qt6::QuickControls2
+    Qt6::OpenGL
     ${OpenCASCADE_LIBRARIES}
+    viewer
 )
 
 target_compile_features(vibecad PRIVATE cxx_std_17)

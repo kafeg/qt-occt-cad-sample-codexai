@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 find_package(GTest CONFIG REQUIRED)
 find_package(OpenCASCADE REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
 
 add_executable(vibecad-tests
   common/sanity_test.cpp
@@ -19,6 +20,7 @@ add_executable(vibecad-tests
   sketch/sketch_spatial_index_test.cpp
   serialization/serialization_test.cpp
   document_initializer_test.cpp
+  viewer_integration_test.cpp
 )
 
 # Allow tests to include headers within tests/ (e.g. common/test_utils.h)
@@ -27,10 +29,15 @@ target_include_directories(vibecad-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(vibecad-tests PRIVATE
   GTest::gtest
   GTest::gtest_main
+  Qt6::Core
+  Qt6::Gui
+  Qt6::Qml
+  Qt6::Quick
   sketch
   model
   doc
   core
+  viewer
   ${OpenCASCADE_LIBRARIES}
 )
 
