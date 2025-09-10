@@ -10,16 +10,8 @@ Item {
     OcctViewer {
         id: occtViewer
         anchors.fill: parent
-        viewCubeVisible: true
-        viewCubeSize: 100
-        viewMode: 1 // Shaded
-        viewOrientation: 0 // Isometric
         
         focus: true
-        
-        onViewChanged: {
-            console.log("View changed")
-        }
         
         onSelectionChanged: {
             console.log("Selection changed")
@@ -60,7 +52,7 @@ Item {
                     text: qsTr("Iso")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.viewOrientation = 0
+                    onClicked: occtViewer.resetViewToOrigin(1.2)
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -78,7 +70,7 @@ Item {
                     text: qsTr("Front")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.viewOrientation = 1
+                    onClicked: occtViewer.resetViewToOrigin(1.0)
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -96,7 +88,7 @@ Item {
                     text: qsTr("Right")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.viewOrientation = 2
+                    onClicked: occtViewer.resetViewToOrigin(1.0)
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -114,7 +106,7 @@ Item {
                     text: qsTr("Top")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.viewOrientation = 3
+                    onClicked: occtViewer.resetViewToOrigin(1.0)
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -137,7 +129,7 @@ Item {
                     text: qsTr("Fit")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.fitAll()
+                    onClicked: occtViewer.resetViewToOrigin(1.2)
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -155,7 +147,7 @@ Item {
                     text: qsTr("Reset")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.resetView()
+                    onClicked: occtViewer.resetViewToOrigin(1.2)
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -170,10 +162,10 @@ Item {
                 }
                 
                 Button {
-                    text: occtViewer.viewMode === 0 ? qsTr("Wire") : qsTr("Shade")
+                    text: qsTr("Shade")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.viewMode = occtViewer.viewMode === 0 ? 1 : 0
+                    onClicked: occtViewer.resetViewToOrigin(1.2)
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -188,10 +180,10 @@ Item {
                 }
                 
                 Button {
-                    text: occtViewer.viewCubeVisible ? qsTr("Hide") : qsTr("Show")
+                    text: qsTr("ViewCube")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.viewCubeVisible = !occtViewer.viewCubeVisible
+                    onClicked: occtViewer.resetViewToOrigin(1.2)
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -215,7 +207,7 @@ Item {
                     text: qsTr("Box")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.displayTestBox()
+                    onClicked: occtViewer.addTestBox()
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -233,7 +225,7 @@ Item {
                     text: qsTr("Cyl")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.displayTestCylinder()
+                    onClicked: occtViewer.addTestCylinder()
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -251,7 +243,7 @@ Item {
                     text: qsTr("Sphere")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.displayTestSphere()
+                    onClicked: occtViewer.addTestSphere()
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2
@@ -269,7 +261,7 @@ Item {
                     text: qsTr("Clear")
                     width: 40
                     height: 24
-                    onClicked: occtViewer.clearScene()
+                    onClicked: occtViewer.clearBodies()
                     background: Rectangle { 
                         color: parent.pressed ? theme.accent : theme.panelMuted
                         radius: 2

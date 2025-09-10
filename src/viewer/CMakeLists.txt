@@ -2,16 +2,17 @@
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick OpenGL OpenGLWidgets)
 
 add_library(viewer STATIC
-  OcctQOpenGLWidgetViewer.cpp
-  OcctQOpenGLWidgetViewer.h
-  OcctViewerItem.cpp
-  OcctViewerItem.h
-  OcctWindowWrapper.cpp
-  OcctWindowWrapper.h
+  OcctQmlViewer.cpp
+  OcctQmlViewer.h
+  OcctGlTools.h
+  FiniteGrid.cpp
+  FiniteGrid.h
+  SceneGizmos.cpp
+  SceneGizmos.h
+  OcctQtTools.h
   ViewerTypes.cpp
   ViewerTypes.h
-  TestShapes.cpp
-  TestShapes.h
+  viewer.qrc
 )
 
 target_link_libraries(viewer PRIVATE

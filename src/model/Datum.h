@@ -36,7 +36,7 @@ public:
   const gp_Dir& dirX() const { return m_dirX; }
   const gp_Dir& dirY() const { return m_dirY; }
   const gp_Dir& dirZ() const { return m_dirZ; }
-  void setDirs(const gp_Dir& dx, const gp_Dir& dy, const gp_Dir& dz) { m_dirX = dx; m_dirY = dy; m_dirZ = dz; }
+  void setDirs(const gp_Dir& dx, const gp_Dir& dy, const gp_Dir& dz) { m_dirX = dx; m_dirY = dy; m_dirZ = dz; }                                                                                                         
 
   // Visual parameters
   double axisLength()   const { return m_axisLength; }

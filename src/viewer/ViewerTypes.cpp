@@ -1,8 +1,8 @@
 #include "ViewerTypes.h"
-#include "OcctViewerItem.h"
+#include "OcctQmlViewer.h"
 
 void registerViewerTypes()
 {
-  // Регистрация OcctViewerItem как QML типа
-  qmlRegisterType<OcctViewerItem>("VibeCAD.Viewer", 1, 0, "OcctViewer");
+  // Регистрация OcctQmlViewer как QML типа
+  qmlRegisterType<OcctQmlViewer>("VibeCAD.Viewer", 1, 0, "OcctViewer");
 }
