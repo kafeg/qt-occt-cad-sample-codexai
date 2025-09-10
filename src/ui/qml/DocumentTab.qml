@@ -81,7 +81,7 @@ Item {
             // Vertical divider
             Rectangle { width: 1; color: theme.divider; Layout.fillHeight: true }
 
-            // Right: Parameters pane
+            // Right: Parameters pane + future panels container
             Rectangle {
                 id: rightPaneContainer
                 Layout.preferredWidth: 300
@@ -93,15 +93,30 @@ Item {
                 border.width: 1
                 
                 ColumnLayout {
+                    id: rightPane
                     anchors.fill: parent
                     anchors.margins: 1
                     spacing: 2
 
                     // Content
-                    ParametersPane {
-                        id: parametersPane
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        mode: root.mode
+                        spacing: 2
+
+                        ParametersPane {
+                            id: parametersPane
+                            Layout.fillWidth: true
+                            mode: root.mode
+                        }
+
+                        // Empty container reserved for future panels (e.g., Properties)
+                        Pane {
+                            id: extraRightPanelsContainer
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Accessible.name: qsTr("Extra Right Panels Container")
+                            background: Rectangle { color: theme.panelBg; border.color: "transparent"; radius: 0 }
+                        }
                     }
                 }
             }
